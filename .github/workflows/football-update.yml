@@ -1,13 +1,17 @@
 # Futbol sitesinin (jinjagames.com/football/) verisini her gece Türkiye saatiyle 00.00'da günceller: maç sonuçları, günün haberleri, kadrolar,
 # sakatlıklar, transferler, teknik direktör/başkan/sahip değişiklikleri. Son güncellemeden bu yana ne değiştiyse onu alır; eski sezonlara
 # ham veri değişmedikçe dokunmaz. CurseForge iş akışından (curseforge-stats.yml) bağımsızdır: ayrı grup, ayrı dosyalar.
-# 21:05 UTC = 00.05 TSİ (CurseForge iş akışı :00'da çalıştığı için çakışmasın diye birkaç dakika sonra). GitHub zamanlanmış işleri
-# yoğunlukta birkaç dakika geciktirebilir. Elle çalıştırmak: Actions > "Football güncelle" > Run workflow.
+# ZAMANLAMA: GitHub zamanlanmış işleri dakikasında başlatmaz; bu depoda 21:05 UTC'ye kurulu çalışmalar gerçekte 00:25-00:45 UTC'de (yaklaşık 3,5 saat geç,
+# Türkiye saatiyle ~03:30) başladı. Bu yüzden asıl çalışma 17:37 UTC'ye (20:37 TSİ) kuruldu: tipik gecikmeyle gece yarısı civarında biter.
+# İkinci çalışma (21:47 UTC) güvence: gecikme olmazsa 00:47 TSİ'de, olursa sabaha doğru çalışır; gün sonunda biten geç maçları tamamlar.
+# Güncelleme artımlıdır: ikinci çalışmada yeni bir şey yoksa commit atılmaz. CurseForge iş akışı (curseforge-stats.yml) :00'da çalıştığı için dakikalar farklı seçildi.
+# Elle çalıştırmak: Actions > "Football güncelle" > Run workflow.
 name: Football güncelle
 
 on:
   schedule:
-    - cron: "5 21 * * *"
+    - cron: "37 17 * * *"
+    - cron: "47 21 * * *"
   workflow_dispatch: {}
 
 permissions:
@@ -21,7 +25,6 @@ env:
   WIF_BUILT: ${{ github.workspace }}/football/data              # derlenmiş veri doğrudan sitenin klasörüne yazılır (MUTLAK yol: alt süreçler başka klasörde çalışır)
   WIF_LAST: ${{ github.workspace }}/tools/football/last         # güncellemeler arası durum depoda tutulur (önbellek silinse de kaybolmaz)
   WIF_RAW: ${{ github.workspace }}/.football-raw   # indirilen ham veri (depoya girmez)
-  WIF_COMMIT_MSG: ${{ runner.temp }}/football_commit.txt   # update.py anlamlı bir commit mesajı yazar (kaç maç haberi, transfer, hoca değişikliği...)
   PYTHONIOENCODING: utf-8
 
 jobs:
@@ -49,10 +52,14 @@ jobs:
 
       - name: Güncelle (artımlı)
         id: upd
+        env:
+          WIF_COMMIT_MSG: ${{ runner.temp }}/football_commit.txt   # update.py anlamlı bir commit mesajı yazar (runner bağlamı iş düzeyindeki env'de KULLANILAMAZ, adım düzeyinde olmalı)
         run: python tools/football/pipeline/update.py
         continue-on-error: true      # yazılabilen veri yine commit edilsin; hata aşağıda işi kırmızıya çevirir
 
       - name: Değiştiyse siteye işle
+        env:
+          WIF_COMMIT_MSG: ${{ runner.temp }}/football_commit.txt
         run: |
           git config user.name "jinjagames-bot"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
