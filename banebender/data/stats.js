@@ -1,6 +1,6 @@
 /* Otomatik: tools/update_stats.py (6 saatte bir, GitHub Actions). Elle düzenleme. */
 window.BB_STATS={
- "total": 4783,
+ "total": 4811,
  "projects": 24,
  "mods": {
   "all-irons": {
@@ -11,7 +11,7 @@ window.BB_STATS={
   },
   "board-games": {
    "name": "Board Games",
-   "dl": 558,
+   "dl": 563,
    "created": "2026-10-16T07:48Z",
    "updated": "2026-10-16T07:48Z"
   },
@@ -29,7 +29,7 @@ window.BB_STATS={
   },
   "death-hand": {
    "name": "Death Hand",
-   "dl": 41,
+   "dl": 42,
    "created": "2026-10-12T09:46Z",
    "updated": "2026-10-24T10:11Z"
   },
@@ -53,7 +53,7 @@ window.BB_STATS={
   },
   "frontier-structures": {
    "name": "Frontier Structures",
-   "dl": 378,
+   "dl": 381,
    "created": "2026-10-05T10:25Z",
    "updated": "2026-10-07T15:52Z"
   },
@@ -71,7 +71,7 @@ window.BB_STATS={
   },
   "hearthly": {
    "name": "Hearthly",
-   "dl": 425,
+   "dl": 427,
    "created": "2026-10-12T12:44Z",
    "updated": "2026-10-24T21:07Z"
   },
@@ -83,7 +83,7 @@ window.BB_STATS={
   },
   "ore-elemental-golems": {
    "name": "Ore & Elemental Golems",
-   "dl": 647,
+   "dl": 651,
    "created": "2026-10-12T11:21Z",
    "updated": "2026-10-12T11:21Z"
   },
@@ -101,13 +101,13 @@ window.BB_STATS={
   },
   "power-generators": {
    "name": "Power generators",
-   "dl": 207,
+   "dl": 208,
    "created": "2026-09-18T06:42Z",
    "updated": "2026-10-24T10:10Z"
   },
   "real-animals": {
    "name": "Real Animals",
-   "dl": 403,
+   "dl": 413,
    "created": "2026-10-09T10:52Z",
    "updated": "2026-10-09T10:52Z"
   },
@@ -119,7 +119,7 @@ window.BB_STATS={
   },
   "towers": {
    "name": "Towers",
-   "dl": 138,
+   "dl": 139,
    "created": "2026-10-05T11:47Z",
    "updated": "2026-10-05T11:47Z"
   },
@@ -143,7 +143,7 @@ window.BB_STATS={
   },
   "vivacity": {
    "name": "Vivacity",
-   "dl": 45,
+   "dl": 46,
    "created": "2026-10-25T12:13Z",
    "updated": "2026-10-25T12:13Z"
   }
@@ -151,7 +151,7 @@ window.BB_STATS={
  "unlisted": [
   "vivacity"
  ],
- "updated": "2026-11-03T20:52Z",
+ "updated": "2026-11-04T01:11Z",
  "source": "profile",
  "datesAt": "2026-11-03T20:52Z"
 };
