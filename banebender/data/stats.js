@@ -1,6 +1,6 @@
 /* Otomatik: tools/update_stats.py (6 saatte bir, GitHub Actions). Elle düzenleme. */
 window.BB_STATS={
- "total": 4884,
+ "total": 4926,
  "projects": 24,
  "mods": {
   "all-irons": {
@@ -11,7 +11,7 @@ window.BB_STATS={
   },
   "board-games": {
    "name": "Board Games",
-   "dl": 573,
+   "dl": 583,
    "created": "2026-10-16T07:48Z",
    "updated": "2026-10-16T07:48Z"
   },
@@ -23,13 +23,13 @@ window.BB_STATS={
   },
   "chest-hauler": {
    "name": "Chest Hauler",
-   "dl": 50,
+   "dl": 51,
    "created": "2026-10-05T11:28Z",
    "updated": "2026-10-05T11:28Z"
   },
   "death-hand": {
    "name": "Death Hand",
-   "dl": 42,
+   "dl": 43,
    "created": "2026-10-12T09:46Z",
    "updated": "2026-10-24T10:11Z"
   },
@@ -47,13 +47,13 @@ window.BB_STATS={
   },
   "flesh-tanner": {
    "name": "Flesh Tanner",
-   "dl": 43,
+   "dl": 44,
    "created": "2026-10-09T08:03Z",
    "updated": "2026-10-09T08:03Z"
   },
   "frontier-structures": {
    "name": "Frontier Structures",
-   "dl": 383,
+   "dl": 387,
    "created": "2026-10-05T10:25Z",
    "updated": "2026-10-07T15:52Z"
   },
@@ -65,13 +65,13 @@ window.BB_STATS={
   },
   "hard-mobs-and-bosses": {
    "name": "Hard Mobs and bosses",
-   "dl": 492,
+   "dl": 493,
    "created": "2026-09-18T05:55Z",
    "updated": "2026-10-24T10:10Z"
   },
   "hearthly": {
    "name": "Hearthly",
-   "dl": 436,
+   "dl": 439,
    "created": "2026-10-12T12:44Z",
    "updated": "2026-10-24T21:07Z"
   },
@@ -83,43 +83,43 @@ window.BB_STATS={
   },
   "ore-elemental-golems": {
    "name": "Ore & Elemental Golems",
-   "dl": 664,
+   "dl": 669,
    "created": "2026-10-12T11:21Z",
    "updated": "2026-10-12T11:21Z"
   },
   "pale-contagion": {
    "name": "Pale Contagion",
-   "dl": 103,
+   "dl": 106,
    "created": "2026-10-11T12:42Z",
    "updated": "2026-10-11T12:42Z"
   },
   "pantheon-of-legends": {
    "name": "Pantheon of Legends",
-   "dl": 150,
+   "dl": 152,
    "created": "2026-10-05T11:54Z",
    "updated": "2026-10-05T11:54Z"
   },
   "power-generators": {
    "name": "Power generators",
-   "dl": 211,
+   "dl": 214,
    "created": "2026-09-18T06:42Z",
    "updated": "2026-10-24T10:10Z"
   },
   "real-animals": {
    "name": "Real Animals",
-   "dl": 421,
+   "dl": 427,
    "created": "2026-10-09T10:52Z",
    "updated": "2026-10-09T10:52Z"
   },
   "seraph": {
    "name": "Seraph",
-   "dl": 183,
+   "dl": 184,
    "created": "2026-10-05T11:03Z",
    "updated": "2026-10-24T10:11Z"
   },
   "towers": {
    "name": "Towers",
-   "dl": 140,
+   "dl": 141,
    "created": "2026-10-05T11:47Z",
    "updated": "2026-10-05T11:47Z"
   },
@@ -151,7 +151,7 @@ window.BB_STATS={
  "unlisted": [
   "vivacity"
  ],
- "updated": "2026-11-04T21:13Z",
+ "updated": "2026-11-05T10:40Z",
  "source": "profile",
  "datesAt": "2026-11-04T21:13Z"
 };
