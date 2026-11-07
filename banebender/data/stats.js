@@ -1,6 +1,6 @@
 /* Otomatik: tools/update_stats.py (6 saatte bir, GitHub Actions). Elle düzenleme. */
 window.BB_STATS={
- "total": 5083,
+ "total": 5107,
  "projects": 24,
  "mods": {
   "all-irons": {
@@ -11,13 +11,13 @@ window.BB_STATS={
   },
   "board-games": {
    "name": "Board Games",
-   "dl": 614,
+   "dl": 615,
    "created": "2026-10-16T07:48Z",
    "updated": "2026-10-16T07:48Z"
   },
   "card-lootbags": {
    "name": "Card Loot bags",
-   "dl": 190,
+   "dl": 191,
    "created": "2026-09-17T09:00Z",
    "updated": "2026-10-03T21:47Z"
   },
@@ -53,7 +53,7 @@ window.BB_STATS={
   },
   "frontier-structures": {
    "name": "Frontier Structures",
-   "dl": 393,
+   "dl": 397,
    "created": "2026-10-05T10:25Z",
    "updated": "2026-10-07T15:52Z"
   },
@@ -71,19 +71,19 @@ window.BB_STATS={
   },
   "hearthly": {
    "name": "Hearthly",
-   "dl": 462,
+   "dl": 468,
    "created": "2026-10-12T12:44Z",
    "updated": "2026-10-24T21:07Z"
   },
   "lodepulse": {
    "name": "Lodepulse",
-   "dl": 32,
+   "dl": 33,
    "created": "2026-10-23T08:51Z",
    "updated": "2026-10-23T08:51Z"
   },
   "ore-elemental-golems": {
    "name": "Ore & Elemental Golems",
-   "dl": 691,
+   "dl": 694,
    "created": "2026-10-12T11:21Z",
    "updated": "2026-10-12T11:21Z"
   },
@@ -107,7 +107,7 @@ window.BB_STATS={
   },
   "real-animals": {
    "name": "Real Animals",
-   "dl": 447,
+   "dl": 449,
    "created": "2026-10-09T10:52Z",
    "updated": "2026-10-09T10:52Z"
   },
@@ -143,7 +143,7 @@ window.BB_STATS={
   },
   "vivacity": {
    "name": "Vivacity",
-   "dl": 47,
+   "dl": 53,
    "created": "2026-10-25T12:13Z",
    "updated": "2026-10-25T12:13Z"
   }
@@ -151,7 +151,7 @@ window.BB_STATS={
  "unlisted": [
   "vivacity"
  ],
- "updated": "2026-11-06T20:47Z",
+ "updated": "2026-11-07T00:49Z",
  "source": "profile",
  "datesAt": "2026-11-06T20:47Z"
 };
