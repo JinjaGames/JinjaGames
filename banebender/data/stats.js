@@ -1,6 +1,6 @@
 /* Otomatik: tools/update_stats.py (6 saatte bir, GitHub Actions). Elle düzenleme. */
 window.BB_STATS={
- "total": 5162,
+ "total": 5210,
  "projects": 24,
  "mods": {
   "all-irons": {
@@ -11,7 +11,7 @@ window.BB_STATS={
   },
   "board-games": {
    "name": "Board Games",
-   "dl": 616,
+   "dl": 618,
    "created": "2026-10-16T07:48Z",
    "updated": "2026-10-16T07:48Z"
   },
@@ -23,7 +23,7 @@ window.BB_STATS={
   },
   "chest-hauler": {
    "name": "Chest Hauler",
-   "dl": 54,
+   "dl": 56,
    "created": "2026-10-05T11:28Z",
    "updated": "2026-10-05T11:28Z"
   },
@@ -53,7 +53,7 @@ window.BB_STATS={
   },
   "frontier-structures": {
    "name": "Frontier Structures",
-   "dl": 403,
+   "dl": 405,
    "created": "2026-10-05T10:25Z",
    "updated": "2026-10-07T15:52Z"
   },
@@ -65,13 +65,13 @@ window.BB_STATS={
   },
   "hard-mobs-and-bosses": {
    "name": "Hard Mobs and bosses",
-   "dl": 500,
+   "dl": 503,
    "created": "2026-09-18T05:55Z",
    "updated": "2026-10-24T10:10Z"
   },
   "hearthly": {
    "name": "Hearthly",
-   "dl": 479,
+   "dl": 484,
    "created": "2026-10-12T12:44Z",
    "updated": "2026-10-24T21:07Z"
   },
@@ -83,7 +83,7 @@ window.BB_STATS={
   },
   "ore-elemental-golems": {
    "name": "Ore & Elemental Golems",
-   "dl": 714,
+   "dl": 726,
    "created": "2026-10-12T11:21Z",
    "updated": "2026-10-12T11:21Z"
   },
@@ -95,7 +95,7 @@ window.BB_STATS={
   },
   "pantheon-of-legends": {
    "name": "Pantheon of Legends",
-   "dl": 163,
+   "dl": 166,
    "created": "2026-10-05T11:54Z",
    "updated": "2026-10-05T11:54Z"
   },
@@ -107,13 +107,13 @@ window.BB_STATS={
   },
   "real-animals": {
    "name": "Real Animals",
-   "dl": 450,
+   "dl": 459,
    "created": "2026-10-09T10:52Z",
-   "updated": "2026-10-09T10:52Z"
+   "updated": "2026-11-07T18:12Z"
   },
   "seraph": {
    "name": "Seraph",
-   "dl": 191,
+   "dl": 195,
    "created": "2026-10-05T11:03Z",
    "updated": "2026-10-24T10:11Z"
   },
@@ -125,25 +125,25 @@ window.BB_STATS={
   },
   "uncraft-and-unfurnace": {
    "name": "Uncraft and Unfurnace",
-   "dl": 190,
+   "dl": 191,
    "created": "2026-09-17T08:53Z",
    "updated": "2026-10-03T21:50Z"
   },
   "variantide": {
    "name": "Variantide",
-   "dl": 38,
+   "dl": 39,
    "created": "2026-10-11T12:32Z",
    "updated": "2026-10-11T12:32Z"
   },
   "veinminer-all-types": {
    "name": "Veinminer All Types",
-   "dl": 131,
+   "dl": 132,
    "created": "2026-09-15T08:51Z",
    "updated": "2026-09-15T08:51Z"
   },
   "vivacity": {
    "name": "Vivacity",
-   "dl": 55,
+   "dl": 58,
    "created": "2026-10-25T12:13Z",
    "updated": "2026-10-25T12:13Z"
   }
@@ -151,7 +151,7 @@ window.BB_STATS={
  "unlisted": [
   "vivacity"
  ],
- "updated": "2026-11-07T09:52Z",
+ "updated": "2026-11-07T19:20Z",
  "source": "profile",
- "datesAt": "2026-11-06T20:47Z"
+ "datesAt": "2026-11-07T19:20Z"
 };
