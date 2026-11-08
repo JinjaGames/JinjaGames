@@ -1,17 +1,17 @@
 /* Otomatik: tools/update_stats.py (6 saatte bir, GitHub Actions). Elle düzenleme. */
 window.BB_STATS={
- "total": 5377,
+ "total": 5453,
  "projects": 24,
  "mods": {
   "all-irons": {
    "name": "All irons",
-   "dl": 164,
+   "dl": 165,
    "created": "2026-09-16T08:34Z",
    "updated": "2026-10-24T10:11Z"
   },
   "board-games": {
    "name": "Board Games",
-   "dl": 637,
+   "dl": 644,
    "created": "2026-10-16T07:48Z",
    "updated": "2026-10-16T07:48Z"
   },
@@ -29,19 +29,19 @@ window.BB_STATS={
   },
   "death-hand": {
    "name": "Death Hand",
-   "dl": 48,
+   "dl": 49,
    "created": "2026-10-12T09:46Z",
    "updated": "2026-10-24T10:11Z"
   },
   "elemental-arcana": {
    "name": "Elemental Arcana",
-   "dl": 122,
+   "dl": 123,
    "created": "2026-09-30T08:22Z",
    "updated": "2026-10-03T21:48Z"
   },
   "every-last-bite": {
    "name": "Every Last Bite",
-   "dl": 35,
+   "dl": 36,
    "created": "2026-10-21T09:15Z",
    "updated": "2026-10-24T10:09Z"
   },
@@ -53,25 +53,25 @@ window.BB_STATS={
   },
   "frontier-structures": {
    "name": "Frontier Structures",
-   "dl": 412,
+   "dl": 414,
    "created": "2026-10-05T10:25Z",
    "updated": "2026-10-07T15:52Z"
   },
   "gilded-gambit": {
    "name": "Gilded Gambit",
-   "dl": 60,
+   "dl": 61,
    "created": "2026-10-11T12:41Z",
    "updated": "2026-10-11T12:41Z"
   },
   "hard-mobs-and-bosses": {
    "name": "Hard Mobs and bosses",
-   "dl": 504,
+   "dl": 507,
    "created": "2026-09-18T05:55Z",
    "updated": "2026-10-24T10:10Z"
   },
   "hearthly": {
    "name": "Hearthly",
-   "dl": 512,
+   "dl": 522,
    "created": "2026-10-12T12:44Z",
    "updated": "2026-10-24T21:07Z"
   },
@@ -83,7 +83,7 @@ window.BB_STATS={
   },
   "ore-elemental-golems": {
    "name": "Ore & Elemental Golems",
-   "dl": 750,
+   "dl": 764,
    "created": "2026-10-12T11:21Z",
    "updated": "2026-10-12T11:21Z"
   },
@@ -95,19 +95,19 @@ window.BB_STATS={
   },
   "pantheon-of-legends": {
    "name": "Pantheon of Legends",
-   "dl": 170,
+   "dl": 171,
    "created": "2026-10-05T11:54Z",
    "updated": "2026-10-05T11:54Z"
   },
   "power-generators": {
    "name": "Power generators",
-   "dl": 227,
+   "dl": 229,
    "created": "2026-09-18T06:42Z",
    "updated": "2026-10-24T10:10Z"
   },
   "real-animals": {
    "name": "Real Animals",
-   "dl": 486,
+   "dl": 509,
    "created": "2026-10-09T10:52Z",
    "updated": "2026-11-07T18:12Z"
   },
@@ -125,7 +125,7 @@ window.BB_STATS={
   },
   "uncraft-and-unfurnace": {
    "name": "Uncraft and Unfurnace",
-   "dl": 196,
+   "dl": 197,
    "created": "2026-09-17T08:53Z",
    "updated": "2026-10-03T21:50Z"
   },
@@ -143,7 +143,7 @@ window.BB_STATS={
   },
   "vivacity": {
    "name": "Vivacity",
-   "dl": 74,
+   "dl": 82,
    "created": "2026-10-25T12:13Z",
    "updated": "2026-10-25T12:13Z"
   }
@@ -151,7 +151,7 @@ window.BB_STATS={
  "unlisted": [
   "vivacity"
  ],
- "updated": "2026-11-08T10:06Z",
+ "updated": "2026-11-08T19:27Z",
  "source": "profile",
- "datesAt": "2026-11-07T19:20Z"
+ "datesAt": "2026-11-08T19:27Z"
 };
