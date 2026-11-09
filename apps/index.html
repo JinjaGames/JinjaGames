@@ -1,0 +1,464 @@
+<!doctype html>
+<html lang="en" data-lang="en" data-theme="light">
+<head>
+<meta charset="utf-8" />
+<script>
+// Keep legacy index.html links on the same clean URL as directory links.
+if ((location.protocol === 'https:' || location.protocol === 'http:') && location.pathname.endsWith('/index.html')) {
+  history.replaceState(history.state, '', location.pathname.replace(/index\.html$/, '') + location.search + location.hash);
+}
+</script>
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<title>Web Apps | JinjaGames: Jinja Football and JinjaPeer in your browser</title>
+<meta name="description" content="JinjaGames web apps run right in your browser: Jinja Football, the football what-if machine, and JinjaPeer, end-to-end encrypted device-to-device file transfer. Free, no account, no tracking." />
+<meta name="robots" content="index,follow" />
+<link rel="canonical" href="https://jinjagames.com/apps/" />
+<meta name="theme-color" content="#FCFAF8" media="(prefers-color-scheme: light)" />
+<meta name="theme-color" content="#0E0C0D" media="(prefers-color-scheme: dark)" />
+<link rel="icon" type="image/png" sizes="32x32" href="../favicon-j-shuriken-32.png?v=2" />
+<link rel="icon" type="image/png" sizes="48x48" href="../favicon-j-shuriken-48.png?v=2" />
+<link rel="apple-touch-icon" href="../favicon-j-shuriken-180.png?v=2" />
+<meta property="og:title" content="Web Apps | JinjaGames" />
+<meta property="og:description" content="Jinja Football and JinjaPeer: use them in your browser, no install." />
+<meta property="og:type" content="website" />
+<meta property="og:url" content="https://jinjagames.com/apps/" />
+<meta property="og:image" content="https://jinjagames.com/JinjaGamesBanner.png" />
+<meta name="twitter:card" content="summary_large_image" />
+<link rel="preload" as="font" type="font/woff2" href="../assets/fonts/space-grotesk-latin-700.woff2" crossorigin />
+<link rel="preload" as="font" type="font/woff2" href="../assets/fonts/inter-latin-400.woff2" crossorigin />
+<link rel="stylesheet" href="../assets/fonts.css?v=20261012d" />
+<script type="application/ld+json">
+{"@context":"https://schema.org","@type":"CollectionPage","name":"Web apps by JinjaGames","url":"https://jinjagames.com/apps/","isPartOf":{"@type":"WebSite","name":"JinjaGames","url":"https://jinjagames.com/"},"hasPart":[{"@type":"WebApplication","name":"Jinja Football","url":"https://jinjagames.com/football/","applicationCategory":"SportsApplication","operatingSystem":"Any","offers":{"@type":"Offer","price":"0","priceCurrency":"USD"}},{"@type":"WebApplication","name":"JinjaPeer","url":"https://jinjagames.com/peer/","applicationCategory":"UtilitiesApplication","operatingSystem":"Any","offers":{"@type":"Offer","price":"0","priceCurrency":"USD"}}]}
+</script>
+<script>
+(function(){
+  var d=document.documentElement;
+  try{
+    var t=localStorage.getItem('jg_theme');
+    if(t!=='light'&&t!=='dark'){ t=(window.matchMedia&&matchMedia('(prefers-color-scheme: dark)').matches)?'dark':'light'; }
+    d.setAttribute('data-theme',t);
+    var l=localStorage.getItem('jg_lang');
+    if(l!=='tr'&&l!=='en') l='en';
+    d.setAttribute('data-lang',l); d.lang=l;
+  }catch(e){}
+})();
+</script>
+<style>
+/* ============================================================
+   JinjaGames — oyunlar merkezi
+   Ana sayfanın editöryel dili: kâğıt zemin, ince çizgi, az renk.
+   Her oyun satırı kendi dünyasının vurgusunu ve başlık yazı tipini taşır.
+   ============================================================ */
+:root{
+  --brand:#C42B2B; --brand-2:#E0604E; --brand-rgb:196,43,43;
+  --bg:#FCFAF8; --bg-soft:#F5F1ED; --surface:#FFFFFF; --surface-2:#F8F4F1;
+  --ink:#191517; --ink-2:#5E5457; --ink-3:#6E6467;
+  --line:#E8E1DB; --line-2:#D8CFC8; --brand-soft:#FAEDEA;
+  --nav-bg:rgba(252,250,248,.82); --nav-bg-solid:rgba(252,250,248,.97);
+  --shadow-1:0 1px 2px rgba(25,21,23,.04), 0 8px 22px rgba(25,21,23,.05);
+  --shadow-2:0 20px 54px rgba(25,21,23,.11);
+  --w-cyber:#0E7A8A; --w-noir:#B03B32; --w-warm:#2F6B48; --w-trails:#7A4FD6; --w-pipes:#1C7FB8; --w-jars:#B8470A; --w-logic:#5A47C9; --w-loops:#C2306F; --w-park:#D1342F; --w-seek:#1A7F4F; --w-slide:#3560D8;
+  --W:1240px; --ease:cubic-bezier(.22,1,.36,1); --navh:74px;
+  --f-body:'Inter',-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+  --f-display:'Space Grotesk',var(--f-body);
+  --f-mono:'JetBrains Mono',Consolas,ui-monospace,Menlo,monospace;
+  --f-noir:'Playfair Display',Georgia,'Times New Roman',serif;
+  --f-warm:'Fraunces',Georgia,serif;
+}
+html[data-theme="dark"]{
+  color-scheme:dark;
+  --brand:#F16A5C; --brand-2:#FF9B82; --brand-rgb:241,106,92;
+  --bg:#0E0C0D; --bg-soft:#141112; --surface:#181415; --surface-2:#1F1A1B;
+  --ink:#F6F1EF; --ink-2:#BCAFB0; --ink-3:#968A8C;
+  --line:#272122; --line-2:#372F31; --brand-soft:#271817;
+  --nav-bg:rgba(14,12,13,.78); --nav-bg-solid:rgba(14,12,13,.96);
+  --shadow-1:0 1px 2px rgba(0,0,0,.36), 0 8px 22px rgba(0,0,0,.3);
+  --shadow-2:0 22px 56px rgba(0,0,0,.52);
+  --w-cyber:#4FD0E4; --w-noir:#F16A5C; --w-warm:#6FBF87; --w-trails:#B79BFF; --w-pipes:#79C8F2; --w-jars:#FFB45E; --w-logic:#A9A2FF; --w-loops:#FF8FBF; --w-park:#FF8A7D; --w-seek:#6FE0A6; --w-slide:#9DB8FF;
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html{scroll-behavior:smooth;-webkit-text-size-adjust:100%}
+html,body{overflow-x:hidden;overflow-x:clip}
+body{background:var(--bg);color:var(--ink);font-family:var(--f-body);font-size:17px;line-height:1.7;-webkit-font-smoothing:antialiased;transition:background .35s ease,color .35s ease}
+a{color:inherit;text-decoration:none}
+img,video{max-width:100%;display:block;height:auto}
+button{font:inherit;color:inherit}
+:focus-visible{outline:2px solid var(--brand);outline-offset:4px;border-radius:4px}
+.wrap{max-width:var(--W);margin:0 auto;padding:0 32px}
+h1,h2,h3,h4{font-family:var(--f-display);font-weight:700;line-height:1.08;letter-spacing:-.03em}
+.tr,.en{display:block}
+html[data-lang="en"] .tr{display:none!important}
+html[data-lang="tr"] .en{display:none!important}
+.tr.i,.en.i{display:inline}
+html[data-lang="en"] .tr.i{display:none!important}
+html[data-lang="tr"] .en.i{display:none!important}
+html[data-steam="soon"] .sx-live{display:none!important}
+html[data-steam="live"] .sx-soon{display:none!important}
+@media (prefers-reduced-motion: reduce){
+  *,*::before,*::after{animation-duration:.001ms!important;animation-iteration-count:1!important;transition-duration:.001ms!important;scroll-behavior:auto!important}
+}
+.label{display:inline-block;font-family:var(--f-mono);font-size:11.5px;letter-spacing:.16em;text-transform:uppercase;color:var(--ink-3)}
+.hl{color:var(--brand)}
+.rv{opacity:0;transform:translateY(22px);transition:opacity .8s var(--ease),transform .8s var(--ease)}
+.rv.in{opacity:1;transform:none}
+
+/* NAV (yalnız üst bar: nav#nav) */
+nav#nav{position:fixed;top:0;left:0;right:0;z-index:100;background:var(--nav-bg);backdrop-filter:blur(18px);-webkit-backdrop-filter:blur(18px);border-bottom:1px solid transparent;transition:border-color .3s,background .3s}
+nav#nav.stuck{background:var(--nav-bg-solid);border-color:var(--line)}
+.nav-in{max-width:var(--W);margin:0 auto;padding:0 32px;height:var(--navh);display:flex;align-items:center;justify-content:space-between;gap:16px}
+.brand{display:flex;align-items:center;gap:11px;font-family:var(--f-display);font-weight:700;font-size:19px;letter-spacing:-.035em;flex-shrink:0}
+.brand img{height:30px;width:auto}
+.nav-links{display:flex;gap:2px;list-style:none;align-items:center}
+.nav-links a{display:block;color:var(--ink-2);font-size:14.5px;font-weight:500;padding:9px 15px;border-radius:9px;transition:color .2s,background .2s}
+.nav-links a:hover,.nav-links a.active{color:var(--ink);background:var(--bg-soft)}
+.nav-end{display:flex;align-items:center;gap:8px;flex-shrink:0}
+.lang-menu{position:relative}
+.lang-trigger{min-width:76px;height:36px;display:flex;align-items:center;justify-content:center;gap:7px;padding:0 11px;background:transparent;border:1px solid var(--line-2);border-radius:9px;cursor:pointer;color:var(--ink-2);font-family:var(--f-mono);font-size:11px;letter-spacing:.06em;transition:.22s}
+.lang-trigger:hover,.lang-menu.open .lang-trigger{color:var(--ink);border-color:var(--ink-3)}
+.lang-globe{width:14px;height:14px;fill:none;stroke:currentColor;stroke-width:1.6}
+.lang-chev{width:11px;height:11px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;transition:transform .22s}
+.lang-menu.open .lang-chev{transform:rotate(180deg)}
+.lang-popover{position:absolute;right:0;top:calc(100% + 9px);width:224px;padding:7px;background:var(--surface);border:1px solid var(--line);border-radius:14px;box-shadow:var(--shadow-2);opacity:0;visibility:hidden;transform:translateY(-6px);transition:opacity .2s var(--ease),transform .2s var(--ease),visibility .2s;z-index:220}
+.lang-menu.open .lang-popover{opacity:1;visibility:visible;transform:none}
+.lang-menu-title{padding:7px 10px 9px;color:var(--ink-3);font-family:var(--f-mono);font-size:10px;letter-spacing:.12em;text-transform:uppercase}
+.lang-option{width:100%;display:flex;align-items:center;gap:11px;padding:10px;border:0;border-radius:9px;background:transparent;cursor:pointer;text-align:left;color:var(--ink-2);font-size:14px;font-weight:500;transition:.2s}
+.lang-option:hover,.lang-option.on{background:var(--bg-soft);color:var(--ink)}
+.lang-code{min-width:22px;color:var(--ink-3);font-family:var(--f-mono);font-size:10px;letter-spacing:.06em}
+.lang-option.on::after{content:"";width:6px;height:6px;border-radius:50%;background:var(--brand);margin-left:auto}
+.iconbtn{width:36px;height:36px;border-radius:9px;background:transparent;border:1px solid var(--line-2);display:grid;place-items:center;cursor:pointer;color:var(--ink-2);transition:.22s}
+.iconbtn:hover{color:var(--ink);border-color:var(--ink-3)}
+.iconbtn svg{width:17px;height:17px;fill:none;stroke:currentColor;stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round}
+html[data-theme="dark"] .ic-sun{display:block}
+html[data-theme="dark"] .ic-moon{display:none}
+.ic-sun{display:none}.ic-moon{display:block}
+
+/* ALT GEZİNME (telefon) */
+.dock{display:none;position:fixed;z-index:110;left:50%;bottom:calc(14px + env(safe-area-inset-bottom));transform:translateX(-50%);width:min(440px,calc(100% - 24px));padding:6px;gap:4px;background:var(--nav-bg-solid);border:1px solid var(--line);border-radius:20px;box-shadow:0 18px 40px rgba(0,0,0,.16),0 2px 6px rgba(0,0,0,.06);backdrop-filter:blur(18px);-webkit-backdrop-filter:blur(18px)}
+html[data-theme="dark"] .dock{box-shadow:0 18px 44px rgba(0,0,0,.55)}
+.dock a{flex:1;min-height:52px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;border-radius:14px;color:var(--ink-3);font-size:12px;font-weight:600;transition:color .2s,background .25s}
+.dock a svg{width:21px;height:21px;fill:none;stroke:currentColor;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}
+.dock a.on{color:var(--brand);background:var(--brand-soft)}
+
+/* BUTON */
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:10px;padding:13px 22px;border-radius:10px;font-weight:600;font-size:15px;border:1px solid transparent;cursor:pointer;transition:transform .25s var(--ease),background .2s,color .2s,border-color .2s}
+.btn.p{background:var(--accent,var(--brand));color:#fff}
+html[data-theme="dark"] .btn.p{color:#12100F}
+.btn.p:hover{transform:translateY(-2px);filter:brightness(1.08)}
+.btn.g{background:transparent;color:var(--ink);border-color:var(--line-2)}
+.btn.g:hover{transform:translateY(-2px);border-color:var(--ink)}
+.btn .arw{transition:transform .3s var(--ease)}
+.btn:hover .arw{transform:translateX(4px)}
+
+/* HERO */
+.hero{padding:calc(var(--navh) + 84px) 0 46px;position:relative;overflow:hidden}
+.hero::before{content:"";position:absolute;width:760px;height:760px;right:-260px;top:-320px;border-radius:50%;background:radial-gradient(circle,rgba(var(--brand-rgb),.08),transparent 66%);pointer-events:none}
+.crumb{display:flex;gap:9px;align-items:center;font-family:var(--f-mono);font-size:11.5px;letter-spacing:.06em;color:var(--ink-3);margin-bottom:26px}
+.crumb a:hover{color:var(--brand)}
+.hero h1{font-size:clamp(46px,8vw,104px);letter-spacing:-.055em;line-height:.95;max-width:980px}
+.hero .lede{max-width:620px;margin-top:26px;color:var(--ink-2);font-size:19px;line-height:1.6}
+.hero-grid{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.2fr);gap:10px;align-items:center}
+.hero-grid .hl{display:inline}
+.hero h1{font-size:clamp(44px,6.4vw,92px)}
+#x-games3d{width:100%;height:clamp(300px,42vw,500px);display:block;opacity:0;transition:opacity 1.2s ease;touch-action:pan-y}
+#x-games3d.ready{opacity:1}
+@media(max-width:900px){.hero-grid{grid-template-columns:1fr}#x-games3d{height:300px;margin-top:6px}}
+.counts{display:flex;flex-wrap:wrap;gap:0;margin-top:40px;border-top:1px solid var(--line);border-bottom:1px solid var(--line)}
+.counts div{flex:1 1 160px;padding:18px 20px 18px 0;display:flex;align-items:baseline;gap:12px}
+.counts b{font-family:var(--f-display);font-size:34px;letter-spacing:-.04em;line-height:1}
+.counts span{font-family:var(--f-mono);font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--ink-3)}
+.counts i{width:8px;height:8px;border-radius:50%;align-self:center;flex-shrink:0}
+
+/* FOOTER */
+footer{border-top:1px solid var(--line);padding:40px 0}
+.foot{max-width:var(--W);margin:0 auto;padding:0 32px;display:flex;justify-content:space-between;gap:16px;flex-wrap:wrap;color:var(--ink-3);font-family:var(--f-mono);font-size:11.5px;letter-spacing:.06em}
+.foot a:hover{color:var(--brand)}
+
+/* RESPONSIVE */
+@media(max-width:1060px){
+  .nav-links{display:none}
+  .dock{display:flex}
+  body{padding-bottom:calc(92px + env(safe-area-inset-bottom))}
+  .game{grid-template-columns:1fr;gap:30px}
+  .game.flip .media{order:0}
+  .portal{grid-template-columns:1fr;padding:44px 32px}
+  .cubewrap{height:220px;order:-1}
+}
+@media(max-width:680px){
+  :root{--navh:64px}
+  body{font-size:16px}
+  .wrap,.nav-in,.foot{padding-left:22px;padding-right:22px}
+  .hero{padding:calc(var(--navh) + 46px) 0 34px}
+  .hero .lede{font-size:17px}
+  .counts div{flex:1 1 50%;padding-right:10px}
+  .counts b{font-size:28px}
+  .game{padding:40px 0}
+  .facts{grid-template-columns:1fr}
+  .acts .btn{flex:1 1 auto}
+  section.blk{padding:68px 0}
+  .portal{padding:36px 22px}
+  .label,.crumb,.counts span,.info .kind,.info .num,.facts dt,.media .status,thead th,tbody th,.foot,.filters .note,.chip em{font-size:12px}
+  .filters .note{display:none}
+}
+
+/* WEB APPS */
+.hero{padding-bottom:30px}
+.hero h1 .hl{color:var(--brand)}
+.apps{display:grid;gap:34px;padding-bottom:110px}
+.app{display:grid;grid-template-columns:minmax(0,1.05fr) minmax(0,1fr);gap:clamp(28px,4vw,56px);align-items:center;padding:34px 0;border-top:1px solid var(--line)}
+.app.flip .app-media{order:2}
+.app-media{position:relative;display:block;aspect-ratio:16/10;border-radius:22px;overflow:hidden;isolation:isolate;box-shadow:var(--shadow-2);transition:transform .45s var(--ease),box-shadow .3s}
+.app-media:hover{transform:translateY(-4px)}
+.app-media::after{content:"";position:absolute;inset:0;border-radius:inherit;box-shadow:inset 0 0 0 1px rgba(255,255,255,.08);pointer-events:none}
+.fb{background:#0a1c12}
+.fb .pitch{position:absolute;inset:0;width:100%;height:100%}
+.fb .ball{animation:fb-shot 3.4s var(--ease) infinite;transform-origin:200px 214px}
+.fb .keeper{animation:fb-dive 3.4s var(--ease) infinite;transform-origin:200px 140px}
+@keyframes fb-shot{0%,18%{transform:none;opacity:1}42%{transform:translate(48px,-120px) scale(.55)}60%{transform:translate(52px,-118px) scale(.55);opacity:1}72%,100%{opacity:0;transform:translate(52px,-118px) scale(.55)}}
+@keyframes fb-dive{0%,22%{transform:none}44%,70%{transform:rotate(-58deg) translate(-6px,0)}90%,100%{transform:none}}
+.fb .chips{position:absolute;left:18px;bottom:16px;display:flex;flex-wrap:wrap;gap:8px}
+.chip-k{font:600 12.5px var(--f-body);color:#e9f3ec;background:rgba(5,12,8,.72);border:1px solid rgba(255,255,255,.14);padding:7px 11px;border-radius:999px;backdrop-filter:blur(6px)}
+.chip-k.on{color:#0a1405;background:#c8ff5a;border-color:#c8ff5a}
+.chip-k em{font-style:normal;opacity:.75;margin-left:4px}
+.pr{background:var(--surface-2);border:1px solid var(--line);box-shadow:none;display:grid;align-content:center;justify-items:center;gap:clamp(18px,3vw,30px);padding:6%}
+.pr .pr-row{display:grid;grid-template-columns:minmax(0,1fr) minmax(40px,.5fr) minmax(0,1fr);align-items:center;gap:10px;width:100%;max-width:520px}
+.pr .dev{padding:16px 14px;border-radius:14px;background:var(--surface);border:1px solid var(--line-2);color:var(--ink);display:grid;gap:3px;min-width:0}
+.pr .dev svg{height:26px;width:auto;justify-self:start;fill:none;stroke:var(--ink-2);stroke-width:1.6;stroke-linecap:round;margin-bottom:6px}
+.pr .dev b{font:700 15px var(--f-display);letter-spacing:-.01em}
+.pr .dev span{font:400 11px var(--f-mono);color:var(--ink-3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.pr .beam{display:flex;justify-content:space-between;padding:0 4px}
+.pr .beam i{width:8px;height:8px;border-radius:50%;background:var(--brand);opacity:.2;animation:pr-dot 1.4s infinite}
+.pr .beam i:nth-child(2){animation-delay:.2s}.pr .beam i:nth-child(3){animation-delay:.4s}
+@keyframes pr-dot{0%,100%{opacity:.2;transform:scale(.8)}40%{opacity:1;transform:scale(1.15)}}
+.pr .pr-verify{display:flex;align-items:center;gap:12px;flex-wrap:wrap;justify-content:center;font:400 11px var(--f-mono);letter-spacing:.08em;text-transform:uppercase;color:var(--ink-3)}
+.pr .pr-verify code{font:700 14px var(--f-mono);letter-spacing:.06em;color:var(--ink);background:var(--surface);border:1px solid var(--line-2);padding:7px 11px;border-radius:8px}
+.app-head{display:grid;grid-template-columns:52px 1fr auto;gap:14px;align-items:center;margin-bottom:18px}
+.app-head img{width:52px;height:52px;border-radius:13px}
+.app-head .kind{font-family:var(--f-mono);font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--ink-3)}
+.app-head h2{font-size:clamp(30px,3.4vw,42px);letter-spacing:-.04em;line-height:1.05}
+.badge{font-family:var(--f-mono);font-size:10.5px;letter-spacing:.1em;text-transform:uppercase;padding:5px 10px;border-radius:999px;border:1px solid var(--line-2);color:var(--ink-2)}
+.badge.live{color:var(--accent);border-color:color-mix(in srgb,var(--accent) 45%,transparent)}
+.badge.new{color:var(--accent);border-color:color-mix(in srgb,var(--accent) 45%,transparent)}
+.app-body>p{color:var(--ink-2);font-size:17px;line-height:1.65;max-width:56ch}
+.feat{list-style:none;margin:20px 0 26px;padding:0;display:grid;gap:10px}
+.feat li{position:relative;padding-left:26px;color:var(--ink);font-size:15.5px;line-height:1.5}
+.feat li::before{content:"";position:absolute;left:0;top:.45em;width:14px;height:8px;border-left:2px solid var(--accent);border-bottom:2px solid var(--accent);transform:rotate(-45deg)}
+.acts{display:flex;align-items:center;gap:16px;flex-wrap:wrap}
+.acts .note{font-family:var(--f-mono);font-size:11.5px;letter-spacing:.06em;color:var(--ink-3)}
+html[data-theme="dark"] .app .btn.p{color:#fff}
+.soon{border:1px dashed var(--line-2);border-radius:18px;padding:28px 30px;display:grid;gap:8px}
+.soon .label{font-family:var(--f-mono);font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--ink-3)}
+.soon p{color:var(--ink-2);max-width:70ch}
+.soon a{color:var(--brand);text-decoration:underline;text-underline-offset:3px}
+.rv{opacity:0;transform:translateY(18px);transition:opacity .7s var(--ease),transform .7s var(--ease)}
+.rv.in{opacity:1;transform:none}
+@media(max-width:900px){.app{grid-template-columns:1fr}.app.flip .app-media{order:0}}
+@media(max-width:680px){.app-head{grid-template-columns:44px 1fr}.app-head img{width:44px;height:44px}.app-head .badge{grid-column:1/-1;justify-self:start}.pr .dev{padding:10px}.pr .dev span{display:none}.app-body>p{font-size:16px}.app-head .kind,.acts .note,.badge{font-size:12px}}
+@media(prefers-reduced-motion:reduce){.fb .ball,.fb .keeper,.pr .beam i{animation:none}.rv{opacity:1;transform:none}}
+</style>
+<script src="../assets/clean-scroll.js?v=20261012d" defer></script>
+<script src="../assets/local-links.js?v=20261012d"></script>
+<link rel="stylesheet" href="/assets/webapps.css?v=20261107">
+<script src="/assets/webapps.js?v=20261107" defer></script>
+</head>
+<body>
+
+<nav id="nav">
+  <div class="nav-in">
+    <a class="brand" href="../" aria-label="JinjaGames">
+      <img src="../brand-mark.png" alt="" onerror="this.style.display='none'">
+      JinjaGames
+    </a>
+    <ul class="nav-links">
+      <li><a href="../games/"><span class="en i">Games</span><span class="tr i">Oyunlar</span></a></li>
+        <li class="apps-menu">
+          <button class="apps-trigger active" type="button" aria-expanded="false" aria-controls="apps-pop" aria-haspopup="true"><span class="dot" aria-hidden="true"></span><span class="en i">Web Apps</span><span class="tr i">Web Uygulamaları</span><svg viewBox="0 0 12 12" aria-hidden="true"><path d="m2 4 4 4 4-4"></path></svg></button>
+          <div class="apps-pop" id="apps-pop">
+            <div class="apps-pop-title"><span class="en i">Use in your browser, no install</span><span class="tr i">Tarayıcıda kullan, kurulum yok</span></div>
+            <a class="app-item" href="/football/"><img src="/assets/img/apps/football.svg" alt="" width="44" height="44"><span><b>Jinja Football</b><small class="en i">Change one match, transfer or penalty in real football history</small><small class="tr i">Gerçek futbol tarihinde bir maçı, transferi ya da penaltıyı değiştir</small></span><span class="tag">Live</span></a>
+            <a class="app-item" href="/peer/"><img src="/assets/img/apps/jinjapeer.svg" alt="" width="44" height="44"><span><b>JinjaPeer</b><small class="en i">Send files device to device, end-to-end encrypted</small><small class="tr i">Cihazdan cihaza uçtan uca şifreli dosya gönder</small></span><span class="tag">New</span></a>
+            <a class="apps-all" href="/apps/"><span class="en i">All web apps</span><span class="tr i">Tüm web uygulamaları</span><span aria-hidden="true">&rarr;</span></a>
+          </div>
+        </li>
+      <li><a href="../#studio"><span class="en i">Studio</span><span class="tr i">Stüdyo</span></a></li>
+      <li><a href="../#faq"><span class="en i">FAQ</span><span class="tr i">SSS</span></a></li>
+      <li><a href="../#contact"><span class="en i">Contact</span><span class="tr i">İletişim</span></a></li>
+        <li><a class="bb" href="../banebender/"><i aria-hidden="true"></i>BaneBender</a></li>
+    </ul>
+    <div class="nav-end">
+      <div class="lang-menu">
+        <button class="lang-trigger" type="button" data-lang-toggle aria-expanded="false" aria-controls="language-menu"><svg class="lang-globe" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"></circle><path d="M3 12h18M12 3c2.6 2.5 3.9 5.5 3.9 9S14.6 18.5 12 21M12 3C9.4 5.5 8.1 8.5 8.1 12s1.3 6.5 3.9 9"></path></svg><span data-current-lang>EN</span><svg class="lang-chev" viewBox="0 0 12 12" aria-hidden="true"><path d="m2 4 4 4 4-4"></path></svg></button>
+        <div class="lang-popover" id="language-menu" role="menu">
+          <div class="lang-menu-title"><span class="en i">Site language</span><span class="tr i">Site dili</span></div>
+          <button class="lang-option" type="button" role="menuitem" data-lang-set="en"><span class="lang-code">GB</span> English</button>
+          <button class="lang-option" type="button" role="menuitem" data-lang-set="tr"><span class="lang-code">TR</span> Türkçe</button>
+        </div>
+      </div>
+      <button class="iconbtn" data-theme-toggle aria-label="Toggle theme" title="Light / Dark">
+        <svg class="ic-moon" viewBox="0 0 24 24"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg>
+        <svg class="ic-sun" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4.2"/><path d="M12 2v2.4M12 19.6V22M4.2 4.2l1.7 1.7M18.1 18.1l1.7 1.7M2 12h2.4M19.6 12H22M4.2 19.8l1.7-1.7M18.1 5.9l1.7-1.7"/></svg>
+      </button>
+    </div>
+  </div>
+</nav>
+
+<main id="top">
+  <section class="hero">
+    <div class="wrap">
+      <nav class="crumb" aria-label="Breadcrumb"><a href="../"><span class="en i">Home</span><span class="tr i">Ana Sayfa</span></a><span aria-hidden="true">/</span><span><span class="en i">Web Apps</span><span class="tr i">Web Uygulamaları</span></span></nav>
+      <h1 class="en">Web apps. <span class="hl">Nothing to install.</span></h1>
+      <h1 class="tr">Web uygulamaları. <span class="hl">Kurulum yok.</span></h1>
+      <p class="lede en">Things we build that run right in your browser, on any device. Free, no account, no ads, no tracking. Open one and start.</p>
+      <p class="lede tr">Tarayıcında, her cihazda çalışan işlerimiz. Ücretsiz; hesap yok, reklam yok, izleme yok. Birini aç ve başla.</p>
+    </div>
+  </section>
+
+  <section class="apps wrap" aria-label="Web apps">
+    <article class="app rv" style="--accent:#0b8a4a;--glow:200,255,90">
+      <a class="app-media fb" href="/football/" tabindex="-1" aria-hidden="true">
+        <svg class="pitch" viewBox="0 0 400 250" aria-hidden="true">
+          <defs><linearGradient id="fbg" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#0d2a1b"/><stop offset="1" stop-color="#174f31"/></linearGradient></defs>
+          <rect width="400" height="250" fill="url(#fbg)"/>
+          <g opacity=".35">
+            <rect x="0" y="150" width="400" height="20" fill="#1c6b3f"/><rect x="0" y="190" width="400" height="22" fill="#1c6b3f"/><rect x="0" y="232" width="400" height="18" fill="#1c6b3f"/>
+          </g>
+          <g fill="none" stroke="#fff" stroke-opacity=".8" stroke-width="2">
+            <path d="M20 140h360"/><path d="M95 140l-30 110M305 140l30 110"/><path d="M150 140l-6 30h112l-6-30"/>
+          </g>
+          <g stroke="#f7f7f3" stroke-width="5" stroke-linecap="round" fill="none"><path d="M140 140V78h120v62"/></g>
+          <g stroke="#fff" stroke-opacity=".28" stroke-width="1"><path d="M146 84h108M146 96h108M146 108h108M146 120h108M146 132h108M160 80v60M180 80v60M200 80v60M220 80v60M240 80v60"/></g>
+          <g class="keeper"><rect x="190" y="104" width="20" height="26" rx="8" fill="#ff8a1f"/><circle cx="200" cy="97" r="7" fill="#d6a27c"/><path d="M190 110l-12-12M210 110l12-12" stroke="#ff8a1f" stroke-width="5" stroke-linecap="round"/><circle cx="177" cy="97" r="4" fill="#f4f6f2"/><circle cx="223" cy="97" r="4" fill="#f4f6f2"/><rect x="192" y="129" width="6" height="12" rx="3" fill="#1b1f24"/><rect x="202" y="129" width="6" height="12" rx="3" fill="#1b1f24"/></g>
+          <g class="ball"><circle cx="200" cy="214" r="11" fill="#fff"/><path d="M200 207l5 3.6-2 5.8h-6l-2-5.8z" fill="#111"/></g>
+        </svg>
+        <div class="chips">
+          <span class="chip-k">Galatasaray 2–1 Fenerbahçe</span>
+          <span class="chip-k on">→ 1–1 <em class="en i">what if?</em><em class="tr i">ya olsaydı?</em></span>
+        </div>
+      </a>
+      <div class="app-body">
+        <div class="app-head"><img src="/assets/img/apps/football.svg" alt="" width="52" height="52"><div><span class="kind"><span class="en i">Football · live data</span><span class="tr i">Futbol · güncel veri</span></span><h2>Jinja Football</h2></div><span class="badge live">Live</span></div>
+        <p class="en">Change a single match, transfer or penalty in real football history and watch the knock-on effect: final tables, titles, European places, relegation and the seasons after. Updated every night.</p>
+        <p class="tr">Gerçek futbol tarihinde tek bir maçı, transferi ya da penaltıyı değiştir; etkisini gör: puan tablosu, şampiyonluk, Avrupa kupaları, küme düşme ve sonraki sezonlar. Her gece güncellenir.</p>
+        <ul class="feat">
+          <li><span class="en i">Rewrite results since 2000 in the top leagues and cups</span><span class="tr i">2000'den bu yana liglerde ve kupalarda sonuçları değiştir</span></li>
+          <li><span class="en i">Simulate any match with your own starting XI</span><span class="tr i">İlk 11'ini seçip istediğin maçı simüle et</span></li>
+          <li><span class="en i">Daily match news with scores, cards and penalties from dozens of leagues</span><span class="tr i">Onlarca ligden skorlar, kartlar ve penaltılarla günlük maç haberleri</span></li>
+        </ul>
+        <div class="acts"><a class="btn p" href="/football/"><span class="en i">Open Jinja Football</span><span class="tr i">Jinja Football'u aç</span> <span class="arw">&rarr;</span></a><span class="note"><span class="en i">Interface in Turkish</span><span class="tr i">Türkçe arayüz</span></span></div>
+      </div>
+    </article>
+
+    <article class="app rv flip" style="--accent:var(--brand)">
+      <a class="app-media pr" href="/peer/" tabindex="-1" aria-hidden="true">
+        <div class="pr-row">
+          <div class="dev"><svg viewBox="0 0 32 24"><rect x="1" y="1" width="30" height="18" rx="2.5"/><path d="M11 23h10M16 19v4"/></svg><b>Windows</b><span>photo.heic · 18 MB</span></div>
+          <div class="beam"><i></i><i></i><i></i></div>
+          <div class="dev"><svg viewBox="0 0 16 24"><rect x="1" y="1" width="14" height="22" rx="3"/><path d="M6.5 20h3"/></svg><b>Android</b><span class="en i">receiving…</span><span class="tr i">alınıyor…</span></div>
+        </div>
+        <div class="pr-verify"><span class="en i">Verification code</span><span class="tr i">Doğrulama kodu</span><code>K7QM-2XRP-9FHT</code></div>
+      </a>
+      <div class="app-body">
+        <div class="app-head"><img src="/assets/img/apps/jinjapeer.svg" alt="" width="52" height="52"><div><span class="kind"><span class="en i">File transfer · peer to peer</span><span class="tr i">Dosya aktarımı · eşler arası</span></span><h2>JinjaPeer</h2></div><span class="badge new">New</span></div>
+        <p class="en">Send files and whole folders straight from one device to another. Exchange two codes, check that both screens show the same verification code, and the files travel end-to-end encrypted. No server ever stores them.</p>
+        <p class="tr">Dosyaları ve klasörleri bir cihazdan diğerine doğrudan gönder. İki kodu takas et, iki ekranda aynı doğrulama kodunu gör; dosyalar uçtan uca şifreli gider. Hiçbir sunucu dosyalarını saklamaz.</p>
+        <ul class="feat">
+          <li><span class="en i">Works between the browser and the JinjaPeer Windows and Android apps</span><span class="tr i">Tarayıcı ile JinjaPeer Windows ve Android uygulamaları arasında çalışır</span></li>
+          <li><span class="en i">Original quality: photos and videos are never recompressed</span><span class="tr i">Orijinal kalite: fotoğraf ve videolar yeniden sıkıştırılmaz</span></li>
+          <li><span class="en i">Nothing is saved without your approval; every file is hash-checked</span><span class="tr i">Onayın olmadan hiçbir şey kaydedilmez; her dosya özetle doğrulanır</span></li>
+        </ul>
+        <div class="acts"><a class="btn p" href="/peer/"><span class="en i">Open JinjaPeer</span><span class="tr i">JinjaPeer'i aç</span> <span class="arw">&rarr;</span></a><span class="note">EN · TR</span></div>
+      </div>
+    </article>
+
+    <div class="soon rv">
+      <span class="label"><span class="en i">More on the way</span><span class="tr i">Yenileri yolda</span></span>
+      <p class="en">We add new tools here as they are ready. Have an idea for something that should run in the browser? <a href="/#contact">Tell us</a>.</p>
+      <p class="tr">Yeni araçlar hazır oldukça buraya eklenecek. Tarayıcıda çalışması gereken bir fikrin mi var? <a href="/#contact">Bize yaz</a>.</p>
+    </div>
+  </section>
+</main>
+
+
+<footer>
+  <div class="foot">
+    <div>&copy; <span id="yr"></span> JinjaGames · Ankara, Türkiye</div>
+    <div><a href="../">&larr; JinjaGames</a> · <a href="../games/"><span class="en i">Games</span><span class="tr i">Oyunlar</span></a> · <a href="../banebender/">BaneBender</a> · <a href="../privacy/"><span class="en i">Privacy</span><span class="tr i">Gizlilik</span></a></div>
+  </div>
+</footer>
+
+<div class="dock" id="dock" role="navigation" aria-label="Sections">
+  <a href="../games/"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3.5" y="3.5" width="7" height="7" rx="1.6"/><rect x="13.5" y="3.5" width="7" height="7" rx="1.6"/><rect x="3.5" y="13.5" width="7" height="7" rx="1.6"/><rect x="13.5" y="13.5" width="7" height="7" rx="1.6"/></svg><span class="en i">Games</span><span class="tr i">Oyunlar</span></a>
+  <a class="apps-dock on" href="/apps/" aria-current="page" data-dock="apps"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3.5" y="4.5" width="17" height="13" rx="2.2"/><path d="M8 20.5h8M12 17.5v3"/><path d="m9.5 9.5 2 1.5-2 1.5M13 13h2"/></svg><span class="en i">Apps</span><span class="tr i">Uygulamalar</span></a>
+  <a href="../#studio"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20V9.5L12 4l8 5.5V20"/><path d="M9.5 20v-5.5h5V20"/></svg><span class="en i">Studio</span><span class="tr i">Stüdyo</span></a>
+  <a href="../#faq"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8.5"/><path d="M9.6 9.4a2.5 2.5 0 0 1 4.8.9c0 1.7-2.4 2.2-2.4 3.7"/><path d="M12 16.9v.2"/></svg><span class="en i">FAQ</span><span class="tr i">SSS</span></a>
+  <a href="../#contact"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3.5" y="5.5" width="17" height="13" rx="2.2"/><path d="m4.5 7 7.5 6 7.5-6"/></svg><span class="en i">Contact</span><span class="tr i">İletişim</span></a>
+  <a class="bb" href="../banebender/"><i aria-hidden="true"></i><span>BaneBender</span></a>
+</div>
+
+<script>
+(function(){
+  'use strict';
+  var d=document, root=d.documentElement;
+  function $(s,c){return (c||d).querySelector(s);}
+  function $$(s,c){return Array.prototype.slice.call((c||d).querySelectorAll(s));}
+  function store(k,v){try{localStorage.setItem(k,v);}catch(e){}}
+
+  /* dil */
+  function closeLangMenus(){ $$('.lang-menu.open').forEach(function(m){ m.classList.remove('open'); var t=$('[data-lang-toggle]',m); if(t) t.setAttribute('aria-expanded','false'); }); }
+  function paintLang(l){ $$('[data-lang-set]').forEach(function(b){ b.classList.toggle('on', b.getAttribute('data-lang-set')===l); }); $$('[data-current-lang]').forEach(function(el){ el.textContent=l.toUpperCase(); }); }
+  $$('[data-lang-set]').forEach(function(b){ b.addEventListener('click',function(){ var l=b.getAttribute('data-lang-set'); root.setAttribute('data-lang',l); root.lang=l; store('jg_lang',l); paintLang(l); closeLangMenus(); }); });
+  paintLang(root.getAttribute('data-lang')||'en');
+  $$('[data-lang-toggle]').forEach(function(t){ t.addEventListener('click',function(e){ var m=t.closest('.lang-menu'), o=!m.classList.contains('open'); closeLangMenus(); if(o){ m.classList.add('open'); t.setAttribute('aria-expanded','true'); } e.stopPropagation(); }); });
+  d.addEventListener('click',function(e){ if(!e.target.closest('.lang-menu')) closeLangMenus(); });
+  d.addEventListener('keydown',function(e){ if(e.key==='Escape') closeLangMenus(); });
+
+  /* tema */
+  $$('[data-theme-toggle]').forEach(function(b){ b.addEventListener('click',function(){ var t=root.getAttribute('data-theme')==='dark'?'light':'dark'; root.setAttribute('data-theme',t); store('jg_theme',t); }); });
+
+  /* nav gölgesi */
+  var nav=$('#nav');
+  window.addEventListener('scroll',function(){ nav.classList.toggle('stuck',(window.scrollY||window.pageYOffset)>10); },{passive:true});
+
+  /* belirme */
+  if('IntersectionObserver' in window){
+    var io=new IntersectionObserver(function(es){ es.forEach(function(e){ if(e.isIntersecting){ e.target.classList.add('in'); io.unobserve(e.target); } }); },{threshold:.06,rootMargin:'0px 0px -50px 0px'});
+    $$('.rv').forEach(function(el){ io.observe(el); });
+  } else { $$('.rv').forEach(function(el){ el.classList.add('in'); }); }
+
+  /* videolar yalnız görünürken yüklenip oynar */
+  $$('.lazyvid[data-src]').forEach(function(v){
+    function load(){ if(!v.src){ v.src=v.getAttribute('data-src'); } var p=v.play(); if(p&&p.catch) p.catch(function(){}); }
+    if('IntersectionObserver' in window){
+      new IntersectionObserver(function(es){ es.forEach(function(e){ if(e.isIntersecting) load(); else if(v.src) v.pause(); }); },{rootMargin:'200px 0px'}).observe(v);
+    } else load();
+  });
+
+  /* fare ile hafif eğim + ışık */
+  var fine=window.matchMedia&&matchMedia('(hover:hover) and (pointer:fine)').matches;
+  var reduce=window.matchMedia&&matchMedia('(prefers-reduced-motion: reduce)').matches;
+  if(fine&&!reduce){
+    $$('.media').forEach(function(m){
+      m.addEventListener('mousemove',function(e){
+        var r=m.getBoundingClientRect(), x=(e.clientX-r.left)/r.width, y=(e.clientY-r.top)/r.height;
+        m.style.transform='perspective(1000px) rotateY('+((x-.5)*6)+'deg) rotateX('+((.5-y)*5)+'deg)';
+        m.style.setProperty('--mx',(x*100)+'%'); m.style.setProperty('--my',(y*100)+'%');
+      });
+      m.addEventListener('mouseleave',function(){ m.style.transform=''; });
+    });
+  }
+
+  /* filtre */
+  var chips=$$('[data-filter]'), games=$$('.game'), empty=$('#empty');
+  chips.forEach(function(c){
+    c.addEventListener('click',function(){
+      var f=c.getAttribute('data-filter'), shown=0;
+      chips.forEach(function(x){ x.setAttribute('aria-pressed', x===c?'true':'false'); });
+      games.forEach(function(g){ var on=(' '+g.getAttribute('data-tags')+' ').indexOf(' '+f+' ')>-1; g.hidden=!on; if(on){ shown++; g.classList.add('in'); } });
+      empty.hidden=shown>0;
+    });
+  });
+
+  var yr=$('#yr'); if(yr) yr.textContent=new Date().getFullYear();
+})();
+</script>
+</body>
+</html>

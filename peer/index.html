@@ -1,0 +1,320 @@
+<!doctype html>
+<html lang="en" data-lang="en" data-theme="light">
+<head>
+<meta charset="utf-8" />
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data: blob:; font-src 'self'; connect-src 'self'; media-src 'self'; worker-src 'self' blob:; object-src 'none'; base-uri 'none'; form-action 'none'" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<meta name="referrer" content="no-referrer" />
+<title>JinjaPeer | Send files directly, end to end encrypted</title>
+<meta name="description" content="JinjaPeer web: send files and folders straight from browser to browser, or to the JinjaPeer Windows and Android apps. No upload, no account, end to end encrypted. Dosyaları doğrudan ve uçtan uca şifreli gönder." />
+<meta name="robots" content="index,follow" />
+<link rel="canonical" href="https://jinjagames.com/peer/" />
+<meta name="theme-color" content="#FCFAF8" media="(prefers-color-scheme: light)" />
+<meta name="theme-color" content="#0E0C0D" media="(prefers-color-scheme: dark)" />
+<link rel="icon" type="image/png" sizes="32x32" href="../favicon-j-shuriken-32.png?v=2" />
+<link rel="icon" type="image/png" sizes="48x48" href="../favicon-j-shuriken-48.png?v=2" />
+<link rel="apple-touch-icon" href="../favicon-j-shuriken-180.png?v=2" />
+<meta property="og:title" content="JinjaPeer | Direct, encrypted file transfer" />
+<meta property="og:description" content="Browser to browser, or to the JinjaPeer apps. No upload, no account." />
+<meta property="og:type" content="website" />
+<meta property="og:url" content="https://jinjagames.com/peer/" />
+<meta property="og:image" content="https://jinjagames.com/JinjaGamesBanner.png" />
+<link rel="preload" as="font" type="font/woff2" href="../assets/fonts/space-grotesk-latin-700.woff2" crossorigin />
+<link rel="preload" as="font" type="font/woff2" href="../assets/fonts/inter-latin-400.woff2" crossorigin />
+<link rel="stylesheet" href="../assets/fonts.css?v=20261012d" />
+<script src="boot.js?v=1"></script>
+<link rel="stylesheet" href="peer.css?v=1" />
+</head>
+<body>
+<a class="skip" href="#main" data-i18n="skip">Skip to content</a>
+
+<header class="top" id="top">
+  <div class="top-in">
+    <a class="brand" href="/" aria-label="JinjaGames">
+      <img class="brand-logo" src="../brand-mark.png" alt="" width="30" height="30" />
+      <span class="brand-name">JinjaGames</span>
+    </a>
+    <span class="slash" aria-hidden="true">/</span>
+    <a class="product" href="./" aria-label="JinjaPeer"><b>Jinja</b><i>Peer</i></a>
+    <div class="top-end">
+      <button class="iconbtn" id="btn-settings" type="button" aria-haspopup="dialog" data-i18n-attr="aria-label:settings,title:settings">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.9l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.9-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.9.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.9 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.9l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.9.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.9-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.9V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg>
+      </button>
+      <button class="langbtn" id="btn-lang" type="button" data-i18n-attr="aria-label:langSwitch,title:langSwitch"><span id="lang-cur">EN</span></button>
+      <button class="iconbtn" id="btn-theme" type="button" data-i18n-attr="aria-label:themeSwitch,title:themeSwitch">
+        <svg class="ic-moon" viewBox="0 0 24 24" aria-hidden="true"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg>
+        <svg class="ic-sun" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4.2"/><path d="M12 2v2.4M12 19.6V22M4.2 4.2l1.7 1.7M18.1 18.1l1.7 1.7M2 12h2.4M19.6 12H22M4.2 19.8l1.7-1.7M18.1 5.9l1.7-1.7"/></svg>
+      </button>
+    </div>
+  </div>
+</header>
+
+<main id="main" class="wrap">
+  <noscript><p class="notice err">JinjaPeer needs JavaScript. / JinjaPeer için JavaScript gerekir.</p></noscript>
+
+  <section class="hero" id="hero">
+    <p class="eyebrow" data-i18n="eyebrow">Web · same protocol as the apps</p>
+    <h1 data-i18n="h1">Send files straight to another device.</h1>
+    <p class="lead" data-i18n="lead">No upload, no account, no server in the middle. Files travel directly between the two devices, encrypted end to end.</p>
+    <ul class="chips">
+      <li data-i18n="chip1">End to end encrypted</li>
+      <li data-i18n="chip2">Nothing is uploaded</li>
+      <li data-i18n="chip3">Works with the Windows and Android apps</li>
+    </ul>
+  </section>
+
+  <div id="unsupported" class="notice err" hidden role="alert"></div>
+
+  <section class="stage" id="stage" aria-label="JinjaPeer">
+    <ol class="steps" id="steps" hidden aria-label="Steps">
+      <li data-step="1"><span class="dot">1</span><span data-i18n="step1">Invite</span></li>
+      <li data-step="2"><span class="dot">2</span><span data-i18n="step2">Reply</span></li>
+      <li data-step="3"><span class="dot">3</span><span data-i18n="step3">Connected</span></li>
+    </ol>
+
+    <!-- START -->
+    <div id="view-start" class="view">
+      <div class="paths">
+        <button class="path primary" id="go-send" type="button">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 19V5M5 12l7-7 7 7"/></svg>
+          <b data-i18n="pathSend">Send files / create invite</b>
+          <span data-i18n="pathSendD">Make an invite code and give it to the other person.</span>
+        </button>
+        <button class="path" id="go-join" type="button">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12l7 7 7-7"/></svg>
+          <b data-i18n="pathJoin">Join with a code</b>
+          <span data-i18n="pathJoinD">Paste the invite code you received.</span>
+        </button>
+      </div>
+      <p class="hint center" data-i18n="startHint">Either side can send or receive once connected. Pasting a link or code anywhere on this page also works.</p>
+    </div>
+
+    <!-- INVITER -->
+    <div id="view-invite" class="view" hidden>
+      <div class="card" id="inv-setup">
+        <h2 data-i18n="invTitle">1. Create an invite</h2>
+        <p class="hint" data-i18n="invIntro">You create an invite code. The other person pastes it, creates a reply code and sends it back to you.</p>
+        <div class="row2">
+          <label class="field"><span data-i18n="pwLabel">Password (optional)</span>
+            <input id="inv-pw" type="password" autocomplete="off" maxlength="128" data-i18n-attr="placeholder:pwPh" />
+          </label>
+          <label class="field"><span data-i18n="validLabel">Invite valid for</span>
+            <select id="inv-valid">
+              <option value="15" data-i18n="v15">15 minutes</option>
+              <option value="60" selected data-i18n="v60">1 hour</option>
+              <option value="1440" data-i18n="v1440">24 hours</option>
+            </select>
+          </label>
+        </div>
+        <p class="hint" data-i18n="pwHint">A password adds a second lock: the other person must type it too. Tell them by voice or another chat, not together with the code.</p>
+        <div class="actions"><button class="btn p" id="inv-create" type="button" data-i18n="invCreate">Create invite code</button>
+          <button class="btn g" data-back type="button" data-i18n="back">Back</button></div>
+      </div>
+
+      <div class="card" id="inv-code" hidden>
+        <h2 data-i18n="invCodeTitle">1. Send this code to the other person</h2>
+        <div class="codewrap">
+          <label class="sr" for="inv-out" data-i18n="invCodeLabel">Your invite code</label>
+          <textarea id="inv-out" class="codebox" readonly rows="5" spellcheck="false" autocomplete="off"></textarea>
+          <div class="meta"><span id="inv-count"></span><span id="inv-expiry" class="expiry"></span></div>
+        </div>
+        <div class="actions">
+          <button class="btn p" data-copy="inv-out" type="button"><span data-i18n="copyCode">Copy code</span></button>
+          <button class="btn" id="inv-copylink" type="button"><span data-i18n="copyLink">Copy link</span></button>
+          <button class="btn" id="inv-share" type="button" hidden><span data-i18n="share">Share</span></button>
+        </div>
+        <div class="live-msg sr" id="copy-live" aria-live="polite"></div>
+        <details class="qr" id="inv-qrbox" hidden>
+          <summary data-i18n="qrShow">Show QR code</summary>
+          <img id="inv-qr" alt="" width="260" height="260" />
+          <p class="hint" data-i18n="qrHint">Scan it with the JinjaPeer app on a phone.</p>
+        </details>
+        <p class="hint" data-i18n="linkHint">The link opens this page with the code ready on the other side. The part after # never reaches any server.</p>
+      </div>
+
+      <div class="card" id="inv-answer" hidden>
+        <h2 data-i18n="ansTitle">2. Paste the reply code</h2>
+        <p class="hint" data-i18n="ansIntro">When the other person sends their reply code (starts with JP1A-), paste it here.</p>
+        <label class="sr" for="ans-in" data-i18n="ansLabel">Reply code</label>
+        <textarea id="ans-in" class="codebox" rows="4" spellcheck="false" autocomplete="off" autocapitalize="off" data-i18n-attr="placeholder:ansPh"></textarea>
+        <div class="actions">
+          <button class="btn" id="ans-paste" type="button" data-i18n="paste">Paste</button>
+          <button class="btn p" id="ans-go" type="button" data-i18n="connect">Connect</button>
+          <button class="btn g" data-back type="button" data-i18n="cancel">Cancel</button>
+        </div>
+        <p class="status" id="inv-status" aria-live="polite"></p>
+      </div>
+    </div>
+
+    <!-- JOINER -->
+    <div id="view-join" class="view" hidden>
+      <div class="card" id="join-in">
+        <h2 data-i18n="joinTitle">1. Paste the invite code</h2>
+        <p class="hint" data-i18n="joinIntro">Paste the code that starts with JP1I- (or the whole link). It is recognised automatically.</p>
+        <label class="sr" for="join-code" data-i18n="joinLabel">Invite code</label>
+        <textarea id="join-code" class="codebox" rows="5" spellcheck="false" autocomplete="off" autocapitalize="off" data-i18n-attr="placeholder:joinPh"></textarea>
+        <div class="meta"><span id="join-count"></span><span id="join-who" class="expiry"></span></div>
+        <label class="field" id="join-pw-wrap" hidden><span data-i18n="pwNeeded">This invite needs a password</span>
+          <input id="join-pw" type="password" autocomplete="off" maxlength="128" />
+        </label>
+        <div class="actions">
+          <button class="btn" id="join-paste" type="button" data-i18n="paste">Paste</button>
+          <button class="btn p" id="join-go" type="button" data-i18n="joinGo">Create reply code</button>
+          <button class="btn g" data-back type="button" data-i18n="back">Back</button>
+        </div>
+        <p class="status" id="join-status" aria-live="polite"></p>
+      </div>
+      <div class="card" id="join-out-card" hidden>
+        <h2 data-i18n="replyTitle">2. Send this reply code back</h2>
+        <p class="hint" data-i18n="replyIntro">Give it to the person who invited you. The connection starts as soon as they paste it.</p>
+        <div class="codewrap">
+          <label class="sr" for="join-out" data-i18n="replyLabel">Your reply code</label>
+          <textarea id="join-out" class="codebox" readonly rows="5" spellcheck="false" autocomplete="off"></textarea>
+          <div class="meta"><span id="join-out-count"></span><span id="join-out-expiry" class="expiry"></span></div>
+        </div>
+        <div class="actions">
+          <button class="btn p" data-copy="join-out" type="button"><span data-i18n="copyCode">Copy code</span></button>
+          <button class="btn" id="join-share" type="button" hidden><span data-i18n="share">Share</span></button>
+          <button class="btn g" data-back type="button" data-i18n="cancel">Cancel</button>
+        </div>
+        <p class="status wait" id="join-wait" aria-live="polite"></p>
+      </div>
+    </div>
+
+    <!-- LIVE -->
+    <div id="view-live" class="view" hidden>
+      <div class="notice err" id="lost" hidden role="alert">
+        <b id="lost-title"></b>
+        <span id="lost-text"></span>
+        <button class="btn p" id="lost-new" type="button" data-i18n="newConn">New connection</button>
+      </div>
+
+      <div class="card peer" id="peer-card">
+        <div class="peer-head">
+          <div>
+            <p class="eyebrow" data-i18n="connectedTo">Connected to</p>
+            <h2 id="peer-name"></h2>
+            <p class="hint mono" id="peer-meta"></p>
+          </div>
+          <button class="btn g" id="disconnect" type="button" data-i18n="disconnect">Disconnect</button>
+        </div>
+        <div class="verify">
+          <p class="eyebrow" data-i18n="verifyTitle">Verification code</p>
+          <p class="vcode mono" id="vcode" aria-label="Verification code"></p>
+          <p class="hint" data-i18n="verifyHint">Both screens must show exactly the same code. Compare it by voice or in person. If it differs, disconnect: someone may be in the middle.</p>
+        </div>
+      </div>
+
+      <div id="incoming"></div>
+
+      <div class="card" id="send-card">
+        <h2 data-i18n="sendTitle">Send files</h2>
+        <div class="drop" id="drop" tabindex="0" role="button" data-i18n-attr="aria-label:dropAria">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 16V4M7 9l5-5 5 5M4 16v3a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-3"/></svg>
+          <b data-i18n="dropTitle">Drop files or folders here</b>
+          <span data-i18n="dropSub">or use the buttons below</span>
+        </div>
+        <input id="pick-files" type="file" multiple hidden />
+        <input id="pick-folder" type="file" webkitdirectory multiple hidden />
+        <div class="actions">
+          <button class="btn" id="add-files" type="button" data-i18n="addFiles">Add files</button>
+          <button class="btn" id="add-folder" type="button" data-i18n="addFolder">Add folder</button>
+        </div>
+        <ul class="queue" id="queue" aria-live="polite"></ul>
+        <div class="actions" id="queue-actions" hidden>
+          <span class="total" id="queue-total"></span>
+          <button class="btn g" id="queue-clear" type="button" data-i18n="clearList">Clear list</button>
+          <button class="btn p" id="queue-send" type="button" data-i18n="sendNow">Send</button>
+        </div>
+      </div>
+
+      <div class="card" id="xfer-card" hidden>
+        <div class="card-head"><h2 data-i18n="xferTitle">Transfers</h2>
+          <button class="btn g sm" id="xfer-clear" type="button" data-i18n="clearDone">Clear finished</button></div>
+        <div id="xfers"></div>
+      </div>
+
+      <details class="card hist" id="hist-card">
+        <summary><h2 data-i18n="histTitle">History of this session</h2></summary>
+        <p class="hint" data-i18n="histHint">Kept only in this tab. It disappears when you close or reload the page.</p>
+        <ul id="hist" class="histlist"></ul>
+      </details>
+    </div>
+  </section>
+
+  <section class="info" id="info">
+    <h2 data-i18n="infoHow">How it works</h2>
+    <ol class="how">
+      <li data-i18n="how1">One side creates an invite code, the other pastes it and creates a reply code.</li>
+      <li data-i18n="how2">The reply code goes back and the two devices connect directly.</li>
+      <li data-i18n="how3">Compare the verification code on both screens, then send. Either side can send and receive.</li>
+    </ol>
+
+    <h2 data-i18n="infoApps">Works with the JinjaPeer apps</h2>
+    <p data-i18n="appsText">This is the same protocol (v1) as the JinjaPeer Windows and Android apps. You can send between web and app, web and web, in both directions, as the one who invites or the one who joins.</p>
+
+    <h2 data-i18n="infoSupport">What your browser supports</h2>
+    <ul class="support" id="support"></ul>
+
+    <h2 data-i18n="infoSec">Security in plain words</h2>
+    <table class="sec">
+      <tbody>
+        <tr><th data-i18n="sec1h">Signed codes</th><td data-i18n="sec1">Every code is signed (Ed25519). If a single character is altered it is rejected.</td></tr>
+        <tr><th data-i18n="sec2h">Fresh keys every time</th><td data-i18n="sec2">Each connection uses new one time keys (X25519), so old recordings cannot be opened later.</td></tr>
+        <tr><th data-i18n="sec3h">Encrypted twice</th><td data-i18n="sec3">Every frame is encrypted and authenticated (ChaCha20 Poly1305) on top of WebRTC's own DTLS. A replayed, reordered or changed frame cuts the connection.</td></tr>
+        <tr><th data-i18n="sec4h">Verification code</th><td data-i18n="sec4">A 60 bit code derived from both codes. A man in the middle cannot make both screens show the same one.</td></tr>
+        <tr><th data-i18n="sec5h">Every file is checked</th><td data-i18n="sec5">SHA 256 is verified on arrival. A file that does not match is not saved.</td></tr>
+        <tr><th data-i18n="sec6h">You decide</th><td data-i18n="sec6">Nothing is written before you accept. File names are cleaned, nothing overwrites an existing file, nothing is opened automatically.</td></tr>
+      </tbody>
+    </table>
+    <h3 data-i18n="infoNet">Network note</h3>
+    <p data-i18n="netText">File data never touches a server. To find a route between two networks the browser asks public STUN servers (Google and Cloudflare) which address it appears as; this reveals your public IP address to them, like any video call does. Very strict networks may need your own TURN relay (Settings); data stays end to end encrypted even then.</p>
+    <h3 data-i18n="infoLimits">Honest limits</h3>
+    <ul class="plain">
+      <li data-i18n="lim1">If you do not compare the verification code and the channel you used to exchange codes is hijacked, someone in the middle is possible. Compare it.</li>
+      <li data-i18n="lim2">The identity key of this browser is stored in this browser (like the app stores it on the device). Clearing site data creates a new identity.</li>
+      <li data-i18n="lim3">Both pages must stay open during a transfer. Reconnecting needs new codes.</li>
+    </ul>
+  </section>
+</main>
+
+<footer class="foot">
+  <div class="wrap foot-in">
+    <a href="/" data-i18n="footHome">jinjagames.com</a>
+    <a href="/privacy/" data-i18n="footPrivacy">Privacy</a>
+    <span data-i18n="footNote">JinjaPeer web · open protocol, no tracking, no third party requests.</span>
+  </div>
+</footer>
+
+<dialog id="settings" aria-labelledby="set-title">
+  <form method="dialog" class="dlg" id="set-form">
+    <div class="card-head"><h2 id="set-title" data-i18n="settings">Settings</h2>
+      <button class="iconbtn" id="set-close" type="button" data-i18n-attr="aria-label:close,title:close">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg></button></div>
+    <label class="field"><span data-i18n="setName">Your display name</span>
+      <input id="set-name" type="text" maxlength="40" autocomplete="off" /></label>
+    <fieldset class="field"><legend data-i18n="setTheme">Theme</legend>
+      <div class="seg" id="set-theme">
+        <button type="button" data-theme-set="light" data-i18n="themeLight">Light</button>
+        <button type="button" data-theme-set="dark" data-i18n="themeDark">Dark</button>
+      </div></fieldset>
+    <fieldset class="field"><legend data-i18n="setLang">Language</legend>
+      <div class="seg" id="set-lang">
+        <button type="button" data-lang-set="tr">Türkçe</button>
+        <button type="button" data-lang-set="en">English</button>
+      </div></fieldset>
+    <fieldset class="field"><legend data-i18n="setTurn">TURN relay (optional)</legend>
+      <p class="hint" data-i18n="turnHint">Only needed when two very strict networks cannot connect directly. Stored in this browser only.</p>
+      <input id="set-turn-url" type="text" inputmode="url" autocomplete="off" placeholder="turn:example.com:3478" aria-label="TURN URL" />
+      <div class="row2"><input id="set-turn-user" type="text" autocomplete="off" data-i18n-attr="placeholder:turnUser,aria-label:turnUser" />
+        <input id="set-turn-pass" type="password" autocomplete="off" data-i18n-attr="placeholder:turnPass,aria-label:turnPass" /></div>
+    </fieldset>
+    <p class="hint"><span data-i18n="idLabel">Your identity</span>: <span class="mono" id="set-fp"></span></p>
+    <div class="actions"><button class="btn p" id="set-save" value="save" type="submit" data-i18n="save">Save</button></div>
+  </form>
+</dialog>
+
+<div id="toasts" class="toasts" aria-live="polite" role="status"></div>
+<script type="module" src="app.js?v=1"></script>
+</body>
+</html>

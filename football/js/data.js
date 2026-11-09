@@ -15,7 +15,16 @@ const tryJSON = (p, fallback) => getJSON(p).catch(() => fallback);
 export const MATCH_KEYS = ['id', 'date', 'round', 'h', 'a', 'hg', 'ag', 'hpos', 'apos', 'hform', 'aform', 'stadium', 'att', 'ref', 'hmgr', 'amgr', 'agg'];
 const toMatch = r => { const m = {}; MATCH_KEYS.forEach((k, i) => (m[k] = r[i])); return m; };
 
-export const loadComps = () => getJSON('competitions.json');
+import { lang } from './i18n.js';
+import { countryEn, COMP_EN } from './nations.js';
+// Yarışma adları ve ülkeleri veride Türkçe; İngilizce modda bir kez çevrilir.
+let compsEn = null;
+export const loadComps = async () => {
+  const c = await getJSON('competitions.json');
+  if (lang !== 'en') return c;
+  if (!compsEn) compsEn = Object.fromEntries(Object.entries(c).map(([k, v]) => [k, { ...v, name: COMP_EN[v.name] || v.name, country: countryEn(v.country) }]));
+  return compsEn;
+};
 export const loadClubs = () => getJSON('clubs.json');
 export const loadMatchIndex = () => getJSON('match_index.json');
 

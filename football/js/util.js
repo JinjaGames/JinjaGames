@@ -1,4 +1,5 @@
 // Küçük DOM ve biçimlendirme yardımcıları
+import { lang, t } from './i18n.js';
 export const $ = (sel, root = document) => root.querySelector(sel);
 export const $$ = (sel, root = document) => [...root.querySelectorAll(sel)];
 
@@ -33,14 +34,14 @@ export function toast(msg) {
 export const fmtMoney = (v, { sign = false } = {}) => {
   if (v == null || isNaN(v)) return '—';
   const a = Math.abs(v), s = v < 0 ? '−' : (sign && v > 0 ? '+' : '');
-  if (a >= 1e9) return `${s}€${(a / 1e9).toFixed(2)}Mr`;
+  if (a >= 1e9) return `${s}€${(a / 1e9).toFixed(2)}${lang === 'en' ? 'B' : 'Mr'}`;
   if (a >= 1e6) return `${s}€${(a / 1e6).toFixed(a >= 1e8 ? 0 : 1).replace('.0', '')}M`;
   if (a >= 1e3) return `${s}€${Math.round(a / 1e3)}K`;
   return `${s}€${Math.round(a)}`;
 };
 export const fmtPct = (p, d = 0) => `${(p * 100).toFixed(d)}%`;
 export const seasonLabel = s => `${s}/${String((s + 1) % 100).padStart(2, '0')}`;
-export const MONTHS = ['Oca', 'Şub', 'Mar', 'Nis', 'May', 'Haz', 'Tem', 'Ağu', 'Eyl', 'Eki', 'Kas', 'Ara'];
+export const MONTHS = lang === 'en' ? ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'] : ['Oca', 'Şub', 'Mar', 'Nis', 'May', 'Haz', 'Tem', 'Ağu', 'Eyl', 'Eki', 'Kas', 'Ara'];
 export function fmtDate(d) { // YYYY-MM-DD -> 25 Eki 2015
   if (!d) return '';
   const [y, m, dd] = d.slice(0, 10).split('-');
@@ -81,7 +82,7 @@ export function svg(tag, attrs, ...kids) {
 
 export function lineChart({ series, width = 640, height = 220, yFmt = v => v, xFmt = v => v, pad = { l: 62, r: 14, t: 12, b: 26 }, xTicks = 6 }) {
   const all = series.flatMap(s => s.pts);
-  if (!all.length) return h('div', { class: 'empty' }, 'Veri yok');
+  if (!all.length) return h('div', { class: 'empty' }, t('Veri yok'));
   const xs = all.map(p => p[0]), ys = all.map(p => p[1]);
   const x0 = Math.min(...xs), x1 = Math.max(...xs);
   let y0 = Math.min(...ys), y1 = Math.max(...ys);
@@ -110,10 +111,19 @@ export function lineChart({ series, width = 640, height = 220, yFmt = v => v, xF
   return root;
 }
 
-export const go = path => { location.hash = '#' + path; };
+// Adresler '#' içermez: /football/takim/123. u() uygulama içi yolu tam adrese çevirir.
+export const BASE = '/football';
+export const u = p => BASE + (!p || p === '/' ? '/' : (p[0] === '/' ? p : '/' + p));
+export const go = (path, { replace = false, silent = false } = {}) => {
+  const url = u(path);
+  try { if (replace) history.replaceState(null, '', url); else history.pushState(null, '', url); } catch { location.href = url; return; }
+  if (!silent) dispatchEvent(new Event('wif:navigate'));
+};
+/** Uygulama içi yol (BASE olmadan): /takim/123 */
+export const appPath = () => { const p = decodeURIComponent(location.pathname); return (p.startsWith(BASE) ? p.slice(BASE.length) : p) || '/'; };
 export function setCrumbs(...parts) {
   const t = parts.map(p => (typeof p === 'string' ? p : p?.textContent || '')).filter(Boolean);
-  document.title = t.length ? `${t.join(' · ')} — What If Football` : 'What If Football';
+  document.title = t.length ? `${t.join(' · ')} — Jinja Football` : 'Jinja Football';
 }
 
 /** Basit çubuk grafik: data=[{label,value}] (negatifler aşağı), fmt: değer biçimleyici. */

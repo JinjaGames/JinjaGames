@@ -321,3 +321,55 @@ DNS yayılması 10 dk – 24 saat sürebilir.
 - [ ] Jelly Jars / Logic / Loops / Park / Seek / Slide: Play yayını açılınca `tools/jelly_pages/build_new.py` içindeki `PLAY_URL` doldurulup betik çalıştırılsın; `games/` kartlarındaki "Yayın hazırlığında" durumu ve ana sayfadaki kartlar elle güncellensin. Slide için mağaza ekran görüntüsü alınınca `prep_new.py` içindeki `shots` listesi ekran görüntülerine çevrilebilir.
 - [x] Jelly Trails / Pipes gizlilik ve silme sayfaları `make_jelly_legal.py` ile 8 oyun için aynı metinde üretiliyor (`make_jelly_privacy.py` yalnız şablon kaynağı).
 - [ ] Jelly Trails / Jelly Pipes: Play yayını açılınca `tools/jelly_pages/build.py` içindeki `PLAY_URL` doldurulup betik çalıştırılsın; `games/` kartlarındaki "Yayın hazırlığında" durumu ve ana sayfadaki "Google Play yakında" etiketi güncellensin. Mağaza ekran görüntüleri değişirse betik görselleri `Puzzles/store`'dan yeniden üretir.
+
+## Web uygulamaları (`/apps/`)
+
+Tarayıcıda kurulumsuz çalışan işler. Ana menüde **Web Apps / Web Uygulamaları** açılır menüsü
+(`assets/webapps.css` + `assets/webapps.js`, ana sayfa ve `games/` sayfasında; telefonda alt çubukta "Apps")
+ve tümünü listeleyen `apps/index.html` vardır. Yeni bir web uygulaması eklerken üç yere yazılır:
+`index.html` ve `games/index.html` içindeki `.apps-pop` listesi, `apps/index.html` kartları, `sitemap.xml`.
+Simgeler `assets/img/apps/` altındadır.
+
+- `/football/` — Jinja Football (aşağıda). Logo `football/js/logo.js` (shuriken + top); `assets/img/apps/football.svg` aynı koddan üretilir.
+- `/peer/` — JinjaPeer web istemcisi (masaüstü/Android uygulamasıyla aynı protokol).
+
+### Jinja Football (eski adı What If Football): adresler `#` içermez
+
+**Dil (TR/EN):** `football/js/i18n.js` — `t('Türkçe metin', {param})`; anahtar Türkçe kaynak metindir, İngilizce karşılıklar `football/js/i18n/en-*.js` içinde (yalnızca EN modunda yüklenir). Tercih sitenin `jg_lang` anahtarında; değişince sayfa yenilenir. Veri tarafındaki Türkçe metinler (`competitions.json`, haber/değişiklik satırları) `data.js` ve `i18n-data.js` içinde çevrilir. Denetim: `node tools/football/check_i18n.mjs` (eksik çeviri, çakışma, çevrilmemiş görünen metin).
+
+- Adresler temizdir: `/football/takim/36/2015`, `/football/haberler/2026-11-07`. `football/index.html`
+  `<base href="/football/">` taşır; uygulama içi bağlantılar `u('/takim/36')` ile yazılır, programla gezinme
+  `go(path)` ile yapılır (`js/util.js`). Adresi yeniden çizmeden değiştirmek için `go(path, { replace: true, silent: true })`.
+- GitHub Pages'te SPA yedeği yoktur: derin bir adres `404.html`'e düşer, o da `/football/?r=<yol>`'a yönlendirir,
+  `js/main.js` adresi eski haline getirir. Eski `#/…` bağlantıları (köke düşenler dahil) otomatik çevrilir.
+- Yerelde Pages gibi denemek için: `python tools/dev_server.py 8080` → `http://localhost:8080/football/`.
+- **Senaryolar geçicidir:** `sessionStorage`'da durur; sayfa yenilenince kalır, sekme/site kapanınca silinir.
+  Saklamak isteyen bağlantıyı kopyalar ya da dosya olarak dışa aktarır. Eski sürümün `localStorage` kaydı silinir.
+- Üçüncü taraf isteği yok: Three.js `football/vendor/` altında, yazı tipleri (Barlow Condensed dahil) `assets/fonts/`'tan.
+  (Arma ve oyuncu fotoğrafları hâlâ Transfermarkt/ESPN görsel adreslerinden gelir.)
+- Ana sayfadaki penaltı oyunu `js/stadium3d.js`: gerçek ölçüler (metre), kaleye nişan alınır; kalecinin
+  çarpışma çizgisi çizilen pozla aynı veriden hesaplanır. Duyurular (GOL!/KURTARDI!) kalenin ekrandaki yerine
+  konur; geniş ekranda kamera kaleyi sağa kaydırır, telefonda içerik sahnenin altına iner.
+- Üst menü sığmayan bağlantıları ölçerek "Daha fazla"ya taşır; telefonda alt çubuk 4 sekme + Menü.
+
+### JinjaPeer web (`/peer/`)
+
+- `peer/index.html` + `app.js` (arayüz), `session.js` (WebRTC), `transfer.js` (aktarım), `core.js` (kodlar, kripto,
+  çerçeveler, dosya adı temizliği), `i18n.js` (TR/EN). Masaüstü/Android uygulamasıyla **aynı protokol (v1)**:
+  web ↔ Windows ↔ Android, her iki yönde, davet eden ya da katılan olarak.
+- Kripto kütüphaneleri `peer/vendor/` altında, yerelde (@noble curves/ciphers/hashes, qrcode-generator; lisanslar yanında).
+  Sıkı CSP var; tek dış bağlantı WebRTC'nin STUN sorgusu (Google, Cloudflare). Gizlilik sayfası bunu söyler.
+- Dart uygulamasıyla uyumluluk testi JinjaPeer deposunda: `node --test tool/web_vectors/interop_test.mjs`
+  (`bridge.dart` uygulamanın gerçek `lib/core` kodunu çalıştırır; 11 test).
+- Dosya değişince `index.html`'deki `?v=` sürümünü artır.
+
+### Formalar ve Kramponlar (rafa kaldırıldı, 2026-11-08)
+
+Gerçek ürün fotoğrafları yalnızca affiliate ürün feed'leriyle ücretsiz ve izinli gelebildiği için bölüm yayından
+kaldırıldı. Kod ve veri `git stash list` içinde "kits-boots shelved" adıyla duruyor; geri almak için
+`git stash apply` (stash'in numarasıyla) ve `football/js/main.js` içine rotaları geri ekle.
+
+### Humanizer web (rafa kaldırıldı, 2026-11-08)
+
+Tarayıcıda çalışabilen küçük modeller yeterli kaliteyi vermediği için yayından kaldırıldı. Kod `git stash list` içinde
+"humanizer-web shelved" adıyla duruyor.

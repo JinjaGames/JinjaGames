@@ -1,5 +1,6 @@
 // Ortak arayüz parçaları ve uygulama bağlamı (ctx).
-import { h, crest, norm, debounce, esc, fmtMoney } from './util.js';
+import { t } from './i18n.js';
+import { h, crest, norm, debounce, esc, fmtMoney, u } from './util.js';
 import { loadComps, loadClubs, loadMatchIndex } from './data.js';
 
 let ctxP;
@@ -43,7 +44,7 @@ export function avatar(p, size = '') {
 export function teamLink(ctx, id, season, { nameOnly = false } = {}) {
   const name = ctx.clubName(id);
   const kids = nameOnly ? [h('span', null, name)] : [crestFor(ctx, id), h('span', null, name)];
-  return h('a', { class: 'team', href: `#/takim/${id}${season != null ? '/' + season : ''}` }, ...kids);
+  return h('a', { class: 'team', href: u(`/takim/${id}${season != null ? '/' + season : ''}`) }, ...kids);
 }
 
 export function delta(n, { digits = 0, suffix = '', invert = false } = {}) {
@@ -60,7 +61,7 @@ export const moneyDelta = v => {
 };
 
 export function formStrip(results = []) {
-  return h('span', { class: 'form' }, results.map(r => h('i', { class: r, title: { W: 'Galibiyet', D: 'Beraberlik', L: 'Mağlubiyet' }[r] }, { W: 'G', D: 'B', L: 'M' }[r])));
+  return h('span', { class: 'form' }, results.map(r => h('i', { class: r, title: { W: t('Galibiyet'), D: t('Beraberlik'), L: t('Mağlubiyet') }[r] }, { W: t('G'), D: t('B'), L: t('M') }[r])));
 }
 
 export function seg(options, value, onchange, cls = '') {
@@ -90,12 +91,12 @@ export function pick({ title, items, placeholder = 'Ara…', limit = 80 }) {
       const q = norm(input.value).trim();
       const hit = (q ? pre.filter(i => q.split(' ').every(t => i.key.includes(t))) : pre).slice(0, limit);
       list.replaceChildren(...(hit.length ? hit.map(i => h('button', { class: 'pl', style: 'grid-template-columns:34px minmax(0,1fr) auto', onclick: () => close(i.id) },
-        i.tag ? h('span', { class: `p ${i.tagCls || ''}` }, i.tag) : h('span'), h('span', null, i.label, i.sub ? h('span', { class: 'dim' }, '  ' + i.sub) : null), h('span', { class: 'mute' }, i.right || ''))) : [h('div', { class: 'empty' }, 'Sonuç yok')]));
+        i.tag ? h('span', { class: `p ${i.tagCls || ''}` }, i.tag) : h('span'), h('span', null, i.label, i.sub ? h('span', { class: 'dim' }, '  ' + i.sub) : null), h('span', { class: 'mute' }, i.right || ''))) : [h('div', { class: 'empty' }, t('Sonuç yok'))]));
     };
     const close = v => { dlg.close(); dlg.remove(); resolve(v); };
     input.addEventListener('input', debounce(draw, 80));
     dlg.addEventListener('cancel', () => { dlg.remove(); resolve(null); });
-    dlg.append(h('div', { class: 'hd', style: 'display:flex;gap:10px;align-items:center;padding:12px 14px;border-bottom:1px solid var(--line)' }, h('h3', { style: 'font-size:18px;text-transform:uppercase;letter-spacing:.06em;flex:1' }, title), h('button', { class: 'btn sm ghost', onclick: () => close(null) }, 'Kapat')),
+    dlg.append(h('div', { class: 'hd', style: 'display:flex;gap:10px;align-items:center;padding:12px 14px;border-bottom:1px solid var(--line)' }, h('h3', { style: 'font-size:18px;text-transform:uppercase;letter-spacing:.06em;flex:1' }, title), h('button', { class: 'btn sm ghost', onclick: () => close(null) }, t('Kapat'))),
       h('div', { style: 'padding:10px 14px' }, input), list);
     document.body.append(dlg); draw(); dlg.showModal(); input.focus();
   });
@@ -105,8 +106,8 @@ export function clubItems(ctx, ids, extra) {
   return ids.map(id => ({ id, label: ctx.clubName(id), sub: ctx.comps[ctx.clubs[id]?.c]?.country || '', right: extra?.(id) || '' }));
 }
 
-export const POS_LABEL = { G: 'KL', D: 'DF', M: 'OS', A: 'FV' };
-export const POS_LONG = { G: 'Kaleci', D: 'Defans', M: 'Orta saha', A: 'Forvet' };
+export const POS_LABEL = { G: t('KL'), D: t('DF'), M: t('OS'), A: t('FV') };
+export const POS_LONG = { G: t('Kaleci'), D: t('Defans'), M: t('Orta saha'), A: t('Forvet') };
 
 export function emptyState(title, text, action) {
   return h('div', { class: 'empty' }, h('h3', null, title), text ? h('div', null, text) : null, action || null);

@@ -1,13 +1,14 @@
 // Maçı 2D izle: tuval, hız kontrolü, anlık taktik ve oyuncu değişikliği.
 import { h, mount, fmtPct } from './util.js';
-import { Match2D, W, H } from './match2d.js';
+import { Match2D, W, H, GOAL_TAG } from './match2d.js';
+import { t as tp, tl as tlang } from './i18n.js';
 import { teamRatings, matchLambdas } from './matchsim.js';
 import { lastName } from './lineup.js';
 
 const COLORS = { h: '#2563d6', a: '#e0452b' };
-const SPEEDS = [['3', 'Yavaş'], ['8', 'Normal'], ['20', 'Hızlı'], ['60', 'Çok hızlı'], ['hl', 'Önemli anlar']];
+const SPEEDS = [['3', tp('Yavaş')], ['8', tp('Normal')], ['20', tp('Hızlı')], ['60', tp('Çok hızlı')], ['hl', tp('Önemli anlar')]];
 const ICON = { goal: '⚽', yellow: '🟨', red: '🟥', sub: '🔁', save: '🧤', corner: '🚩', foul: '✋', pen: '🎯', block: '🛡️', ht: '⏸', ft: '🏁', ko2: '▶️', clear: '🧹' };
-const DEAD = { corner: 'Korner', pen: 'Penaltı', free: 'Serbest vuruş', throw: 'Taç atışı', goalkick: 'Kale vuruşu', kickoff: 'Başlama vuruşu' };
+const DEAD = { corner: tlang('Korner', 'Corner'), pen: tp('Penaltı'), free: tp('Serbest vuruş'), throw: tp('Taç atışı'), goalkick: tp('Kale vuruşu'), kickoff: tp('Başlama vuruşu') };
 
 export function openLive({ names, sides, neutral = false, haValue }) {
   // sides: { h:{ squad, elo, formation, xi:[id], tactics }, a:{...} }
@@ -26,8 +27,8 @@ export function openLive({ names, sides, neutral = false, haValue }) {
   };
   let m = new Match2D({ sides: live, rates });
 
-  const dlg = h('dialog', { 'aria-label': 'Maçı izle', style: 'max-width:min(1180px,97vw);width:97vw' });
-  const canvas = h('canvas', { 'aria-label': 'Maç sahası' });
+  const dlg = h('dialog', { 'aria-label': tp('Maçı izle'), style: 'max-width:min(1180px,97vw);width:97vw' });
+  const canvas = h('canvas', { 'aria-label': tp('Maç sahası') });
   const pitch = h('div', { class: 'live-pitch' }, canvas);
   const board = h('div', { class: 'scoreboard' });
   const scorers = h('div', { class: 'dim', style: 'text-align:center;font-size:13.5px;min-height:20px;margin-top:-8px' });
@@ -39,11 +40,11 @@ export function openLive({ names, sides, neutral = false, haValue }) {
   function restart() { fresh(); m = new Match2D({ sides: live, rates }); m.paused = false; m.h2started = false; m.speed = effSpeed(); evCount = -1; drawCtrl(); drawTac(); }
   const effSpeed = () => speedKey === 'hl' ? (m.hot ? 6 : 70) : +speedKey;
   function drawCtrl() {
-    play.textContent = m.finished ? 'Tekrar oyna' : m.paused ? (m.sec === 0 ? 'Başlat' : m.atHalfTime ? '2. yarıyı başlat' : 'Devam et') : 'Duraklat';
+    play.textContent = m.finished ? tp('Tekrar oyna') : m.paused ? (m.sec === 0 ? tp('Başlat') : m.atHalfTime ? tp('2. yarıyı başlat') : tp('Devam et')) : tp('Duraklat');
     const sp = h('div', { class: 'seg' }, SPEEDS.map(([k, l]) => h('button', { type: 'button', 'aria-pressed': String(speedKey === k), onclick: () => { speedKey = k; drawCtrl(); } }, l)));
     mount(ctrlBox, h('div', { class: 'row center', style: 'gap:10px' }, play, sp,
-      h('label', { class: 'row center', style: 'gap:6px;font-size:13.5px' }, h('input', { type: 'checkbox', checked: showNames, onchange: e => { showNames = e.target.checked; } }), 'İsimler'),
-      h('span', { style: 'flex:1' }), h('button', { class: 'btn', onclick: () => { m.finishNow(); drawCtrl(); drawTac(); } }, 'Sonucu hemen göster'), h('button', { class: 'btn ghost', onclick: close }, 'Kapat')));
+      h('label', { class: 'row center', style: 'gap:6px;font-size:13.5px' }, h('input', { type: 'checkbox', checked: showNames, onchange: e => { showNames = e.target.checked; } }), tp('İsimler')),
+      h('span', { style: 'flex:1' }), h('button', { class: 'btn', onclick: () => { m.finishNow(); drawCtrl(); drawTac(); } }, tp('Sonucu hemen göster')), h('button', { class: 'btn ghost', onclick: close }, tp('Kapat'))));
   }
   function drawTac() {
     const L = live[side], q = (key, label, lo, hi) => h('div', { class: 'sl' }, h('div', { class: 't' }, h('span', null, label), h('span', { class: 'dim' }, `${lo} ↔ ${hi}`)),
@@ -51,30 +52,30 @@ export function openLive({ names, sides, neutral = false, haValue }) {
     const onPitch = m.players[side].filter(p => p.p && !p.off);
     const used = new Set(m.players[side].map(p => p.p?.id));
     const bench = L.squad.filter(p => !used.has(p.id)).sort((a, b) => b.value - a.value);
-    const outSel = h('select', { 'aria-label': 'Çıkacak oyuncu' }, onPitch.map(p => h('option', { value: p.slot }, `${p.role} · ${p.p.name}`)));
-    const inSel = h('select', { 'aria-label': 'Girecek oyuncu' }, bench.map(p => h('option', { value: p.id }, `${p.pos || p.line} · ${p.name}`)));
+    const outSel = h('select', { 'aria-label': tp('Çıkacak oyuncu') }, onPitch.map(p => h('option', { value: p.slot }, `${p.role} · ${p.p.name}`)));
+    const inSel = h('select', { 'aria-label': tp('Girecek oyuncu') }, bench.map(p => h('option', { value: p.id }, `${p.pos || p.line} · ${p.name}`)));
     mount(tacBox, h('div', { class: 'seg', style: 'margin-bottom:12px' }, [['h', names.h], ['a', names.a]].map(([k, n]) => h('button', { type: 'button', 'aria-pressed': String(side === k), onclick: () => { side = k; drawTac(); } }, n))),
-      h('div', { class: 'sliders' }, q('mentality', 'Mentalite', 'Defansif', 'Hücumcu'), q('press', 'Pres', 'Düşük', 'Yüksek'), q('tempo', 'Tempo', 'Yavaş', 'Hızlı')),
-      h('div', { style: 'margin-top:16px;display:grid;gap:8px' }, h('div', { class: 'cap' }, `Oyuncu değişikliği (${m.subs[side]}/5)`), outSel, inSel,
-        h('button', { class: 'btn', disabled: !bench.length || m.subs[side] >= 5, onclick: () => { const np = bench.find(p => p.id === +inSel.value); if (np && m.substitute(side, +outSel.value, np)) drawTac(); } }, 'Değiştir')),
-      h('div', { class: 'dim', style: 'font-size:13px;margin-top:10px' }, 'Maç sürerken de değiştirebilirsin; etkisi hemen başlar.'));
+      h('div', { class: 'sliders' }, q('mentality', tp('Mentalite'), tp('Defansif'), tp('Hücumcu')), q('press', tp('Pres'), tp('Düşük'), tp('Yüksek')), q('tempo', tp('Tempo'), tp('Yavaş'), tp('Hızlı'))),
+      h('div', { style: 'margin-top:16px;display:grid;gap:8px' }, h('div', { class: 'cap' }, tp('Oyuncu değişikliği ({n}/5)', { n: m.subs[side] })), outSel, inSel,
+        h('button', { class: 'btn', disabled: !bench.length || m.subs[side] >= 5, onclick: () => { const np = bench.find(p => p.id === +inSel.value); if (np && m.substitute(side, +outSel.value, np)) drawTac(); } }, tlang('Değiştir', 'Make substitution'))),
+      h('div', { class: 'dim', style: 'font-size:13px;margin-top:10px' }, tp('Maç sürerken de değiştirebilirsin; etkisi hemen başlar.')));
   }
   function drawSide() {
-    const s = m.stats, tot = Math.max(1, s.h.seq + s.a.seq), acc = t => (s[t].pass ? Math.round(s[t].pc / s[t].pass * 100) + '%' : '—');
+    const s = m.stats, tot = Math.max(1, s.h.seq + s.a.seq), acc = t => (s[t].pass ? Math.round(s[t].pc / s[t].pass * 100) + '%' : tlang('—', '-'));
     const row = (l, a, b) => h('tr', null, h('td', { class: 'num' }, a), h('td', { style: 'text-align:center;color:var(--ink-3)' }, l), h('td', null, b));
     mount(statsBox, h('table', { class: 'tbl' }, h('tbody', null,
-      row('Top hakimiyeti', fmtPct(s.h.seq / tot), fmtPct(s.a.seq / tot)), row('Şut', s.h.shots, s.a.shots), row('İsabetli şut', s.h.on, s.a.on), row('Beklenen gol (xG)', s.h.xg.toFixed(2), s.a.xg.toFixed(2)),
-      row('Pas isabeti', acc('h'), acc('a')), row('Korner', s.h.corner, s.a.corner), row('Faul', s.h.foul, s.a.foul), row('Sarı kart', s.h.y, s.a.y), row('Kırmızı kart', s.h.r, s.a.r))));
+      row(tp('Top hakimiyeti'), fmtPct(s.h.seq / tot), fmtPct(s.a.seq / tot)), row(tp('Şut'), s.h.shots, s.a.shots), row(tp('İsabetli şut'), s.h.on, s.a.on), row(tp('Beklenen gol (xG)'), s.h.xg.toFixed(2), s.a.xg.toFixed(2)),
+      row(tp('Pas isabeti'), acc('h'), acc('a')), row(tp('Korner'), s.h.corner, s.a.corner), row(tp('Faul'), s.h.foul, s.a.foul), row(tp('Sarı kart'), s.h.y, s.a.y), row(tp('Kırmızı kart'), s.h.r, s.a.r))));
     const ev = [...m.events].reverse().slice(0, 60).filter(e => e.type !== 'foul' && e.type !== 'clear');
     mount(tl, ...ev.map(e => h('li', null, h('span', { class: `chip ${e.type === 'goal' ? 'promo' : e.type === 'red' ? 'rel' : e.type === 'yellow' ? 'mk' : ''}` }, `${e.min}'`), h('span', { style: e.type === 'goal' ? 'font-weight:700' : '' }, (ICON[e.type] ? ICON[e.type] + ' ' : '') + e.text))));
-    board.replaceChildren(h('div', { class: 't' }, names.h), h('div', null, `${m.score.h} – ${m.score.a}`), h('div', { class: 't', style: 'text-align:left' }, names.a),
-      h('span', { class: 'clock' }, m.finished ? 'Maç sonu' : m.atHalfTime ? 'Devre arası' : m.clock));
+    board.replaceChildren(h('div', { class: 't' }, names.h), h('div', null, `${m.score.h} ${tlang('–', '-')} ${m.score.a}`), h('div', { class: 't', style: 'text-align:left' }, names.a),
+      h('span', { class: 'clock' }, m.finished ? tp('Maç sonu') : m.atHalfTime ? tp('Devre arası') : m.clock));
     const goals = m.events.filter(e => e.type === 'goal');
     const line = t => goals.filter(e => e.team === t).map(e => `${lastName(e.who)} ${e.min}'`).join(' · ');
-    scorers.textContent = goals.length ? `${line('h') || '—'}   |   ${line('a') || '—'}` : '';
+    scorers.textContent = goals.length ? `${line('h') || tlang('—', '-')}   |   ${line('a') || tlang('—', '-')}` : '';
     if (m.finished) {
       const b = m.summary().best;
-      motm.replaceChildren(b ? h('div', { class: 'note', style: 'margin-top:8px' }, `Maçın oyuncusu: ${b.p.name} (${names[b.side]}) — ${b.st.g} gol, ${b.st.a} asist, ${b.st.s} şut${b.st.k ? `, ${b.st.k} kurtarış` : ''}`) : '');
+      motm.replaceChildren(b ? h('div', { class: 'note', style: 'margin-top:8px' }, tp('Maçın oyuncusu: {p} ({team}) — {g} gol, {a} asist, {s} şut{k}', { p: b.p.name, team: names[b.side], g: b.st.g, a: b.st.a, s: b.st.s, k: b.st.k ? tp(', {n} kurtarış', { n: b.st.k }) : '' })) : '');
     } else motm.replaceChildren();
   }
 
@@ -123,8 +124,8 @@ export function openLive({ names, sides, neutral = false, haValue }) {
     if (snap.dead && DEAD[snap.dead.type] && m.state !== 'goal') { const t = DEAD[snap.dead.type]; c.font = `700 ${Math.max(13, k * 1.5)}px Inter, sans-serif`; c.textAlign = 'center'; const w = c.measureText(t).width + 24; c.fillStyle = 'rgba(0,0,0,.6)'; c.fillRect(canvas.width / 2 - w / 2, 12, w, k * 2.6); c.fillStyle = '#fff'; c.fillText(t, canvas.width / 2, 12 + k * 1.85); }
     if (m.state === 'goal' && m.pause > 0) {
       c.fillStyle = 'rgba(0,0,0,.4)'; c.fillRect(0, 0, canvas.width, canvas.height); c.fillStyle = '#fff'; c.textAlign = 'center';
-      c.font = `800 ${k * 9}px "Space Grotesk", Inter, sans-serif`; c.fillText('GOL!', canvas.width / 2, canvas.height / 2 + k * 3);
-      const ev = [...m.events].reverse().find(e => e.type === 'goal'); c.font = `600 ${k * 2.6}px Inter, sans-serif`; if (ev) c.fillText(ev.text.replace('GOL! ', ''), canvas.width / 2, canvas.height / 2 + k * 8);
+      c.font = `800 ${k * 9}px "Space Grotesk", Inter, sans-serif`; c.fillText(GOAL_TAG, canvas.width / 2, canvas.height / 2 + k * 3);
+      const ev = [...m.events].reverse().find(e => e.type === 'goal'); c.font = `600 ${k * 2.6}px Inter, sans-serif`; if (ev) c.fillText(ev.text.replace(GOAL_TAG + ' ', ''), canvas.width / 2, canvas.height / 2 + k * 8);
     }
   }
   let evCount = -1, uiT = 0;
@@ -150,9 +151,9 @@ export function openLive({ names, sides, neutral = false, haValue }) {
 
   dlg.append(h('div', { style: 'padding:14px 18px 18px;display:grid;gap:14px' },
     h('div', { class: 'live-wrap' }, h('div', { style: 'display:grid;gap:10px' }, board, scorers, pitch, ctrlBox, motm),
-      h('div', { style: 'display:grid;gap:14px' }, h('div', { class: 'sheet' }, h('div', { class: 'hd' }, h('h3', null, 'Taktik ve değişiklik')), h('div', { class: 'bd' }, tacBox)),
-        h('div', { class: 'sheet' }, h('div', { class: 'hd' }, h('h3', null, 'Maç istatistikleri')), h('div', { class: 'bd', style: 'padding:0' }, statsBox)),
-        h('div', { class: 'sheet' }, h('div', { class: 'hd' }, h('h3', null, 'Maç olayları')), tl)))));
+      h('div', { style: 'display:grid;gap:14px' }, h('div', { class: 'sheet' }, h('div', { class: 'hd' }, h('h3', null, tp('Taktik ve değişiklik'))), h('div', { class: 'bd' }, tacBox)),
+        h('div', { class: 'sheet' }, h('div', { class: 'hd' }, h('h3', null, tp('Maç istatistikleri'))), h('div', { class: 'bd', style: 'padding:0' }, statsBox)),
+        h('div', { class: 'sheet' }, h('div', { class: 'hd' }, h('h3', null, tp('Maç olayları'))), tl)))));
   dlg.addEventListener('cancel', e => { e.preventDefault(); close(); });
   document.body.append(dlg); dlg.showModal();
   addEventListener('resize', resize);

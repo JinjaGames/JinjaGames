@@ -1,6 +1,7 @@
 // Kupa / eleme motoru: maçlardan eşleşme (tie) ağacı kurar, what-if değişikliklerini sonraki turlara yayar.
 // Gerçek kazanan, sonraki turda kimin göründüğünden çıkarılır (veri penaltı sonucunu içermez).
 import { rng, lambdas, poissonInv, computeTable, applyEdits } from './engine.js';
+import { t as tp } from './i18n.js';
 
 export const GROUP_RE = /group|league (phase|stage)|matchday|^[a-l]\s*$/i;
 const UEFA_AWAY_GOALS = new Set(['CL', 'EL', 'CLQ', 'ELQ']);   // 2021 öncesi deplasman golü kuralı
@@ -153,15 +154,15 @@ const ORD = { first: 1, second: 2, third: 3, fourth: 4, fifth: 5, sixth: 6, '1st
 export function trStage(s) {
   const t = String(s || '').trim();
   let m;
-  if (/^(last 16|round of 16)$/i.test(t)) return 'Son 16';
-  if (/^round of 32$/i.test(t)) return 'Son 32';
-  if (/quarter/i.test(t)) return 'Çeyrek final';
-  if (/semi/i.test(t)) return 'Yarı final';
-  if (/^final$/i.test(t)) return 'Final';
-  if (/intermediate/i.test(t)) return 'Ara tur';
-  if (/^group stage$/i.test(t)) return 'Lig aşaması';
-  if ((m = t.match(/^group\s+(\w+)$/i))) return `${m[1].toUpperCase()} Grubu`;
-  if (/qualifying round/i.test(t)) return 'Play-off turu';
-  if ((m = t.match(/^(\w+)\s+round$/i)) && ORD[m[1].toLowerCase()]) return `${ORD[m[1].toLowerCase()]}. Tur`;
+  if (/^(last 16|round of 16)$/i.test(t)) return tp('Son 16');
+  if (/^round of 32$/i.test(t)) return tp('Son 32');
+  if (/quarter/i.test(t)) return tp('Çeyrek final');
+  if (/semi/i.test(t)) return tp('Yarı final');
+  if (/^final$/i.test(t)) return tp('Final');
+  if (/intermediate/i.test(t)) return tp('Ara tur');
+  if (/^group stage$/i.test(t)) return tp('Lig aşaması');
+  if ((m = t.match(/^group\s+(\w+)$/i))) return tp('{g} Grubu', { g: m[1].toUpperCase() });
+  if (/qualifying round/i.test(t)) return tp('Play-off turu');
+  if ((m = t.match(/^(\w+)\s+round$/i)) && ORD[m[1].toLowerCase()]) return tp('{n}. Tur', { n: ORD[m[1].toLowerCase()] });
   return t;
 }

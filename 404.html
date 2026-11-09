@@ -2,15 +2,20 @@
 <html lang="en" data-lang="en" data-theme="light">
 <head>
 <meta charset="utf-8">
-<script>/* football-case: GitHub Pages paths are case-sensitive; /Football etc. is redirected to lowercase /football */(function(){var p=location.pathname,m=p.match(/^\/football(\/.*)?$/i);if(m&&!/^\/football(\/|$)/.test(p)){location.replace('/football'+(m[1]||'/')+location.search+location.hash)}})();</script>
+<script>/* football: GitHub Pages paths are case-sensitive (/Football -> /football). The app uses clean paths (/football/takim/123) without '#';
+   Pages has no SPA fallback, so deep links land here and are handed to the app as ?r=<path>, which restores the clean address. */
+(function(){var p=location.pathname,m=p.match(/^\/football(\/.*)?$/i);if(!m)return;var rest=m[1]||'/';
+if(rest==='/'){location.replace('/football/'+location.search+location.hash);return}
+if(/\.[a-z0-9]{2,5}$/i.test(rest))return;
+location.replace('/football/?r='+encodeURIComponent(rest+location.search)+location.hash)})();</script>
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Page Not Found | JinjaGames</title>
 <meta name="description" content="The page you requested could not be found. Return to JinjaGames and explore Cyber Academy, Locard, DayPot, Jelly Trails and Jelly Pipes.">
 <meta name="robots" content="noindex,follow">
 <meta name="theme-color" content="#FCFAF8" media="(prefers-color-scheme: light)">
 <meta name="theme-color" content="#0E0C0D" media="(prefers-color-scheme: dark)">
-<link rel="icon" type="image/png" href="favicon-j-shuriken-32.png?v=2">
-<link rel="stylesheet" href="assets/fonts.css?v=20261012d">
+<link rel="icon" type="image/png" href="/favicon-j-shuriken-32.png?v=2">
+<link rel="stylesheet" href="/assets/fonts.css?v=20261012d">
 <style>
 :root{
   --bg:#FCFAF8; --surface:#FFFFFF; --ink:#191517; --muted:#5E5457; --faint:#6E6467;
@@ -67,8 +72,8 @@ html,body{overflow-x:hidden;overflow-x:clip}
 }
 </style>
 <script>(function(){try{var d=document.documentElement,t=localStorage.getItem('jg_theme'),l=localStorage.getItem('jg_lang');if(t!=='light'&&t!=='dark'){t=(window.matchMedia&&matchMedia('(prefers-color-scheme: dark)').matches)?'dark':'light'}d.setAttribute('data-theme',t);d.setAttribute('data-lang',l==='tr'?'tr':'en');d.lang=l==='tr'?'tr':'en'}catch(e){}})()</script>
-<script src="assets/clean-scroll.js?v=20261012d" defer></script>
-<script src="assets/local-links.js?v=20261012d"></script>
+<script src="/assets/clean-scroll.js?v=20261012d" defer></script>
+<script src="/assets/local-links.js?v=20261012d"></script>
 </head>
 <body>
 <main class="card">

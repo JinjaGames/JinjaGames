@@ -8,6 +8,7 @@ if ((location.protocol === 'https:' || location.protocol === 'http:') && locatio
   history.replaceState(history.state, '', location.pathname.replace(/index\.html$/, '') + location.search + location.hash);
 }
 </script>
+<script>/* Eski Jinja Football paylaşım bağlantıları köke #/… ile düşüyordu: football uygulamasına aktar. */if(location.hash.indexOf('#/')===0){location.replace('/football'+location.hash.slice(1))}</script>
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
 <title>JinjaGames | Cyber Academy, Locard, DayPot ve sekiz Jelly bulmaca oyunu</title>
 <meta name="description" content="Ankara merkezli indie stüdyo JinjaGames: siber güvenlik oyunu Cyber Academy, birinci şahıs soruşturma oyunu Locard ve çevrimdışı yemek yardımcısı DayPot ile Android için sekiz jöle bulmacası: Jelly Trails, Pipes, Jars, Logic, Loops, Park, Seek ve Slide." />
@@ -582,6 +583,8 @@ html,body{overflow-x:hidden;overflow-x:clip}
 </style>
 <script src="assets/clean-scroll.js?v=20261012d" defer></script>
 <script src="assets/local-links.js?v=20261012d"></script>
+<link rel="stylesheet" href="/assets/webapps.css?v=20261107">
+<script src="/assets/webapps.js?v=20261107" defer></script>
 </head>
 <body>
 
@@ -604,6 +607,15 @@ html,body{overflow-x:hidden;overflow-x:clip}
       </a>
       <ul class="nav-links">
         <li><a href="games/"><span class="en i">Games</span><span class="tr i">Oyunlar</span></a></li>
+        <li class="apps-menu">
+          <button class="apps-trigger" type="button" aria-expanded="false" aria-controls="apps-pop" aria-haspopup="true"><span class="dot" aria-hidden="true"></span><span class="en i">Web Apps</span><span class="tr i">Web Uygulamaları</span><svg viewBox="0 0 12 12" aria-hidden="true"><path d="m2 4 4 4 4-4"></path></svg></button>
+          <div class="apps-pop" id="apps-pop">
+            <div class="apps-pop-title"><span class="en i">Use in your browser, no install</span><span class="tr i">Tarayıcıda kullan, kurulum yok</span></div>
+            <a class="app-item" href="/football/"><img src="/assets/img/apps/football.svg" alt="" width="44" height="44"><span><b>Jinja Football</b><small class="en i">Change one match, transfer or penalty in real football history</small><small class="tr i">Gerçek futbol tarihinde bir maçı, transferi ya da penaltıyı değiştir</small></span><span class="tag">Live</span></a>
+            <a class="app-item" href="/peer/"><img src="/assets/img/apps/jinjapeer.svg" alt="" width="44" height="44"><span><b>JinjaPeer</b><small class="en i">Send files device to device, end-to-end encrypted</small><small class="tr i">Cihazdan cihaza uçtan uca şifreli dosya gönder</small></span><span class="tag">New</span></a>
+            <a class="apps-all" href="/apps/"><span class="en i">All web apps</span><span class="tr i">Tüm web uygulamaları</span><span aria-hidden="true">&rarr;</span></a>
+          </div>
+        </li>
         <li><a href="#studio"><span class="en i">Studio</span><span class="tr i">Stüdyo</span></a></li>
         <li><a href="#faq"><span class="en i">FAQ</span><span class="tr i">SSS</span></a></li>
         <li><a href="#contact"><span class="en i">Contact</span><span class="tr i">İletişim</span></a></li>
@@ -1106,6 +1118,7 @@ html,body{overflow-x:hidden;overflow-x:clip}
 
 <div class="dock" id="dock" role="navigation" aria-label="Sections">
   <a href="games/" data-dock="games"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3.5" y="3.5" width="7" height="7" rx="1.6"/><rect x="13.5" y="3.5" width="7" height="7" rx="1.6"/><rect x="3.5" y="13.5" width="7" height="7" rx="1.6"/><rect x="13.5" y="13.5" width="7" height="7" rx="1.6"/></svg><span class="en i">Games</span><span class="tr i">Oyunlar</span></a>
+  <a class="apps-dock" href="/apps/" data-dock="apps"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3.5" y="4.5" width="17" height="13" rx="2.2"/><path d="M8 20.5h8M12 17.5v3"/><path d="m9.5 9.5 2 1.5-2 1.5M13 13h2"/></svg><span class="en i">Apps</span><span class="tr i">Uygulamalar</span></a>
   <a href="#studio" data-dock="studio"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20V9.5L12 4l8 5.5V20"/><path d="M9.5 20v-5.5h5V20"/></svg><span class="en i">Studio</span><span class="tr i">Stüdyo</span></a>
   <a href="#faq" data-dock="faq"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8.5"/><path d="M9.6 9.4a2.5 2.5 0 0 1 4.8.9c0 1.7-2.4 2.2-2.4 3.7"/><path d="M12 16.9v.2"/></svg><span class="en i">FAQ</span><span class="tr i">SSS</span></a>
   <a href="#contact" data-dock="contact"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3.5" y="5.5" width="17" height="13" rx="2.2"/><path d="m4.5 7 7.5 6 7.5-6"/></svg><span class="en i">Contact</span><span class="tr i">İletişim</span></a>

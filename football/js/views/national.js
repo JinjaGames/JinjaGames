@@ -1,5 +1,5 @@
 // Milli takımlar: Elo sıralaması, geçmiş maçlarda what-if (Elo yeniden oynatma), iki ülkenin simülasyonu.
-import { h, mount, setCrumbs, fmtDate, fmtPct, lineChart, norm, debounce, go, toast, fmtMoney, crest } from '../util.js';
+import { h, mount, setCrumbs, fmtDate, fmtPct, lineChart, norm, debounce, go, toast, fmtMoney, crest, u } from '../util.js';
 import { boot, pick, select, field, seg, sheet, pageHead, delta } from '../ui.js';
 import { loadIntl, loadIntlElo, loadPlayers } from '../data.js';
 import { lambdas, poissonMatrix, eloUpdate } from '../engine.js';
@@ -7,6 +7,7 @@ import { simulate, autoXI, lineupStrength } from '../matchsim.js';
 import * as store from '../store.js';
 
 import { TR, NAT_ALIAS, tr } from '../nations.js';
+import { t as tp, LOC } from '../i18n.js';
 
 function tournWeight(t) {
   if (t === 'FIFA World Cup') return 60;
@@ -59,27 +60,27 @@ export async function render(app, teamArg) {
 
   // ------------------------------------------------------------------ sıralama
   function rankingView() {
-    setCrumbs('Milli takımlar');
+    setCrumbs(tp('Milli takımlar'));
     const q = { s: '' };
     const box = h('div');
     const draw = () => {
       const f = norm(q.s).trim();
       const rows = rank.map(([t, v], i) => ({ t, v, i })).filter(r => !f || norm(tr(r.t) + ' ' + r.t).includes(f));
       const prev = t => { const m = real.ye.get(t); return m?.get(2025) ?? null; };
-      mount(box, sheet(h('h2', null, 'Elo sıralaması'), h('div', { style: 'overflow:auto' }, h('table', { class: 'tbl' },
-        h('thead', null, h('tr', null, h('th', { class: 'num' }, '#'), h('th', null, 'Takım'), h('th', { class: 'num' }, 'Elo'), h('th', { class: 'num' }, 'Yıllık değişim'))),
-        h('tbody', null, rows.slice(0, 100).map(r => { const p = (alt.ye.get(r.t)?.get(2025)); return h('tr', null, h('td', { class: 'num dim' }, r.i + 1), h('td', null, h('a', { class: 'team', href: `#/milli/${encodeURIComponent(r.t)}` }, crest(tr(r.t)), h('span', null, tr(r.t)))), h('td', { class: 'num pts' }, Math.round(r.v)), h('td', { class: 'num' }, p ? delta(Math.round(r.v - p)) : '—')); })))), { tight: true }));
+      mount(box, sheet(h('h2', null, tp('Elo sıralaması')), h('div', { style: 'overflow:auto' }, h('table', { class: 'tbl' },
+        h('thead', null, h('tr', null, h('th', { class: 'num' }, '#'), h('th', null, tp('Takım')), h('th', { class: 'num' }, 'Elo'), h('th', { class: 'num' }, tp('Yıllık değişim')))),
+        h('tbody', null, rows.slice(0, 100).map(r => { const p = (alt.ye.get(r.t)?.get(2025)); return h('tr', null, h('td', { class: 'num dim' }, r.i + 1), h('td', null, h('a', { class: 'team', href: u(`/milli/${encodeURIComponent(r.t)}`) }, crest(tr(r.t)), h('span', null, tr(r.t)))), h('td', { class: 'num pts' }, Math.round(r.v)), h('td', { class: 'num' }, p ? delta(Math.round(r.v - p)) : '—')); })))), { tight: true }));
     };
-    const search = h('input', { type: 'search', placeholder: 'Takım ara…', oninput: debounce(e => { q.s = e.target.value; draw(); }, 100) });
+    const search = h('input', { type: 'search', placeholder: tp('Takım ara…'), oninput: debounce(e => { q.s = e.target.value; draw(); }, 100) });
     const sim = simPanel(null);
-    mount(app, pageHead('Milli takımlar', `${rank.length} aktif takım · Elo 1872’den bu yana tüm maçlardan hesaplanır${edits.size ? ' · senaryondaki değişiklikler uygulanıyor' : ''}.`, field('Ara', search)),
+    mount(app, pageHead(tp('Milli takımlar'), `${tp('{n} aktif takım · Elo 1872’den bu yana tüm maçlardan hesaplanır', { n: rank.length })}${edits.size ? tp(' · senaryondaki değişiklikler uygulanıyor') : ''}.`, field(tp('Ara'), search)),
       h('div', { class: 'grid cols-2' }, box, h('div', { class: 'grid', style: 'align-content:start' }, sim)));
     draw();
   }
 
   // ------------------------------------------------------------------ takım
   async function teamView() {
-    setCrumbs('Milli takımlar', tr(team));
+    setCrumbs(tp('Milli takımlar'), tr(team));
     const P = await loadPlayers();
     const natName = NAT_ALIAS[team] || team;
     const squad = P.list.filter(p => p.nat === natName && (p.lastSeason ?? 0) >= 2025).sort((a, b) => b.value - a.value).slice(0, 26);
@@ -92,22 +93,22 @@ export async function render(app, teamArg) {
     const S = { editing: null };
     const drawMatches = () => {
       const list = matches.filter(m => (m.h === team || m.a === team) && +m.date.slice(0, 4) === yr).map(m => { const o = edits.get(key(m)); return o ? { ...m, real: [m.hg, m.ag], hg: o.hg, ag: o.ag, edited: true } : m; });
-      mount(matchBox, sheet(h('h2', null, `${yr} maçları`), h('div', { style: 'overflow:auto' }, h('table', { class: 'tbl' }, h('tbody', null, list.map(m => {
+      mount(matchBox, sheet(h('h2', null, tp('{yr} maçları', { yr })), h('div', { style: 'overflow:auto' }, h('table', { class: 'tbl' }, h('tbody', null, list.map(m => {
         const mine = m.h === team, own = mine ? m.hg : m.ag, opp = mine ? m.ag : m.hg, r = own > opp ? 'G' : own === opp ? 'B' : 'M';
         const editing = S.editing === key(m);
         const hi = h('input', { type: 'number', min: 0, max: 30, value: m.hg, style: 'width:46px' }), ai = h('input', { type: 'number', min: 0, max: 30, value: m.ag, style: 'width:46px' });
         const apply = () => { const orig = matches.find(x => key(x) === key(m)); const hg = +hi.value, ag = +ai.value; if (hg === orig.hg && ag === orig.ag) store.removeEdit(e => e.t === 'intl' && e.key === key(m)); else store.addEdit({ t: 'intl', key: key(m), hg, ag, real: [orig.hg, orig.ag], label: `${tr(m.h)} ${hg}-${ag} ${tr(m.a)} (${fmtDate(m.date)})` }); render(app, teamArg); };
         return h('tr', { class: m.edited ? 'chg' : '' }, h('td', { class: 'dim' }, fmtDate(m.date)), h('td', { class: 'dim' }, m.tour), h('td', { style: 'text-align:right' }, mine ? h('b', null, tr(m.h)) : tr(m.h)),
-          h('td', { class: 'num' }, editing ? h('span', { class: 'scoreedit' }, hi, '-', ai, h('button', { class: 'btn sm mk', onclick: apply }, 'Uygula')) : h('button', { class: 'btn sm', style: m.edited ? 'border-color:var(--marker);color:var(--marker)' : '', title: m.edited ? `Gerçek: ${m.real[0]}-${m.real[1]}` : 'Skoru değiştir', onclick: () => { S.editing = key(m); drawMatches(); } }, `${m.hg} - ${m.ag}`)),
-          h('td', null, m.a === team ? h('b', null, tr(m.a)) : tr(m.a)), h('td', null, h('span', { class: `form` }, h('i', { class: { G: 'W', B: 'D', M: 'L' }[r] }, r))));
+          h('td', { class: 'num' }, editing ? h('span', { class: 'scoreedit' }, hi, '-', ai, h('button', { class: 'btn sm mk', onclick: apply }, tp('Uygula'))) : h('button', { class: 'btn sm', style: m.edited ? 'border-color:var(--marker);color:var(--marker)' : '', title: m.edited ? tp('Gerçek: {s}', { s: `${m.real[0]}-${m.real[1]}` }) : tp('Skoru değiştir'), onclick: () => { S.editing = key(m); drawMatches(); } }, `${m.hg} - ${m.ag}`)),
+          h('td', null, m.a === team ? h('b', null, tr(m.a)) : tr(m.a)), h('td', null, h('span', { class: `form` }, h('i', { class: { G: 'W', B: 'D', M: 'L' }[r] }, { G: tp('G'), B: tp('B'), M: tp('M') }[r]))));
       })))), { tight: true, actions: [select(years.map(y => [y, y]), yr, v => { yr = +v; S.editing = null; drawMatches(); })] }));
     };
     const cur = alt.final.get(team) ?? 1500, rk = rank.findIndex(([t]) => t === team) + 1;
-    mount(app, pageHead(tr(team), `Elo ${Math.round(cur)}${rk ? ` · dünya sıralaması ${rk}.` : ''}${edits.size && Math.abs(cur - (real.final.get(team) ?? cur)) >= 1 ? ` · gerçekte ${Math.round(real.final.get(team))}` : ''}`, crest(tr(team), 'xl')),
+    mount(app, pageHead(tr(team), `Elo ${Math.round(cur)}${rk ? tp(' · dünya sıralaması {rk}.', { rk }) : ''}${edits.size && Math.abs(cur - (real.final.get(team) ?? cur)) >= 1 ? tp(' · gerçekte {n}', { n: Math.round(real.final.get(team)) }) : ''}`, crest(tr(team), 'xl')),
       h('div', { class: 'grid cols-2' }, h('div', { class: 'grid', style: 'align-content:start' },
-        sheet(h('h2', null, 'Elo geçmişi'), lineChart({ series, xFmt: v => Math.round(v), yFmt: v => Math.round(v), height: 230 }), { actions: edits.size ? [h('span', { class: 'chip mk' }, 'Sarı: alternatif')] : [] }),
+        sheet(h('h2', null, tp('Elo geçmişi')), lineChart({ series, xFmt: v => Math.round(v), yFmt: v => Math.round(v), height: 230 }), { actions: edits.size ? [h('span', { class: 'chip mk' }, tp('Sarı: alternatif'))] : [] }),
         matchBox),
-        h('div', { class: 'grid', style: 'align-content:start' }, simPanel(team), squad.length ? sheet(h('h2', null, 'Tahmini kadro (piyasa değeri)'), h('table', { class: 'tbl', style: 'margin:calc(var(--pad) * -1) 0' }, h('tbody', null, squad.map(p => h('tr', null, h('td', null, h('span', { class: 'chip' }, p.pos || p.line)), h('td', null, h('a', { href: `#/oyuncu/${p.id}` }, p.name)), h('td', { class: 'mute' }, p.club ? ctx.clubName(p.club) : ''), h('td', { class: 'num' }, fmtMoney(p.value))))))) : null)));
+        h('div', { class: 'grid', style: 'align-content:start' }, simPanel(team), squad.length ? sheet(h('h2', null, tp('Tahmini kadro (piyasa değeri)')), h('table', { class: 'tbl', style: 'margin:calc(var(--pad) * -1) 0' }, h('tbody', null, squad.map(p => h('tr', null, h('td', null, h('span', { class: 'chip' }, p.pos || p.line)), h('td', null, h('a', { href: u(`/oyuncu/${p.id}`) }, p.name)), h('td', { class: 'mute' }, p.club ? ctx.clubName(p.club) : ''), h('td', { class: 'num' }, fmtMoney(p.value))))))) : null)));
     drawMatches();
   }
 
@@ -121,15 +122,15 @@ export async function render(app, teamArg) {
       const [lh, la] = lambdas(ra, rb, 2.55, ha);
       const sim = simulate({ lh, la, n: st.n, seed: 12345 });
       const bar = (l, p, c) => h('div', { class: 'pbar' }, h('span', null, l), h('div', { class: 'meter' }, h('i', { style: `width:${p * 100}%;background:${c}` })), h('b', { class: 'num' }, fmtPct(p, 1)));
-      const pickBtn = k => h('button', { class: 'btn', onclick: async () => { const id = await pick({ title: 'Takım seç', items: rank.map(([t, v]) => ({ id: t, label: tr(t), right: Math.round(v) })) }); if (id) { st[k] = id; draw(); } } }, tr(st[k]));
+      const pickBtn = k => h('button', { class: 'btn', onclick: async () => { const id = await pick({ title: tp('Takım seç'), items: rank.map(([t, v]) => ({ id: t, label: tr(t), right: Math.round(v) })) }); if (id) { st[k] = id; draw(); } } }, tr(st[k]));
       mount(out, h('div', { class: 'row center' }, pickBtn('a'), h('span', { class: 'cap' }, 'vs'), pickBtn('b'),
-        h('label', { class: 'row center', style: 'gap:6px' }, h('input', { type: 'checkbox', checked: st.neutral, onchange: e => { st.neutral = e.target.checked; draw(); } }), 'Tarafsız saha')),
-      h('div', { style: 'margin-top:12px' }, bar(`${tr(st.a)}`, sim.hw, 'var(--ucl)'), bar('Beraberlik', sim.dr, 'var(--chalk-2)'), bar(`${tr(st.b)}`, sim.aw, 'var(--el)')),
+        h('label', { class: 'row center', style: 'gap:6px' }, h('input', { type: 'checkbox', checked: st.neutral, onchange: e => { st.neutral = e.target.checked; draw(); } }), tp('Tarafsız saha'))),
+      h('div', { style: 'margin-top:12px' }, bar(`${tr(st.a)}`, sim.hw, 'var(--ucl)'), bar(tp('Beraberlik'), sim.dr, 'var(--chalk-2)'), bar(`${tr(st.b)}`, sim.aw, 'var(--el)')),
       h('div', { class: 'row', style: 'gap:8px' }, ...sim.top.slice(0, 5).map(t => h('span', { class: 'chip' }, `${t.h}-${t.a} · ${fmtPct(t.p, 1)}`))),
-      h('div', { class: 'row', style: 'margin-top:10px' }, h('a', { class: 'btn mk', href: `#/simulator/mode=nation&h=${encodeURIComponent(st.a)}&a=${encodeURIComponent(st.b)}` }, 'İlk 11’leri düzenle ve simüle et')),
-      h('div', { class: 'dim', style: 'font-size:12px;margin-top:8px' }, `Elo ${Math.round(ra)} – ${Math.round(rb)} · beklenen gol ${lh.toFixed(2)} – ${la.toFixed(2)} · ${st.n.toLocaleString('tr')} simülasyon`));
+      h('div', { class: 'row', style: 'margin-top:10px' }, h('a', { class: 'btn mk', href: u(`/simulator/mode=nation&h=${encodeURIComponent(st.a)}&a=${encodeURIComponent(st.b)}`) }, tp('İlk 11’leri düzenle ve simüle et'))),
+      h('div', { class: 'dim', style: 'font-size:12px;margin-top:8px' }, tp('Elo {ra} – {rb} · beklenen gol {lh} – {la} · {n} simülasyon', { ra: Math.round(ra), rb: Math.round(rb), lh: lh.toFixed(2), la: la.toFixed(2), n: st.n.toLocaleString(LOC) })));
     };
     draw();
-    return sheet(h('h2', null, 'Karşılaşma simülasyonu'), out);
+    return sheet(h('h2', null, tp('Karşılaşma simülasyonu')), out);
   }
 }
