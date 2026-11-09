@@ -1,6 +1,6 @@
 /* Otomatik: tools/update_stats.py (6 saatte bir, GitHub Actions). Elle düzenleme. */
 window.BB_STATS={
- "total": 5453,
+ "total": 5510,
  "projects": 24,
  "mods": {
   "all-irons": {
@@ -11,7 +11,7 @@ window.BB_STATS={
   },
   "board-games": {
    "name": "Board Games",
-   "dl": 644,
+   "dl": 655,
    "created": "2026-10-16T07:48Z",
    "updated": "2026-10-16T07:48Z"
   },
@@ -23,13 +23,13 @@ window.BB_STATS={
   },
   "chest-hauler": {
    "name": "Chest Hauler",
-   "dl": 58,
+   "dl": 62,
    "created": "2026-10-05T11:28Z",
    "updated": "2026-10-05T11:28Z"
   },
   "death-hand": {
    "name": "Death Hand",
-   "dl": 49,
+   "dl": 51,
    "created": "2026-10-12T09:46Z",
    "updated": "2026-10-24T10:11Z"
   },
@@ -53,7 +53,7 @@ window.BB_STATS={
   },
   "frontier-structures": {
    "name": "Frontier Structures",
-   "dl": 414,
+   "dl": 417,
    "created": "2026-10-05T10:25Z",
    "updated": "2026-10-07T15:52Z"
   },
@@ -65,13 +65,13 @@ window.BB_STATS={
   },
   "hard-mobs-and-bosses": {
    "name": "Hard Mobs and bosses",
-   "dl": 507,
+   "dl": 513,
    "created": "2026-09-18T05:55Z",
    "updated": "2026-10-24T10:10Z"
   },
   "hearthly": {
    "name": "Hearthly",
-   "dl": 522,
+   "dl": 528,
    "created": "2026-10-12T12:44Z",
    "updated": "2026-10-24T21:07Z"
   },
@@ -83,7 +83,7 @@ window.BB_STATS={
   },
   "ore-elemental-golems": {
    "name": "Ore & Elemental Golems",
-   "dl": 764,
+   "dl": 768,
    "created": "2026-10-12T11:21Z",
    "updated": "2026-10-12T11:21Z"
   },
@@ -107,13 +107,13 @@ window.BB_STATS={
   },
   "real-animals": {
    "name": "Real Animals",
-   "dl": 509,
+   "dl": 515,
    "created": "2026-10-09T10:52Z",
    "updated": "2026-11-07T18:12Z"
   },
   "seraph": {
    "name": "Seraph",
-   "dl": 199,
+   "dl": 200,
    "created": "2026-10-05T11:03Z",
    "updated": "2026-10-24T10:11Z"
   },
@@ -125,7 +125,7 @@ window.BB_STATS={
   },
   "uncraft-and-unfurnace": {
    "name": "Uncraft and Unfurnace",
-   "dl": 197,
+   "dl": 206,
    "created": "2026-09-17T08:53Z",
    "updated": "2026-10-03T21:50Z"
   },
@@ -143,7 +143,7 @@ window.BB_STATS={
   },
   "vivacity": {
    "name": "Vivacity",
-   "dl": 82,
+   "dl": 87,
    "created": "2026-10-25T12:13Z",
    "updated": "2026-10-25T12:13Z"
   }
@@ -151,7 +151,7 @@ window.BB_STATS={
  "unlisted": [
   "vivacity"
  ],
- "updated": "2026-11-08T19:27Z",
+ "updated": "2026-11-09T00:42Z",
  "source": "profile",
  "datesAt": "2026-11-08T19:27Z"
 };
