@@ -3,8 +3,11 @@
 // ölçek katsayısı K ise o ana kadarki şutlardan λ'ya göre sürekli ayarlanır.
 import { rng } from './engine.js';
 import { FORMATIONS, ROLE_LINE } from './matchsim.js';
+import { t as tp, tl as tlang } from './i18n.js';
 
 export const W = 105, H = 68;
+/** Gol olay metninin başlığı; arayüz, gol satırından bunu ayıklayıp yalnızca "kim, hangi takım" kısmını gösterir. */
+export const GOAL_TAG = tp('GOL!');
 const GH = 3.66;                                  // yarım kale genişliği (m)
 
 const clamp = (x, a, b) => Math.max(a, Math.min(b, x));
@@ -46,7 +49,7 @@ export class Match2D {
     this.kickTeam = this.r() < 0.5 ? 'h' : 'a';
     this._rt = null; this._rtT = 0;
     this.trail = [];
-    this.log(0, 'start', null, 'Maç başladı');
+    this.log(0, 'start', null, tp('Maç başladı'));
     this.setDead('kickoff', this.kickTeam, { x: W / 2, y: H / 2 }, 1);
   }
 
@@ -90,7 +93,7 @@ export class Match2D {
     if (this.subs[side] >= 5) return false;
     const q = this.players[side][slot]; if (!q || q.off) return false;
     const old = q.p; q.p = np; q.sk = skillOf(np); this.sides[side].xi[slot] = np; this.subs[side]++; this._rt = null;
-    this.log(this.sec, 'sub', side, `Oyuncu değişikliği (${this.sides[side].name}): ${old?.name || '—'} → ${np.name}`);
+    this.log(this.sec, 'sub', side, tp('Oyuncu değişikliği ({team}): {out} → {inn}', { team: this.sides[side].name, out: old?.name || tlang('—', '-'), inn: np.name }));
     return true;
   }
   rt() { if (!this._rt || Math.abs(this.sec - this._rtT) > 3) { this._rt = this.rates(); this._rtT = this.sec; } return this._rt; }
@@ -115,7 +118,7 @@ export class Match2D {
       this.h2started = true;
       for (const t of ['h', 'a']) for (const q of this.players[t]) { q.x = FX(t, Math.min(q.bfx, W / 2 - 3)); q.y = FY(t, q.bfy); q.vx = q.vy = 0; }
       this.setDead('kickoff', OPP(this.kickTeam), { x: W / 2, y: H / 2 }, 2);
-      this.log(this.sec, 'ko2', null, 'İkinci yarı başladı');
+      this.log(this.sec, 'ko2', null, tp('İkinci yarı başladı'));
     }
     this.paused = false;
   }
@@ -123,10 +126,10 @@ export class Match2D {
   tick(dt) {
     this.sec += dt;
     if (this.half === 1 && this.sec >= 2700 + this.s1) {
-      this.log(2700, 'ht', null, `Devre arası: ${this.score.h}–${this.score.a}`);
+      this.log(2700, 'ht', null, tp('Devre arası: {h}–{a}', { h: this.score.h, a: this.score.a }));
       this.half = 2; this.sec = 2700; this.paused = true; this.owner = null; this.flight = null; this.loose = null; this.dead = null; return;
     }
-    if (this.half === 2 && this.sec >= 5400 + this.s2) { this.finished = true; this.log(this.sec, 'ft', null, `Maç bitti: ${this.score.h}–${this.score.a}`); return; }
+    if (this.half === 2 && this.sec >= 5400 + this.s2) { this.finished = true; this.log(this.sec, 'ft', null, tp('Maç bitti: {h}–{a}', { h: this.score.h, a: this.score.a })); return; }
     if (this.dead) { this.dead.t -= dt; this.move(dt); if (this.dead.t <= 0) this.endDead(); return; }
     this.play(dt); this.move(dt);
   }
@@ -198,20 +201,20 @@ export class Match2D {
     const T = o.side; this.stats[t.side].foul++;
     const cfx = FX(T, o.x), cfy = FY(T, o.y), inBox = cfx > W - 16.5 && Math.abs(cfy - H / 2) < 20.15;
     if (inBox && this.r() > 0.06) { this.takeBall(t); return; }
-    this.log(this.sec, 'foul', t.side, `Faul: ${t.p.name} → ${o.p.name}`);
+    this.log(this.sec, 'foul', t.side, tp('Faul: {a} → {b}', { a: t.p.name, b: o.p.name }));
     const u = this.r();
-    if (u < 0.012) this.sendOff(t, 'Direkt kırmızı kart');
+    if (u < 0.012) this.sendOff(t, tp('Direkt kırmızı kart'));
     else if (u < 0.16) {
       t.yellow++;
-      if (t.yellow >= 2) this.sendOff(t, '2. sarı');
-      else { this.stats[t.side].y++; this.log(this.sec, 'yellow', t.side, `Sarı kart: ${t.p.name}`, { who: t.p.name }); }
+      if (t.yellow >= 2) this.sendOff(t, tp('2. sarı'));
+      else { this.stats[t.side].y++; this.log(this.sec, 'yellow', t.side, tp('Sarı kart: {n}', { n: t.p.name }), { who: t.p.name }); }
     }
-    if (inBox) { this.log(this.sec, 'pen', T, `PENALTI! ${this.sides[T].name}`); this.setDead('pen', T, { x: FX(T, W - 11), y: FY(T, H / 2) }, 4.5); }
+    if (inBox) { this.log(this.sec, 'pen', T, tp('PENALTI! {team}', { team: this.sides[T].name })); this.setDead('pen', T, { x: FX(T, W - 11), y: FY(T, H / 2) }, 4.5); }
     else this.setDead('free', T, { x: o.x, y: o.y }, 2.2);
   }
   sendOff(q, why) {
     q.off = true; this.stats[q.side].r++; this.sides[q.side].xi[q.slot] = null; this._rt = null;
-    this.log(this.sec, 'red', q.side, `Kırmızı kart! ${q.p.name} (${why}) — ${this.sides[q.side].name} ${this.on(q.side).length} kişi`, { who: q.p.name });
+    this.log(this.sec, 'red', q.side, tp('Kırmızı kart! {n} ({why}) — {team} {k} kişi', { n: q.p.name, why, team: this.sides[q.side].name, k: this.on(q.side).length }), { who: q.p.name });
   }
 
   decide(o, ne) {
@@ -354,7 +357,7 @@ export class Match2D {
         if (f.then === 'head') this.shoot(f.recv, 'head');
       } else if (f.end === 'int') {
         const q = f.int; const d = hyp(q.x - f.to.x, q.y - f.to.y); if (d > 1.5) { q.x += (f.to.x - q.x) * 0.7; q.y += (f.to.y - q.y) * 0.7; }
-        if (f.then === 'head') this.log(this.sec, 'clear', q.side, `Savunma uzaklaştırdı: ${q.p.name}`);
+        if (f.then === 'head') this.log(this.sec, 'clear', q.side, tp('Savunma uzaklaştırdı: {n}', { n: q.p.name }));
         this.takeBall(q);
       } else this.outOfPlay(f);
       return;
@@ -365,7 +368,7 @@ export class Match2D {
     const T = f.team, bx = f.to.x, by = f.to.y;
     if (bx <= 0 || bx >= W) {
       const defTeam = bx >= W ? 'a' : 'h';
-      if (T === defTeam) { this.setDead('corner', OPP(T), { x: bx <= 0 ? 0.5 : W - 0.5, y: by < H / 2 ? 0.5 : H - 0.5 }, 3.5); this.log(this.sec, 'corner', OPP(T), `Korner: ${this.sides[OPP(T)].name}`); }
+      if (T === defTeam) { this.setDead('corner', OPP(T), { x: bx <= 0 ? 0.5 : W - 0.5, y: by < H / 2 ? 0.5 : H - 0.5 }, 3.5); this.log(this.sec, 'corner', OPP(T), tp('Korner: {team}', { team: this.sides[OPP(T)].name })); }
       else this.setDead('goalkick', defTeam, { x: bx <= 0 ? 5.5 : W - 5.5, y: H / 2 }, 2.5);
     } else this.setDead('throw', OPP(T), { x: clamp(bx, 3, W - 3), y: by < H / 2 ? 0.5 : H - 0.5 }, 1.6);
   }
@@ -374,26 +377,26 @@ export class Match2D {
     const asst = f.shotKind !== 'pen' && this.passer && this.passer.q.side === T && this.passer.q !== s && this.sec - this.passer.t < 9 ? this.passer.q : null;
     if (f.res === 'goal') {
       this.score[T]++; this.stats[T].on++; s.st.g++; if (asst) asst.st.a++;
-      this.log(this.sec, 'goal', T, `GOL! ${name} (${this.sides[T].name})${f.shotKind === 'pen' ? ' — penaltı' : f.shotKind === 'head' ? ' — kafa' : f.shotKind === 'free' ? ' — serbest vuruş' : ''}${asst ? ` · asist: ${asst.p.name}` : ''}`, { who: name });
+      this.log(this.sec, 'goal', T, `${GOAL_TAG} ${name} (${this.sides[T].name})${f.shotKind === 'pen' ? tp(' — penaltı') : f.shotKind === 'head' ? tp(' — kafa') : f.shotKind === 'free' ? tp(' — serbest vuruş') : ''}${asst ? tp(' · asist: {n}', { n: asst.p.name }) : ''}`, { who: name });
       this.setDead('goal', T, null, 6.5); this.dead.scorer = T; this.lastTeam = T; return;
     }
     if (f.res === 'save') {
       this.stats[T].on++; if (keeper) keeper.st.k++;
-      this.log(this.sec, 'save', T, `Kurtarış! ${name}’in şutunu ${keeper?.p.name || 'kaleci'} çıkardı`, { who: name });
+      this.log(this.sec, 'save', T, tp('Kurtarış! {shooter}’in şutunu {keeper} çıkardı', { shooter: name, keeper: keeper?.p.name || tp('kaleci') }), { who: name });
       if (this.r() < 0.55 && keeper) this.takeBall(keeper, 1.2);
-      else if (this.r() < 0.38) { const cy = this.ball.y < H / 2 ? 0.5 : H - 0.5; this.setDead('corner', T, { x: FX(T, W - 0.5), y: cy }, 3.5); this.log(this.sec, 'corner', T, `Korner: ${this.sides[T].name}`); }
+      else if (this.r() < 0.38) { const cy = this.ball.y < H / 2 ? 0.5 : H - 0.5; this.setDead('corner', T, { x: FX(T, W - 0.5), y: cy }, 3.5); this.log(this.sec, 'corner', T, tp('Korner: {team}', { team: this.sides[T].name })); }
       else { const a = this.r() * 1.2 - 0.6; this.loose = { vx: (T === 'h' ? -1 : 1) * (5 + this.r() * 4), vy: a * 8, t: 0 }; }
       return;
     }
     if (f.res === 'block') {
-      this.log(this.sec, 'block', T, `${name}’in şutu engellendi`, { who: name });
+      this.log(this.sec, 'block', T, tp('{n}’in şutu engellendi', { n: name }), { who: name });
       const u = this.r(), b = f.blocker;
       if (u < 0.4 && b) this.takeBall(b);
-      else if (u < 0.7) { const cy = this.ball.y < H / 2 ? 0.5 : H - 0.5; this.setDead('corner', T, { x: FX(T, W - 0.5), y: cy }, 3.5); this.log(this.sec, 'corner', T, `Korner: ${this.sides[T].name}`); }
+      else if (u < 0.7) { const cy = this.ball.y < H / 2 ? 0.5 : H - 0.5; this.setDead('corner', T, { x: FX(T, W - 0.5), y: cy }, 3.5); this.log(this.sec, 'corner', T, tp('Korner: {team}', { team: this.sides[T].name })); }
       else this.loose = { vx: (this.r() - 0.5) * 8, vy: (this.r() - 0.5) * 8, t: 0 };
       return;
     }
-    this.log(this.sec, 'shot', T, `${name} şutu auta attı`, { who: name });
+    this.log(this.sec, 'shot', T, tp('{n} şutu auta attı', { n: name }), { who: name });
     this.setDead('goalkick', O, { x: FX(O, 5.5), y: H / 2 }, 2.5);
   }
   chase(dt) {

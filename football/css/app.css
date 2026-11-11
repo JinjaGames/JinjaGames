@@ -1,4 +1,4 @@
-/* What If Football v2 — açık/koyu tema, geniş ve rahat bileşenler. Referans: jinjagames.com, Transfermarkt (aradığını kolay bulma). */
+/* Jinja Football v2 — açık/koyu tema, geniş ve rahat bileşenler. Referans: jinjagames.com, Transfermarkt (aradığını kolay bulma). */
 :root {
   --bg: #f5f7f4;
   --surface: #ffffff;
@@ -81,6 +81,7 @@ h1, h2, h3, h4 { margin: 0; font-family: var(--f-display); font-weight: 600; let
 .search-btn svg { width: 18px; height: 18px; stroke: currentColor; fill: none; stroke-width: 1.8; stroke-linecap: round; }
 .search-btn kbd { margin-left: auto; }
 .icon-btn { width: 42px; height: 42px; border-radius: 999px; border: 1px solid var(--line-2); background: var(--surface); color: var(--ink-2); cursor: pointer; display: grid; place-items: center; font: 700 16px var(--f-display); }
+.lang-btn { font: 700 12px/1 var(--font-c, inherit); letter-spacing: .06em; }
 .icon-btn:hover { background: var(--surface-2); color: var(--ink); }
 .icon-btn svg { width: 20px; height: 20px; stroke: currentColor; fill: none; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
 .scn-pill { display: inline-flex; align-items: center; gap: 8px; height: 42px; padding: 0 14px; border-radius: 999px; border: 1px dashed var(--line-2); color: var(--ink-3); font-size: 14px; text-decoration: none; white-space: nowrap; }
@@ -294,7 +295,7 @@ input[type=range] { width: 100%; accent-color: var(--brand); height: 24px; }
 .timeline { max-height: 320px; overflow: auto; margin: 0; padding: 0; }
 .timeline li { display: flex; gap: 10px; align-items: center; padding: 8px 14px; border-bottom: 1px solid var(--line); font-size: 14.5px; list-style: none; }
 
-@media (max-width: 1100px) { .cols-2, .cols-3 { grid-template-columns: minmax(0, 1fr); } .live-wrap { grid-template-columns: minmax(0, 1fr); } .nav a span { display: none; } .nav a { padding: 0 12px; } .search-btn { min-width: 0; } .search-btn .tx, .search-btn kbd { display: none; } }
+@media (max-width: 1100px) { .cols-2, .cols-3 { grid-template-columns: minmax(0, 1fr); } .live-wrap { grid-template-columns: minmax(0, 1fr); } .search-btn { min-width: 0; } .search-btn .tx, .search-btn kbd { display: none; } }
 @media (max-width: 820px) {
   .nav { display: none; }
   .dock { display: flex; position: fixed; left: 10px; right: 10px; bottom: 10px; z-index: 40; background: var(--nav-bg); backdrop-filter: blur(16px) saturate(1.4); border: 1px solid var(--line-2); border-radius: 22px; padding: 6px; box-shadow: var(--shadow-2); }
@@ -351,3 +352,8 @@ input[type=range] { width: 100%; accent-color: var(--brand); height: 24px; }
   .page-h select, .page-h input[type=search] { width: 100%; }
   .page-h .seg { width: 100%; } .page-h .seg button { flex: 1; }
 }
+
+/* Bir ızgara hücresinin içeriği (uzun takım adı, nowrap satır) sütunu ekrandan genişletmesin */
+.grid > *, .sheet, .sheet > .bd { min-width: 0; }
+.bd .row.center[style*="nowrap"] > .btn { flex: none; }
+.sheet > .bd[style*="display:grid"] { grid-template-columns: minmax(0, 1fr); }

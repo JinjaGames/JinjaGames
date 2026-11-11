@@ -2,18 +2,20 @@
 // UYARI: Bunlar tarihsel olarak yaklaşık değerlerdir (kupa kazananlarının devri, eleme turları, ligin sezon içi
 // formatı vb. dikkate alınmaz). Arayüzde kullanıcı her sezon için üzerine yazabilir ve "tahmini" etiketi taşır.
 
+import { t, tl } from './i18n.js';
+
 /** @returns {{ucl:number, el:number, uecl:number, rel:number, note?:string}} sıralama sayıları (ucl: ilk N, el: sonraki N ...) */
 const LOWER = { GB2: [2, 3], GB3: [2, 2], GB4: [3, 2], GB5: [1, 2], L2: [2, 2], SC2: [1, 1], SC3: [1, 1], SC4: [1, 1] };   // [yükselme, düşme]
 export const PROMO_GAIN = { GB2: 100, GB3: 12, GB4: 3, GB5: 3, L2: 25, SC2: 3, SC3: 1, SC4: 0.5 };
 export function defaultSlots(comp, season, nClubs) {
-  if (LOWER[comp]) return { ucl: 0, el: 0, uecl: 0, promo: LOWER[comp][0], rel: LOWER[comp][1], note: 'Play-off ile yükselme sayılmaz.' };
+  if (LOWER[comp]) return { ucl: 0, el: 0, uecl: 0, promo: LOWER[comp][0], rel: LOWER[comp][1], note: t('Play-off ile yükselme sayılmaz.') };
   const relDefault = nClubs >= 20 ? 3 : nClubs >= 18 ? 2 : nClubs >= 14 ? 2 : 1;
   const modern = season >= 2021;
   const cfg = {
     GB1: { ucl: season >= 2025 ? 5 : 4, el: season >= 2025 ? 1 : 1, uecl: modern ? 1 : 0, rel: 3 },
     ES1: { ucl: season >= 2025 ? 5 : 4, el: 2, uecl: modern ? 1 : 0, rel: 3 },
     IT1: { ucl: season >= 2025 ? 5 : 4, el: modern ? 1 : 2, uecl: modern ? 1 : 0, rel: 3 },
-    L1: { ucl: season >= 2025 ? 5 : 4, el: modern ? 1 : 2, uecl: modern ? 1 : 0, rel: 2, note: '16. sıra: baraj (sayılmaz)' },
+    L1: { ucl: season >= 2025 ? 5 : 4, el: modern ? 1 : 2, uecl: modern ? 1 : 0, rel: 2, note: t('16. sıra: baraj (sayılmaz)') },
     FR1: { ucl: season >= 2024 ? 4 : 3, el: modern ? 1 : 2, uecl: modern ? 1 : 0, rel: nClubs <= 18 ? 3 : 2 },
     TR1: { ucl: 2, el: 1, uecl: 1, rel: nClubs >= 20 ? 4 : 3 },
     NL1: { ucl: 2, el: 1, uecl: 1, rel: 2 },
@@ -61,8 +63,8 @@ export function positionOutcome(comp, pos, n, slots) {
   return { tier, revenue: rev };
 }
 
-export const TIER_LABEL = { promo: 'Yükselme', ucl: 'Şampiyonlar Ligi', el: 'Avrupa Ligi', uecl: 'Konferans Ligi', rel: 'Küme düşme', none: '—' };
-export const TIER_SHORT = { promo: 'YK', ucl: 'ŞL', el: 'AL', uecl: 'KL', rel: 'KD', none: '' };
+export const TIER_LABEL = { promo: t('Yükselme'), ucl: t('Şampiyonlar Ligi'), el: t('Avrupa Ligi'), uecl: t('Konferans Ligi'), rel: t('Küme düşme'), none: tl('—', '-') };
+export const TIER_SHORT = { promo: tl('YK', 'PRO'), ucl: tl('ŞL', 'CL'), el: tl('AL', 'EL'), uecl: tl('KL', 'ECL'), rel: tl('KD', 'REL'), none: '' };
 export const TIER_COLOR = { promo: 'var(--win)', ucl: 'var(--ucl)', el: 'var(--el)', uecl: 'var(--uecl)', rel: 'var(--rel)', none: 'transparent' };
 
 /** UEFA kupalarında tura çıkma başına yaklaşık prim (M€, 2018-24 ortalaması). Anahtar: aşama adı (küçük harf). */

@@ -1,5 +1,5 @@
 // Maç Simülatörü: iki takım, ilk 11, diziliş, taktik → binlerce kez simüle et.
-import { h, mount, setCrumbs, crest, fmtMoney, fmtPct, ageOn, seasonLabel, debounce, toast, clamp } from '../util.js';
+import { h, mount, setCrumbs, crest, fmtMoney, fmtPct, ageOn, seasonLabel, debounce, toast, clamp, u } from '../util.js';
 import { boot, pick, clubItems, select, field, seg, sheet, pageHead, crestFor, formStrip } from '../ui.js';
 import { loadPlayers, loadSquads, loadElo, loadUpcoming, loadIntlElo, loadCurrent, loadManagers, loadStints, mgrAD, mgrInfo, LAST_SEASON } from '../data.js';
 import { stintMap, chemistry, chemElo, monthNow, monthOfSeason, formFamiliarity, favouriteFormation, formElo, ovr } from '../strength.js';
@@ -9,16 +9,19 @@ import { FORMATIONS, autoXI, teamRatings, matchLambdas, simulate, playOne, HEALT
 import { teamContext, GOAL_ELO } from '../form.js';
 import { lineupEditor, lastName } from '../lineup.js';
 import { openLive } from '../liveview.js';
-import { Match2D } from '../match2d.js';
+import { Match2D, GOAL_TAG } from '../match2d.js';
+import { t, tl, LOC } from '../i18n.js';
 
 const NOW = 'now';
+const NA = tl('—', '-');       // boş değer göstergesi
+const DASH = tl('–', '-');     // skor / aralık ayracı
 const DEFAULT_TACTICS = () => ({ mentality: 50, tempo: 50, press: 50, width: 50, counter: 0 });
 
 export async function render(app, argStr) {
   const ctx = await boot();
   const [P, M, rawStints] = await Promise.all([loadPlayers(), loadManagers(), loadStints()]);
   const STINTS = stintMap(rawStints);
-  setCrumbs('Maç Simülatörü');
+  setCrumbs(t('Maç Simülatörü'));
   const params = new URLSearchParams(argStr || '');
 
   const sides = { h: null, a: null };
@@ -64,7 +67,7 @@ export async function render(app, argStr) {
   }
   async function changeMgr(side) {
     const s = sides[side];
-    const alt = await pickManager(ctx, M, { title: `${nameOf(s)} için teknik direktör`, exclude: s.mgr?.base });
+    const alt = await pickManager(ctx, M, { title: t('{team} için teknik direktör', { team: nameOf(s) }), exclude: s.mgr?.base });
     if (!alt) return;
     s.mgr.alt = alt;
     const fav = favouriteFormation(mgrInfo(M, alt)?.forms);     // yeni hoca kendi sistemini kurar
@@ -81,7 +84,7 @@ export async function render(app, argStr) {
 
   const defH = +(params.get('h') || 36), defA = +(params.get('a') || 141);
   const root = h('div');
-  mount(app, pageHead('Maç Simülatörü', 'İlk 11’i, dizilişi ve taktiği sen belirle; maçı on binlerce kez oynat. Geçmiş sezonların kadroları da seçilebilir.'), root);
+  mount(app, pageHead(t('Maç Simülatörü'), t('İlk 11’i, dizilişi ve taktiği sen belirle; maçı on binlerce kez oynat. Geçmiş sezonların kadroları da seçilebilir.')), root);
   const upcoming = await loadUpcoming();
 
   function calc() {
@@ -103,12 +106,12 @@ export async function render(app, argStr) {
     if (O.mode === 'nation') {
       const elo = await natElo();
       const items = [...elo].filter(([, v]) => v > 1300).sort((x, y) => y[1] - x[1]).slice(0, 120).map(([t, v]) => ({ id: t, label: tr(t), sub: '', right: Math.round(v) }));
-      const id = await pick({ title: side === 'h' ? 'Ev sahibi milli takım' : 'Deplasman milli takım', items, placeholder: 'Ülke ara… (ör. Türkiye)' });
+      const id = await pick({ title: side === 'h' ? t('Ev sahibi milli takım') : t('Deplasman milli takım'), items, placeholder: t('Ülke ara… (ör. Türkiye)') });
       if (id) await changeTeam(side, id);
       return;
     }
     const ids = Object.keys(ctx.clubs).map(Number).filter(id => ctx.clubs[id].c && ctx.comps[ctx.clubs[id].c]?.type === 'league');
-    const id = await pick({ title: side === 'h' ? 'Ev sahibi takım' : 'Deplasman takımı', items: clubItems(ctx, ids, id => ctx.compName(ctx.clubs[id].c)), placeholder: 'Takım ara… (ör. Galatasaray)' });
+    const id = await pick({ title: side === 'h' ? t('Ev sahibi takım') : t('Deplasman takımı'), items: clubItems(ctx, ids, id => ctx.compName(ctx.clubs[id].c)), placeholder: t('Takım ara… (ör. Galatasaray)') });
     if (id) { await changeTeam(side, id); }
   }
   async function setMode(mode) {
@@ -128,10 +131,10 @@ export async function render(app, argStr) {
   function mgrRow(side, s) {
     const m = s.mgr, name = m?.alt || m?.base, i = name && mgrInfo(M, name);
     const act = (txt, f) => h('span', { role: 'button', tabindex: 0, class: 'btn sm ghost', style: 'margin-left:6px', onclick: e => { e.stopPropagation(); f(); }, onkeydown: e => { if (e.key === 'Enter') { e.stopPropagation(); f(); } } }, txt);
-    return h('div', { class: 'row center', style: 'gap:6px;margin-top:6px;font-size:13px;flex-wrap:wrap' }, h('span', { class: 'cap' }, 'Hoca'),
-      name ? h('b', null, name) : h('span', { class: 'dim' }, 'bilinmiyor'), i ? eloChip(i.elo, { label: '' }) : null,
-      m?.alt ? h('span', { class: 'chip mk', title: `${m.base || 'önceki hoca'} yerine; hücum ${eloText(Math.round(mgrAD(M, m.base, m.alt)[0]))}, savunma ${eloText(Math.round(mgrAD(M, m.base, m.alt)[1]))} Elo` }, `H ${eloText(Math.round(mgrAD(M, m.base, m.alt)[0]))} · S ${eloText(Math.round(mgrAD(M, m.base, m.alt)[1]))}`) : null,
-      act('Hoca seç', () => changeMgr(side)), m?.alt ? act('Geri al', () => resetMgr(side)) : null);
+    return h('div', { class: 'row center', style: 'gap:6px;margin-top:6px;font-size:13px;flex-wrap:wrap' }, h('span', { class: 'cap' }, t('Hoca')),
+      name ? h('b', null, name) : h('span', { class: 'dim' }, t('bilinmiyor')), i ? eloChip(i.elo, { label: '' }) : null,
+      m?.alt ? h('span', { class: 'chip mk', title: t('{prev} yerine; hücum {a}, savunma {d} Elo', { prev: m.base || t('önceki hoca'), a: eloText(Math.round(mgrAD(M, m.base, m.alt)[0])), d: eloText(Math.round(mgrAD(M, m.base, m.alt)[1])) }) }, t('H {a} · S {d}', { a: eloText(Math.round(mgrAD(M, m.base, m.alt)[0])), d: eloText(Math.round(mgrAD(M, m.base, m.alt)[1])) })) : null,
+      act(t('Hoca seç'), () => changeMgr(side)), m?.alt ? act(t('Geri al'), () => resetMgr(side)) : null);
   }
 
   /** Kart içinde: son maç formu, oyun tarzı, sakat/şüpheli sayısı. */
@@ -139,37 +142,37 @@ export async function render(app, argStr) {
     const tc = s.tc, hurt = s.squad.filter(p => availOf(p, s.avail) < 1);
     if (!tc && !hurt.length) return null;
     return h('div', { class: 'row center', style: 'gap:6px;margin-top:6px;font-size:13px;flex-wrap:wrap' },
-      tc?.last?.length ? [h('span', { class: 'cap' }, 'Form'), formStrip(tc.last)] : null,
-      tc?.played ? h('span', { class: `chip ${tc.form >= 8 ? 'uecl' : tc.form <= -8 ? 'rel' : ''}`, title: 'Son 6 maçın beklentiye göre puanı; takım gücüne en fazla ±25 Elo yansır' }, `${eloText(Math.round(tc.form))} Elo`) : null,
-      tc ? h('span', { class: 'chip', title: `Maç başına ${tc.gf?.toFixed(2) ?? '—'} gol atıyor, ${tc.ga?.toFixed(2) ?? '—'} yiyor (beklentiye göre hücum/savunma eğilimi ve maçlarındaki toplam gol)` }, `Tarz: ${tc.label}`) : null,
-      hurt.length ? h('span', { class: 'chip rel', title: hurt.map(p => `${p.name} (%${Math.round(availOf(p, s.avail) * 100)})`).join(', ') }, `${hurt.length} sakat/şüpheli`) : null);
+      tc?.last?.length ? [h('span', { class: 'cap' }, t('Form')), formStrip(tc.last)] : null,
+      tc?.played ? h('span', { class: `chip ${tc.form >= 8 ? 'uecl' : tc.form <= -8 ? 'rel' : ''}`, title: t('Son 6 maçın beklentiye göre puanı; takım gücüne en fazla ±25 Elo yansır') }, `${eloText(Math.round(tc.form))} Elo`) : null,
+      tc ? h('span', { class: 'chip', title: t('Maç başına {gf} gol atıyor, {ga} yiyor (beklentiye göre hücum/savunma eğilimi ve maçlarındaki toplam gol)', { gf: tc.gf?.toFixed(2) ?? NA, ga: tc.ga?.toFixed(2) ?? NA }) }, t('Tarz: {label}', { label: tc.label })) : null,
+      hurt.length ? h('span', { class: 'chip rel', title: hurt.map(p => `${p.name} (${t('%{n}', { n: Math.round(availOf(p, s.avail) * 100) })})`).join(', ') }, t('{n} sakat/şüpheli', { n: hurt.length })) : null);
   }
 
   function drawTeamBar() {
-    const seasons = [[NOW, 'Güncel kadro'], ...Array.from({ length: LAST_SEASON - 2004 + 1 }, (_, i) => LAST_SEASON - i).map(s => [s, seasonLabel(s)])];
+    const seasons = [[NOW, t('Güncel kadro')], ...Array.from({ length: LAST_SEASON - 2004 + 1 }, (_, i) => LAST_SEASON - i).map(s => [s, seasonLabel(s)])];
     const teamCard = side => {
       const s = sides[side];
       return h('button', { class: 'tile', style: `text-align:left;cursor:pointer;color:inherit;font:inherit;${O.active === side ? 'border-color:var(--chalk)' : ''}`, onclick: () => { O.active = side; editor = null; refresh(); }, 'aria-pressed': String(O.active === side) },
         h('div', { class: 'row center', style: 'gap:12px;flex-wrap:nowrap' }, (s.kind === 'nation' ? crest(nameOf(s), 'lg') : crestFor(ctx, s.clubId, 'lg')),
-          h('div', { style: 'flex:1;min-width:0' }, h('div', { class: 'cap' }, side === 'h' ? 'Ev sahibi' : 'Deplasman'), h('div', { style: 'font:600 22px var(--font-c);letter-spacing:.03em;text-transform:uppercase;overflow:hidden;text-overflow:ellipsis;white-space:nowrap' }, nameOf(s)),
-            h('div', { class: 'dim', style: 'font-size:12.5px' }, `${s.kind === 'nation' ? 'Milli takım' : ctx.compName(ctx.clubs[s.clubId]?.c)} · Elo ${Math.round(effElo(s))} · ${s.squad.length} oyuncu`),
+          h('div', { style: 'flex:1;min-width:0' }, h('div', { class: 'cap' }, side === 'h' ? t('Ev sahibi') : t('Deplasman')), h('div', { style: 'font:600 22px var(--font-c);letter-spacing:.03em;text-transform:uppercase;overflow:hidden;text-overflow:ellipsis;white-space:nowrap' }, nameOf(s)),
+            h('div', { class: 'dim', style: 'font-size:12.5px' }, t('{comp} · Elo {elo} · {n} oyuncu', { comp: s.kind === 'nation' ? t('Milli takım') : ctx.compName(ctx.clubs[s.clubId]?.c), elo: Math.round(effElo(s)), n: s.squad.length })),
             s.kind === 'nation' ? null : mgrRow(side, s), s.kind === 'nation' ? null : ctxRow(s)),
-          h('span', { role: 'button', tabindex: 0, class: 'btn sm', onclick: e => { e.stopPropagation(); chooseClub(side); }, onkeydown: e => { if (e.key === 'Enter') { e.stopPropagation(); chooseClub(side); } } }, 'Değiştir')));
+          h('span', { role: 'button', tabindex: 0, class: 'btn sm', onclick: e => { e.stopPropagation(); chooseClub(side); }, onkeydown: e => { if (e.key === 'Enter') { e.stopPropagation(); chooseClub(side); } } }, t('Değiştir'))));
     };
     const ups = upcoming.fixtures.slice(0, 6);
     return h('div', { class: 'grid', style: 'margin-bottom:14px' },
       h('div', { class: 'grid teams-row' }, teamCard('h'), h('div', { class: 'cap vs', style: 'font-size:18px' }, 'vs'), teamCard('a')),
-      h('div', { class: 'row center' }, seg([['club', 'Kulüpler'], ['nation', 'Milli takımlar']], O.mode, setMode, 'mk'), O.mode === 'club' ? field('Kadro dönemi', select(seasons, sides.h.season, v => changeSeason(v))) : null,
-        h('button', { class: 'btn', style: 'align-self:flex-end', onclick: async () => { const t = sides.h; sides.h = await loadSide(sides.a.clubId, t.season, O.mode); sides.a = await loadSide(t.clubId, t.season, O.mode); editor = null; refresh(); } }, '⇄ Yer değiştir'),
-        O.mode === 'club' && ups.length ? h('div', { class: 'row center', style: 'align-self:flex-end' }, h('span', { class: 'cap' }, 'Yaklaşan:'), ...ups.map(f => h('button', { class: 'btn sm', onclick: async () => { if (f.h && f.a) { sides.h = await loadSide(f.h, NOW); sides.a = await loadSide(f.a, NOW); editor = null; refresh(); } } }, `${ctx.clubs[f.h] ? ctx.clubName(f.h) : f.hn} – ${ctx.clubs[f.a] ? ctx.clubName(f.a) : f.an}`))) : null));
+      h('div', { class: 'row center' }, seg([['club', t('Kulüpler')], ['nation', t('Milli takımlar')]], O.mode, setMode, 'mk'), O.mode === 'club' ? field(t('Kadro dönemi'), select(seasons, sides.h.season, v => changeSeason(v))) : null,
+        h('button', { class: 'btn', style: 'align-self:flex-end', onclick: async () => { const t = sides.h; sides.h = await loadSide(sides.a.clubId, t.season, O.mode); sides.a = await loadSide(t.clubId, t.season, O.mode); editor = null; refresh(); } }, t('⇄ Yer değiştir')),
+        O.mode === 'club' && ups.length ? h('div', { class: 'row center', style: 'align-self:flex-end' }, h('span', { class: 'cap' }, t('Yaklaşan:')), ...ups.map(f => h('button', { class: 'btn sm', onclick: async () => { if (f.h && f.a) { sides.h = await loadSide(f.h, NOW); sides.a = await loadSide(f.a, NOW); editor = null; refresh(); } } }, `${ctx.clubs[f.h] ? ctx.clubName(f.h) : f.hn} ${DASH} ${ctx.clubs[f.a] ? ctx.clubName(f.a) : f.an}`))) : null));
   }
 
   function drawTactics() {
     const s = sides[O.active];
     const sl = (key, label, lo, hi) => h('div', { class: 'sl mk' }, h('div', { class: 't' }, h('span', null, label), h('span', { class: 'dim' }, `${lo} ↔ ${hi}`)),
       h('input', { type: 'range', min: 0, max: 100, value: s.tactics[key], 'aria-label': label, oninput: e => { s.tactics[key] = +e.target.value; rec(); } }));
-    mount(tacticsBox, h('div', { class: 'sliders' }, sl('mentality', 'Mentalite', 'Defansif', 'Hücumcu'), sl('tempo', 'Tempo', 'Yavaş', 'Hızlı'), sl('press', 'Pres', 'Düşük', 'Yüksek'), sl('width', 'Kanat oyunu', 'Dar', 'Geniş'), sl('counter', 'Kontra ataklar', 'Yok', 'Çok')),
-      h('div', { class: 'dim', style: 'font-size:12px;margin-top:10px' }, 'Taktik etkileri sezgiseldir ve küçüktür (gol beklentisinde yaklaşık ±%10). Asıl fark ilk 11’den ve takım gücünden gelir.'));
+    mount(tacticsBox, h('div', { class: 'sliders' }, sl('mentality', t('Mentalite'), t('Defansif'), t('Hücumcu')), sl('tempo', t('Tempo'), t('Yavaş'), t('Hızlı')), sl('press', t('Pres'), t('Düşük'), t('Yüksek')), sl('width', t('Kanat oyunu'), t('Dar'), t('Geniş')), sl('counter', t('Kontra ataklar'), t('Yok'), t('Çok'))),
+      h('div', { class: 'dim', style: 'font-size:12px;margin-top:10px' }, t('Taktik etkileri sezgiseldir ve küçüktür (gol beklentisinde yaklaşık ±%10). Asıl fark ilk 11’den ve takım gücünden gelir.')));
   }
 
   function drawStrength() {
@@ -177,26 +180,26 @@ export async function render(app, argStr) {
     const sg = x => `${x > 0 ? '+' : x < 0 ? '−' : '±'}${Math.abs(Math.round(x))}`;
     const pair = (a, d) => `${sg(a)} / ${sg(d)}`;
     const col = (r, s) => ({
-      base: Math.round(r.base), sezon: sg(r.season), form: sg(r.recent), tarz: `${sg(r.tilt)} H / ${sg(-r.tilt)} S`, sak: pair(r.injA, r.injD), kadro: pair(r.sqA, r.sqD), kimya: `${sg(r.chem)}  (%${Math.round(r.chemTeam * 100)}${r.newcomers ? `, ${r.newcomers} yeni` : ''})`,
-      hoca: s.mgr?.alt || s.mgr?.base ? pair(r.mgrA, r.mgrD) : '—', dizi: r.fam == null ? '—' : sg(r.form), takt: pair(r.tactA, r.tactD), out: `${Math.round(r.att)} / ${Math.round(r.def)}`,
+      base: Math.round(r.base), sezon: sg(r.season), form: sg(r.recent), tarz: t('{a} H / {d} S', { a: sg(r.tilt), d: sg(-r.tilt) }), sak: pair(r.injA, r.injD), kadro: pair(r.sqA, r.sqD), kimya: `${sg(r.chem)}  (${t('%{n}', { n: Math.round(r.chemTeam * 100) })}${r.newcomers ? `, ${t('{n} yeni', { n: r.newcomers })}` : ''})`,
+      hoca: s.mgr?.alt || s.mgr?.base ? pair(r.mgrA, r.mgrD) : NA, dizi: r.fam == null ? NA : sg(r.form), takt: pair(r.tactA, r.tactD), out: `${Math.round(r.att)} / ${Math.round(r.def)}`,
     });
     const H = col(hr, sides.h), A = col(ar, sides.a);
     const row = (label, k, tip, strong) => h('tr', null, h('td', { title: tip }, strong ? h('b', null, label) : label), h('td', { class: 'num' }, strong ? h('b', null, H[k]) : H[k]), h('td', { class: 'num' }, strong ? h('b', null, A[k]) : A[k]));
-    mount(strengthBox, h('div', { class: 'cap', style: 'margin-bottom:6px' }, 'Neden bu olasılıklar? (Elo · hücum / savunma)'),
+    mount(strengthBox, h('div', { class: 'cap', style: 'margin-bottom:6px' }, t('Neden bu olasılıklar? (Elo · hücum / savunma)')),
       h('table', { class: 'tbl' }, h('thead', null, h('tr', null, h('th', null, ''), h('th', { class: 'num' }, nameOf(sides.h)), h('th', { class: 'num' }, nameOf(sides.a)))),
         h('tbody', null,
-          row('Taban (sezon başı Elo)', 'base', 'Kulübün gerçek (sağlıklı) kadrosunun gücü'),
-          row('Sezon içi gelişme', 'sezon', 'Bu sezon oynanan maçlarla güncellenen Elo − sezon başı Elo'),
-          row('Son 6 maç formu', 'form', 'Son maçların beklentiye göre puanı (en fazla ±25 Elo)'),
-          row('Oyun tarzı (hücum / savunma)', 'tarz', 'Gol atma/yeme eğiliminin beklentiden sapması; toplam gücü değiştirmez, hücum ve savunmaya ters yönde dağıtır'),
-          row('Sakatlık / ilk 11 seçimi', 'sak', 'Sakat ya da şüpheli oyuncuların yerine yedeğin oynaması ve en iyi 11’den elle yaptığın sapmalar; durumu slotta değiştirebilirsin'),
-          row('Kadro farkı', 'kadro', 'İlk 11’in kulübün gerçek en iyi 11’ine göre farkı; oyuncu gücü piyasa değerinden ve yaştan, mevki uyumuyla'),
-          row('Takım kimyası', 'kimya', 'Komşu mevkideki oyuncuların daha önce birlikte oynaması, ortak uyruk/lig, kulübe uyum süresi; gerçek ilk 11’e göre fark'),
-          row('Teknik direktör', 'hoca', 'Değiştirilen hocanın hücum/savunma farkı (eski hoca − yeni hoca)'),
-          row('Diziliş uyumu', 'dizi', 'Hocanın bu dizilişi ne kadar sık kullandığı'),
-          row('Taktik', 'takt', 'Mentalite, pres ve kanat oyunu ayarları'),
-          row('Sonuç (hücum / savunma)', 'out', '', true))),
-      h('div', { class: 'dim', style: 'font-size:12px;margin-top:6px' }, `Beklenen gol: ${lh.toFixed(2)} – ${la.toFixed(2)} (maç toplamı ${(lh + la).toFixed(2)}${hr.tot && ar.tot ? '; iki takımın tarzından' : ''})`));
+          row(t('Taban (sezon başı Elo)'), 'base', t('Kulübün gerçek (sağlıklı) kadrosunun gücü')),
+          row(t('Sezon içi gelişme'), 'sezon', t('Bu sezon oynanan maçlarla güncellenen Elo − sezon başı Elo')),
+          row(t('Son 6 maç formu'), 'form', t('Son maçların beklentiye göre puanı (en fazla ±25 Elo)')),
+          row(t('Oyun tarzı (hücum / savunma)'), 'tarz', t('Gol atma/yeme eğiliminin beklentiden sapması; toplam gücü değiştirmez, hücum ve savunmaya ters yönde dağıtır')),
+          row(t('Sakatlık / ilk 11 seçimi'), 'sak', t('Sakat ya da şüpheli oyuncuların yerine yedeğin oynaması ve en iyi 11’den elle yaptığın sapmalar; durumu slotta değiştirebilirsin')),
+          row(t('Kadro farkı'), 'kadro', t('İlk 11’in kulübün gerçek en iyi 11’ine göre farkı; oyuncu gücü piyasa değerinden ve yaştan, mevki uyumuyla')),
+          row(t('Takım kimyası'), 'kimya', t('Komşu mevkideki oyuncuların daha önce birlikte oynaması, ortak uyruk/lig, kulübe uyum süresi; gerçek ilk 11’e göre fark')),
+          row(t('Teknik direktör'), 'hoca', t('Değiştirilen hocanın hücum/savunma farkı (eski hoca − yeni hoca)')),
+          row(t('Diziliş uyumu'), 'dizi', t('Hocanın bu dizilişi ne kadar sık kullandığı')),
+          row(t('Taktik'), 'takt', t('Mentalite, pres ve kanat oyunu ayarları')),
+          row(t('Sonuç (hücum / savunma)'), 'out', '', true))),
+      h('div', { class: 'dim', style: 'font-size:12px;margin-top:6px' }, t('Beklenen gol: {lh} – {la} (maç toplamı {tot}{src})', { lh: lh.toFixed(2), la: la.toFixed(2), tot: (lh + la).toFixed(2), src: hr.tot && ar.tot ? t('; iki takımın tarzından') : '' })));
   }
 
   function drawResults() {
@@ -208,13 +211,13 @@ export async function render(app, argStr) {
       h('div', { style: 'background:none;color:var(--chalk-3);font-size:10px' }, ''), ...[0, 1, 2, 3, 4, 5].map(j => h('div', { style: 'background:none;color:var(--chalk-3)' }, j)),
       ...[0, 1, 2, 3, 4, 5].flatMap(i => [h('div', { style: 'background:none;color:var(--chalk-3)' }, i), ...[0, 1, 2, 3, 4, 5].map(j => { const p = sim.grid[i][j]; const a = Math.sqrt(p / max); return h('div', { style: `background:color-mix(in srgb, ${i > j ? 'var(--ucl)' : i === j ? 'var(--chalk-2)' : 'var(--el)'} ${Math.round(18 + a * 82)}%, var(--bg-1));color:${a > .55 ? '#08120d' : 'var(--chalk)'}`, title: `${i}-${j}: ${fmtPct(p, 1)}` }, p >= .005 ? Math.round(p * 100) + '%' : ''); })]));
     const out = h('div', { class: 'grid', style: 'gap:18px' },
-      h('div', null, bar(`${hn} galibiyet`, sim.hw, 'var(--ucl)'), bar('Beraberlik', sim.dr, 'var(--chalk-2)'), bar(`${an} galibiyet`, sim.aw, 'var(--el)'),
-        sim.knock ? h('div', { class: 'note mk', style: 'margin-top:8px' }, `Eleme: ${hn} tur atlar ${fmtPct(sim.knock.hAdv, 1)} · ${an} ${fmtPct(sim.knock.aAdv, 1)} (uzatma ${fmtPct(sim.knock.et)}, penaltı ${fmtPct(sim.knock.pen)})`) : null),
+      h('div', null, bar(t('{team} galibiyet', { team: hn }), sim.hw, 'var(--ucl)'), bar(t('Beraberlik'), sim.dr, 'var(--chalk-2)'), bar(t('{team} galibiyet', { team: an }), sim.aw, 'var(--el)'),
+        sim.knock ? h('div', { class: 'note mk', style: 'margin-top:8px' }, t('Eleme: {hn} tur atlar {hp} · {an} {ap} (uzatma {et}, penaltı {pen})', { hn, an, hp: fmtPct(sim.knock.hAdv, 1), ap: fmtPct(sim.knock.aAdv, 1), et: fmtPct(sim.knock.et), pen: fmtPct(sim.knock.pen) })) : null),
       h('div', { class: 'grid', style: 'grid-template-columns:repeat(4,1fr);gap:10px' },
-        kv('Ortalama gol', `${sim.avgH.toFixed(2)} – ${sim.avgA.toFixed(2)}`), kv('2,5 üstü', fmtPct(sim.over25)), kv('Karşılıklı gol', fmtPct(sim.btts)), kv('Gol yemeden', `${fmtPct(sim.hCs)} / ${fmtPct(sim.aCs)}`)),
-      h('div', null, h('div', { class: 'cap', style: 'margin-bottom:6px' }, 'Skor olasılıkları · satır: ' + lastName(hn) + ' golü, sütun: ' + lastName(an)), heat,
+        kv(t('Ortalama gol'), `${sim.avgH.toFixed(2)} ${DASH} ${sim.avgA.toFixed(2)}`), kv(t('2,5 üstü'), fmtPct(sim.over25)), kv(t('Karşılıklı gol'), fmtPct(sim.btts)), kv(t('Gol yemeden'), `${fmtPct(sim.hCs)} / ${fmtPct(sim.aCs)}`)),
+      h('div', null, h('div', { class: 'cap', style: 'margin-bottom:6px' }, t('Skor olasılıkları · satır: {h} golü, sütun: {a}', { h: lastName(hn), a: lastName(an) })), heat,
         h('div', { class: 'row', style: 'margin-top:8px;gap:8px' }, ...sim.top.slice(0, 5).map(t => h('span', { class: 'chip' }, `${t.h}-${t.a} · ${fmtPct(t.p, 1)}`)))),
-      h('div', null, h('div', { class: 'row center', style: 'margin-bottom:8px' }, h('button', { class: 'btn mk', onclick: playStory }, 'Tek maç oyna'), h('span', { class: 'dim', style: 'font-size:12px' }, `${sim.n.toLocaleString('tr')} simülasyon üzerinden`)), h('div', { id: 'story' }, storyView())));
+      h('div', null, h('div', { class: 'row center', style: 'margin-bottom:8px' }, h('button', { class: 'btn mk', onclick: playStory }, t('Tek maç oyna')), h('span', { class: 'dim', style: 'font-size:12px' }, t('{n} simülasyon üzerinden', { n: sim.n.toLocaleString(LOC) }))), h('div', { id: 'story' }, storyView())));
     mount(resultsBox, out);
   }
   const kv = (l, v) => h('div', { class: 'kpi' }, h('div', { class: 'v', style: 'font-size:20px' }, v), h('div', { class: 'l' }, l));
@@ -226,17 +229,17 @@ export async function render(app, argStr) {
     const box = document.getElementById('story'); if (box) box.replaceChildren(storyView());
   }
   function storyView() {
-    if (!story) return h('div', { class: 'dim' }, 'Bir maç oynat: skor, gol dakikaları, golü atanlar ve maç istatistikleri.');
+    if (!story) return h('div', { class: 'dim' }, t('Bir maç oynat: skor, gol dakikaları, golü atanlar ve maç istatistikleri.'));
     const m = story, hn = nameOf(sides.h), an = nameOf(sides.a), s = m.stats, tot = Math.max(1, s.h.seq + s.a.seq);
     const goals = m.events.filter(e => e.type === 'goal'), best = m.summary().best;
     const row = (l, a, b) => h('tr', null, h('td', { class: 'num' }, a), h('td', { style: 'text-align:center;color:var(--ink-3)' }, l), h('td', null, b));
     return h('div', { class: 'grid', style: 'gap:12px' },
-      h('div', { style: 'font:700 30px var(--font-c);letter-spacing:.03em' }, `${hn} ${m.score.h} – ${m.score.a} ${an}`),
-      goals.length ? h('ul', { class: 'list-plain' }, goals.map(e => h('li', { style: 'padding:5px 0' }, h('span', { class: 'chip' }, `${e.min}'`), h('span', null, e.text.replace('GOL! ', '')))))
-        : h('div', { class: 'mute' }, 'Gol yok.'),
-      h('table', { class: 'tbl' }, h('tbody', null, row('Top hakimiyeti', fmtPct(s.h.seq / tot), fmtPct(s.a.seq / tot)), row('Şut (isabetli)', `${s.h.shots} (${s.h.on})`, `${s.a.shots} (${s.a.on})`),
-        row('Beklenen gol (xG)', s.h.xg.toFixed(2), s.a.xg.toFixed(2)), row('Korner', s.h.corner, s.a.corner), row('Kart (sarı / kırmızı)', `${s.h.y} / ${s.h.r}`, `${s.a.y} / ${s.a.r}`))),
-      best ? h('div', { class: 'note' }, `Maçın oyuncusu: ${best.p.name} (${nameOf(sides[best.side])}) — ${best.st.g} gol, ${best.st.a} asist, ${best.st.s} şut${best.st.k ? `, ${best.st.k} kurtarış` : ''}`) : null);
+      h('div', { style: 'font:700 30px var(--font-c);letter-spacing:.03em' }, `${hn} ${m.score.h} ${DASH} ${m.score.a} ${an}`),
+      goals.length ? h('ul', { class: 'list-plain' }, goals.map(e => h('li', { style: 'padding:5px 0' }, h('span', { class: 'chip' }, `${e.min}'`), h('span', null, e.text.replace(GOAL_TAG + ' ', '')))))
+        : h('div', { class: 'mute' }, t('Gol yok.')),
+      h('table', { class: 'tbl' }, h('tbody', null, row(t('Top hakimiyeti'), fmtPct(s.h.seq / tot), fmtPct(s.a.seq / tot)), row(t('Şut (isabetli)'), `${s.h.shots} (${s.h.on})`, `${s.a.shots} (${s.a.on})`),
+        row(t('Beklenen gol (xG)'), s.h.xg.toFixed(2), s.a.xg.toFixed(2)), row(t('Korner'), s.h.corner, s.a.corner), row(t('Kart (sarı / kırmızı)'), `${s.h.y} / ${s.h.r}`, `${s.a.y} / ${s.a.r}`))),
+      best ? h('div', { class: 'note' }, t('Maçın oyuncusu: {p} ({team}) — {g} gol, {a} asist, {s} şut{k}', { p: best.p.name, team: nameOf(sides[best.side]), g: best.st.g, a: best.st.a, s: best.st.s, k: best.st.k ? t(', {n} kurtarış', { n: best.st.k }) : '' })) : null);
   }
 
   const toAdded = x => ({ id: x.id, name: x.name, line: x.line, pos: x.pos, value: x.value || 3e5, age: ageOn(x.dob), nat: x.nat, img: x.img, added: true });
@@ -250,7 +253,7 @@ export async function render(app, argStr) {
   }
   const b64 = o => btoa(unescape(encodeURIComponent(JSON.stringify(o)))).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
   const unb64 = t => JSON.parse(decodeURIComponent(escape(atob(t.replace(/-/g, '+').replace(/_/g, '/')))));
-  const shareLink = () => `${location.origin}${location.pathname}#/simulator/sim=${b64(snapshot())}`;
+  const shareLink = () => `${location.origin}${u(`/simulator/sim=${b64(snapshot())}`)}`;
   async function restoreSide(sn) {
     const s = await loadSide(sn.id, sn.season, sn.kind);
     for (const id of sn.add || []) { const x = P.byId.get(id); if (x && !s.squad.some(q => q.id === id)) s.squad.push(toAdded(x)); }
@@ -264,7 +267,7 @@ export async function render(app, argStr) {
     return s;
   }
   async function applySnapshot(o) {
-    if (!o || o.app !== 'what-if-football' || !o.h || !o.a) throw new Error('Bu bir What If Football maç dosyası değil');
+    if (!o || o.app !== 'what-if-football' || !o.h || !o.a) throw new Error(t('Bu bir Jinja Football maç dosyası değil'));
     O.mode = o.mode === 'nation' ? 'nation' : 'club'; O.neutral = !!o.neutral; O.knockout = !!o.knockout; O.n = [1000, 10000, 100000, 1000000].includes(o.n) ? o.n : 10000;
     sides.h = await restoreSide(o.h); sides.a = await restoreSide(o.a); editor = null;
   }
@@ -274,29 +277,29 @@ export async function render(app, argStr) {
     return unb64(m ? m[1] : t);
   };
   function importDialog() {
-    const ta = h('textarea', { rows: 6, placeholder: 'Bağlantıyı ya da dosya içeriğini buraya yapıştır…', style: 'width:100%;font:13px var(--f-mono, monospace)' });
+    const ta = h('textarea', { rows: 6, placeholder: t('Bağlantıyı ya da dosya içeriğini buraya yapıştır…'), style: 'width:100%;font:13px var(--f-mono, monospace)' });
     const file = h('input', { type: 'file', accept: '.json,application/json', onchange: async e => { const f = e.target.files[0]; if (f) ta.value = await f.text(); } });
-    const dlg = h('dialog', { 'aria-label': 'Maçı içe aktar', style: 'max-width:min(560px,94vw)' });
+    const dlg = h('dialog', { 'aria-label': t('Maçı içe aktar'), style: 'max-width:min(560px,94vw)' });
     const go = async () => {
-      try { await applySnapshot(parseImport(ta.value)); dlg.close(); dlg.remove(); toast('Maç yüklendi'); refresh(); }
-      catch (e) { toast(`İçe aktarılamadı: ${e.message || e}`); }
+      try { await applySnapshot(parseImport(ta.value)); dlg.close(); dlg.remove(); toast(t('Maç yüklendi')); refresh(); }
+      catch (e) { toast(t('İçe aktarılamadı: {err}', { err: e.message || e })); }
     };
-    dlg.append(h('div', { style: 'padding:16px;display:grid;gap:12px' }, h('h3', { style: 'text-transform:uppercase;letter-spacing:.06em' }, 'Maçı içe aktar'),
-      h('div', { class: 'dim' }, 'Birinin paylaştığı bağlantıyı ya da dışa aktarılan .json dosyasını ekle.'), ta, file,
-      h('div', { class: 'row', style: 'justify-content:flex-end' }, h('button', { class: 'btn', onclick: () => { dlg.close(); dlg.remove(); } }, 'Vazgeç'), h('button', { class: 'btn primary', onclick: go }, 'Yükle'))));
+    dlg.append(h('div', { style: 'padding:16px;display:grid;gap:12px' }, h('h3', { style: 'text-transform:uppercase;letter-spacing:.06em' }, t('Maçı içe aktar')),
+      h('div', { class: 'dim' }, t('Birinin paylaştığı bağlantıyı ya da dışa aktarılan .json dosyasını ekle.')), ta, file,
+      h('div', { class: 'row', style: 'justify-content:flex-end' }, h('button', { class: 'btn', onclick: () => { dlg.close(); dlg.remove(); } }, t('Vazgeç')), h('button', { class: 'btn primary', onclick: go }, t('Yükle')))));
     document.body.append(dlg); dlg.showModal();
   }
-  const shareRow = () => h('div', { class: 'row center' }, h('span', { class: 'cap' }, 'Bu maçı'),
-    h('button', { class: 'btn sm', onclick: async () => { const l = shareLink(); try { await navigator.clipboard.writeText(l); toast('Bağlantı kopyalandı; açan herkes aynı maçı görür'); } catch { prompt('Bağlantıyı kopyala', l); } } }, 'Bağlantıyı kopyala'),
-    h('button', { class: 'btn sm', onclick: () => { const a = h('a', { download: `mac-${lastName(nameOf(sides.h))}-${lastName(nameOf(sides.a))}.json`, href: URL.createObjectURL(new Blob([JSON.stringify(snapshot(), null, 2)], { type: 'application/json' })) }); a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 2000); } }, 'Dışa aktar'),
-    h('button', { class: 'btn sm', onclick: importDialog }, 'İçe aktar'));
+  const shareRow = () => h('div', { class: 'row center' }, h('span', { class: 'cap' }, t('Bu maçı')),
+    h('button', { class: 'btn sm', onclick: async () => { const l = shareLink(); try { await navigator.clipboard.writeText(l); toast(t('Bağlantı kopyalandı; açan herkes aynı maçı görür')); } catch { prompt(t('Bağlantıyı kopyala'), l); } } }, t('Bağlantıyı kopyala')),
+    h('button', { class: 'btn sm', onclick: () => { const a = h('a', { download: `mac-${lastName(nameOf(sides.h))}-${lastName(nameOf(sides.a))}.json`, href: URL.createObjectURL(new Blob([JSON.stringify(snapshot(), null, 2)], { type: 'application/json' })) }); a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 2000); } }, t('Dışa aktar')),
+    h('button', { class: 'btn sm', onclick: importDialog }, t('İçe aktar')));
 
   function drawEditor() {
     const s = sides[O.active];
     if (!editor) editor = lineupEditor({ squad: s.squad, formation: s.formation, xi: s.xi, addPlayer: async () => {
       const have = new Set(s.squad.map(q => q.id));
       const items = P.list.filter(x => x.value >= 1e6 && (x.lastSeason ?? 0) >= LAST_SEASON && !have.has(x.id)).sort((x, y) => y.value - x.value).slice(0, 5000).map(x => ({ id: x.id, label: x.name, sub: `${x.club ? ctx.clubName(x.club) : ''} ${x.nat || ''}`, right: fmtMoney(x.value), tag: x.pos || x.line, tagCls: x.line }));
-      const id = await pick({ title: 'Kadroya kim katılsın?', items, placeholder: 'Oyuncu ara… (ör. Haaland)' });
+      const id = await pick({ title: t('Kadroya kim katılsın?'), items, placeholder: t('Oyuncu ara… (ör. Haaland)') });
       const x = id && P.byId.get(id); return x ? toAdded(x) : null;
     }, getChem: () => chemOf(s), avail: () => s.avail, setAvail: (pid, v) => { if (v >= 1) s.avail.delete(pid); else s.avail.set(pid, v); }, ovr, onSell: pid => { s.squad = s.squad.filter(q => q.id !== pid); s.removed.push(pid); }, onChange: (xi, f) => { s.xi = xi; s.formation = f; rec(); } });
     return editor.el;
@@ -305,18 +308,18 @@ export async function render(app, argStr) {
   const watchBtn = () => h('button', { class: 'btn primary', onclick: () => {
     const side = k => { const x = sides[k]; return { squad: x.squad, elo: x.elo, formation: x.formation, xi: [...x.xi], tactics: { ...x.tactics }, rate: (squad, formation, xi, tactics) => rateSide(x, squad, formation, xi, tactics) }; };
     openLive({ names: { h: nameOf(sides.h), a: nameOf(sides.a) }, sides: { h: side('h'), a: side('a') }, neutral: O.neutral, haValue: O.mode === 'nation' ? 100 : undefined });
-  } }, 'Maçı 2D izle');
+  } }, t('Maçı 2D izle'));
   function refresh() {
     calc();
-    const left = sheet(h('h2', null, `İlk 11 · ${nameOf(sides[O.active])}`), drawEditor(), { actions: [seg([['h', 'Ev sahibi'], ['a', 'Deplasman']], O.active, v => { O.active = v; editor = null; refresh(); })] });
+    const left = sheet(h('h2', null, t('İlk 11 · {team}', { team: nameOf(sides[O.active]) })), drawEditor(), { actions: [seg([['h', t('Ev sahibi')], ['a', t('Deplasman')]], O.active, v => { O.active = v; editor = null; refresh(); })] });
     drawTactics(); drawResults(); drawStrength();
     const opts = h('div', { class: 'row center' },
-      h('label', { class: 'row center', style: 'gap:6px' }, h('input', { type: 'checkbox', checked: O.neutral, onchange: e => { O.neutral = e.target.checked; rec(); } }), 'Tarafsız saha'),
-      h('label', { class: 'row center', style: 'gap:6px' }, h('input', { type: 'checkbox', checked: O.knockout, onchange: e => { O.knockout = e.target.checked; rec(); } }), 'Eleme maçı'),
-      field('Simülasyon', select([[1000, '1.000'], [10000, '10.000'], [100000, '100.000'], [1000000, '1.000.000']], O.n, v => { O.n = +v; rec(); })));
+      h('label', { class: 'row center', style: 'gap:6px' }, h('input', { type: 'checkbox', checked: O.neutral, onchange: e => { O.neutral = e.target.checked; rec(); } }), t('Tarafsız saha')),
+      h('label', { class: 'row center', style: 'gap:6px' }, h('input', { type: 'checkbox', checked: O.knockout, onchange: e => { O.knockout = e.target.checked; rec(); } }), t('Eleme maçı')),
+      field(t('Simülasyon'), select([1000, 10000, 100000, 1000000].map(n => [n, n.toLocaleString(LOC)]), O.n, v => { O.n = +v; rec(); })));
     mount(root, drawTeamBar(),
       h('div', { class: 'grid cols-2' }, left,
-        h('div', { class: 'grid', style: 'align-content:start' }, sheet(h('h2', null, 'Sonuç'), resultsBox, { actions: [watchBtn()] }), sheet(h('h2', null, 'Maç ayarları'), h('div', { class: 'grid' }, opts, shareRow(), strengthBox)), sheet(h('h2', null, `Taktik · ${nameOf(sides[O.active])}`), tacticsBox))));
+        h('div', { class: 'grid', style: 'align-content:start' }, sheet(h('h2', null, t('Sonuç')), resultsBox, { actions: [watchBtn()] }), sheet(h('h2', null, t('Maç ayarları')), h('div', { class: 'grid' }, opts, shareRow(), strengthBox)), sheet(h('h2', null, t('Taktik · {team}', { team: nameOf(sides[O.active]) })), tacticsBox))));
   }
   let shared = null;
   if (params.get('sim')) { try { shared = unb64(params.get('sim')); } catch { /* bozuk bağlantı: varsayılan maç açılır */ } }

@@ -1,13 +1,14 @@
 // Senaryo atölyesi: bir takım için "hangi maç sezonu değiştirirdi?" ve hedefe (şampiyonluk, Avrupa, ligde kalma) giden en az maç planı.
 import { computeTable, applyEdits } from './engine.js';
 import { positionOutcome } from './rules.js';
+import { t } from './i18n.js';
 
 export const TARGETS = {
-  title: { label: 'Şampiyonluk', ok: (pos, n, s) => pos === 1 },
-  promo: { label: 'Yükselmek', ok: (pos, n, s) => pos <= s.promo },
-  ucl: { label: 'Şampiyonlar Ligi', ok: (pos, n, s) => pos <= s.ucl },
-  euro: { label: 'Avrupa kupaları', ok: (pos, n, s) => pos <= s.ucl + s.el + s.uecl },
-  safe: { label: 'Ligde kalmak', ok: (pos, n, s) => pos <= n - s.rel },
+  title: { label: t('Şampiyonluk'), ok: (pos, n, s) => pos === 1 },
+  promo: { label: t('Yükselmek'), ok: (pos, n, s) => pos <= s.promo },
+  ucl: { label: t('Şampiyonlar Ligi'), ok: (pos, n, s) => pos <= s.ucl },
+  euro: { label: t('Avrupa kupaları'), ok: (pos, n, s) => pos <= s.ucl + s.el + s.uecl },
+  safe: { label: t('Ligde kalmak'), ok: (pos, n, s) => pos <= n - s.rel },
 };
 const TIER_RANK = { promo: 5, rel: 0, none: 1, uecl: 2, el: 3, ucl: 4 };
 

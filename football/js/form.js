@@ -3,6 +3,7 @@
 import { loadMatches, loadElo, CURRENT_SEASON } from './data.js';
 import { lambdas, eloUpdate, winProbs, leagueTotal } from './engine.js';
 import { clamp } from './util.js';
+import { t as tp } from './i18n.js';
 
 export const GOAL_ELO = 362;            // 1 gol/maç ≈ 362 Elo (engine.lambdas ile tutarlı)
 const SHRINK_N = 14;                    // tarz tahmini için "ortalama takım" önsel maç sayısı
@@ -57,10 +58,10 @@ export async function teamContext(ctx, clubId, season, NOW) {
   last.forEach((x, i) => { const wt = 0.5 + 0.5 * (i + 1) / last.length; fw += wt; fs += wt * (x.pts - x.xpts); });
   const form = last.length ? clamp(40 * (fs / fw) * last.length / (last.length + 3), -25, 25) : 0;
   const lab = [];
-  if (tilt > 0.1) lab.push('hücum ağırlıklı'); else if (tilt < -0.1) lab.push('savunma ağırlıklı');
-  if (tot > lgTot * 1.08) lab.push('açık oyun'); else if (tot < lgTot * 0.92) lab.push('kapalı oyun');
+  if (tilt > 0.1) lab.push(tp('hücum ağırlıklı')); else if (tilt < -0.1) lab.push(tp('savunma ağırlıklı'));
+  if (tot > lgTot * 1.08) lab.push(tp('açık oyun')); else if (tot < lgTot * 0.92) lab.push(tp('kapalı oyun'));
   return {
     elo0, elo1, form, last: last.map(x => x.res), tilt, tot, lgTot, n: w, played: cur?.rows.length || 0,
-    gf: w ? gf / w : null, ga: w ? ga / w : null, label: lab.length ? lab.join(', ') : 'dengeli',
+    gf: w ? gf / w : null, ga: w ? ga / w : null, label: lab.length ? lab.join(', ') : tp('dengeli'),
   };
 }

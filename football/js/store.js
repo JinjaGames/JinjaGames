@@ -1,4 +1,7 @@
-// Senaryo deposu: what-if değişiklikleri localStorage'da kalıcıdır.
+// Senaryo deposu: what-if değişiklikleri GEÇİCİDİR. sessionStorage'da tutulur: sayfa yenilenince durur,
+// sekme/site kapanınca silinir. Saklamak isteyen bağlantıyı kopyalar ya da dosya olarak dışa aktarır.
+// Eski sürümün localStorage'da bıraktığı kalıcı kayıt bir kez temizlenir.
+import { t } from './i18n.js';
 import { uid } from './util.js';
 
 const KEY = 'wif.v1';
@@ -7,18 +10,19 @@ const subs = new Set();
 
 function load() {
   try {
-    const s = JSON.parse(localStorage.getItem(KEY));
+    try { localStorage.removeItem(KEY); } catch { /* yok */ }
+    const s = JSON.parse(sessionStorage.getItem(KEY));
     if (s && Array.isArray(s.scenarios)) return s;
   } catch { /* ilk açılış */ }
   return { scenarios: [], activeId: null };
 }
-function save() { try { localStorage.setItem(KEY, JSON.stringify(state)); } catch { /* özel pencere */ } subs.forEach(f => f()); }
+function save() { try { sessionStorage.setItem(KEY, JSON.stringify(state)); } catch { /* özel pencere */ } subs.forEach(f => f()); }
 
 export const subscribe = f => { subs.add(f); return () => subs.delete(f); };
 export const scenarios = () => state.scenarios;
 export const active = () => state.scenarios.find(s => s.id === state.activeId) || null;
 
-export function newScenario(name = 'Adsız senaryo') {
+export function newScenario(name = t('Adsız senaryo')) {
   const s = { id: uid(), name, created: Date.now(), edits: [] };
   state.scenarios.unshift(s); state.activeId = s.id; save(); return s;
 }
@@ -58,7 +62,7 @@ export const transferEdits = season => (active()?.edits || []).filter(e => e.t =
 export function exportJSON() { return JSON.stringify(state, null, 2); }
 export function importJSON(txt) {
   const s = JSON.parse(txt);
-  if (!s || !Array.isArray(s.scenarios)) throw new Error('Geçersiz dosya');
+  if (!s || !Array.isArray(s.scenarios)) throw new Error(t('Geçersiz dosya'));
   const ids = new Set(state.scenarios.map(x => x.id));
   for (const sc of s.scenarios) { if (ids.has(sc.id)) sc.id = uid(); state.scenarios.push(sc); }
   save();

@@ -7,6 +7,7 @@ import { loadTransfers, loadPlayers, loadSquads, loadElo, loadMatches, loadStint
 import { simulateSeason, probIn, computeTable } from '../engine.js';
 import { defaultSlots, positionOutcome } from '../rules.js';
 import * as store from '../store.js';
+import { t, lang } from '../i18n.js';
 
 const YEARS_AHEAD = 3;
 
@@ -14,50 +15,50 @@ export async function render(app, seasonArg) {
   const ctx = await boot();
   const P = await loadPlayers();
   const season = seasonArg ? +seasonArg : CURRENT_SEASON;
-  setCrumbs('Transfer', seasonLabel(season));
+  setCrumbs(t('Transfer'), seasonLabel(season));
 
   const all = await loadTransfers(season);
   const S = { mode: store.pref('trMode', 'cancel'), q: '', paid: season < CURRENT_SEASON, shown: 40, impact: null, b: { pid: null, to: null, fee: 0 } };
   const edits = () => store.transferEdits(season);
 
-  const seaSel = select(Array.from({ length: CURRENT_SEASON - 2003 + 1 }, (_, i) => CURRENT_SEASON - i).map(s => [s, seasonLabel(s) + ' transfer dönemi' + (s === CURRENT_SEASON ? ' (güncel)' : '')]), season, v => go(`/transfer/${v}`));
+  const seaSel = select(Array.from({ length: CURRENT_SEASON - 2003 + 1 }, (_, i) => CURRENT_SEASON - i).map(s => [s, (s === CURRENT_SEASON ? t('{s} transfer dönemi (güncel)', { s: seasonLabel(s) }) : t('{s} transfer dönemi', { s: seasonLabel(s) }))]), season, v => go(`/transfer/${v}`));
   const modeBox = h('div'), bodyBox = h('div'), impactBox = h('div');
-  mount(app, pageHead('Transferi değiştir', 'Gerçekleşen bir transferi iptal et ya da hiç olmamış bir transfer yap. Takımların sezonu nasıl değişirdi, görürsün.', field('Hangi dönem?', seaSel)),
+  mount(app, pageHead(t('Transferi değiştir'), t('Gerçekleşen bir transferi iptal et ya da hiç olmamış bir transfer yap. Takımların sezonu nasıl değişirdi, görürsün.'), field(t('Hangi dönem?'), seaSel)),
     h('div', { style: 'margin-bottom:20px' }, modeBox),
     h('div', { class: 'grid cols-2' }, bodyBox, impactBox));
 
   function drawMode() {
-    mount(modeBox, seg([['cancel', 'Bir transferi iptal et'], ['new', 'Yeni bir transfer yap']], S.mode, v => { S.mode = v; store.setPref('trMode', v); drawMode(); drawBody(); }));
+    mount(modeBox, seg([['cancel', t('Bir transferi iptal et')], ['new', t('Yeni bir transfer yap')]], S.mode, v => { S.mode = v; store.setPref('trMode', v); drawMode(); drawBody(); }));
   }
   const drawBody = () => (S.mode === 'cancel' ? drawCancel() : drawNew());
 
   // ------------------------------------------------------------ 1) iptal
-  const search = h('input', { type: 'search', placeholder: 'Oyuncu ya da kulüp ara… (ör. Bellingham)', value: S.q, style: 'width:100%', 'aria-label': 'Oyuncu ya da kulüp ara', oninput: debounce(e => { S.q = e.target.value; S.shown = 40; drawCancel(); }, 120) });
+  const search = h('input', { type: 'search', placeholder: t('Oyuncu ya da kulüp ara… (ör. Bellingham)'), value: S.q, style: 'width:100%', 'aria-label': t('Oyuncu ya da kulüp ara'), oninput: debounce(e => { S.q = e.target.value; S.shown = 40; drawCancel(); }, 120) });
   function drawCancel() {
     const q = norm(S.q).trim().split(' ').filter(Boolean);
-    let rows = all.filter(t => t.to && t.from && (!S.paid || (t.fee || 0) > 0));
-    if (q.length) rows = rows.filter(t => { const k = norm(`${P.byId.get(t.pid)?.name || ''} ${ctx.clubName(t.from)} ${ctx.clubName(t.to)}`); return q.every(x => k.includes(x)); });
+    let rows = all.filter(tr => tr.to && tr.from && (!S.paid || (tr.fee || 0) > 0));
+    if (q.length) rows = rows.filter(tr => { const k = norm(`${P.byId.get(tr.pid)?.name || ''} ${ctx.clubName(tr.from)} ${ctx.clubName(tr.to)}`); return q.every(x => k.includes(x)); });
     rows.sort((a, b) => (b.fee || 0) - (a.fee || 0) || b.mv - a.mv);
     const shown = rows.slice(0, S.shown);
     const cancelled = new Set(edits().filter(e => e.mode === 'cancel').map(e => e.pid));
-    const list = h('ul', { class: 'list-plain' }, shown.map(t => {
-      const p = P.byId.get(t.pid);
-      return h('li', { style: cancelled.has(t.pid) ? 'background:var(--marker-soft)' : '' },
+    const list = h('ul', { class: 'list-plain' }, shown.map(tr => {
+      const p = P.byId.get(tr.pid);
+      return h('li', { style: cancelled.has(tr.pid) ? 'background:var(--marker-soft)' : '' },
         avatar({ name: p?.name, img: p?.img }),
-        h('div', { style: 'flex:1;min-width:160px' }, h('div', { style: 'font-weight:600' }, p ? p.name : `#${t.pid}`), h('div', { class: 'dim', style: 'font-size:14px' }, `${ctx.clubName(t.from)} → ${ctx.clubName(t.to)} · ${fmtDate(t.date)}`)),
-        h('div', { style: 'font:700 16px var(--f-display)' }, t.fee ? fmtMoney(t.fee) : t.det ? 'ücret bilinmiyor' : 'serbest'),
-        cancelled.has(t.pid) ? h('span', { class: 'chip mk' }, 'İptal edildi') : h('button', { class: 'btn sm primary', onclick: () => cancelTransfer(t, p) }, 'İptal et'));
+        h('div', { style: 'flex:1;min-width:160px' }, h('div', { style: 'font-weight:600' }, p ? p.name : `#${tr.pid}`), h('div', { class: 'dim', style: 'font-size:14px' }, `${ctx.clubName(tr.from)} → ${ctx.clubName(tr.to)} · ${fmtDate(tr.date)}`)),
+        h('div', { style: 'font:700 16px var(--f-display)' }, tr.fee ? fmtMoney(tr.fee) : tr.det ? t('ücret bilinmiyor') : t('serbest')),
+        cancelled.has(tr.pid) ? h('span', { class: 'chip mk' }, t('İptal edildi')) : h('button', { class: 'btn sm primary', onclick: () => cancelTransfer(tr, p) }, t('İptal et')));
     }));
-    mount(bodyBox, sheet(h('h2', null, `${seasonLabel(season)} transferleri`), h('div', null,
+    mount(bodyBox, sheet(h('h2', null, t('{s} transferleri', { s: seasonLabel(season) })), h('div', null,
       h('div', { style: 'padding:14px 20px;display:grid;gap:10px;border-bottom:1px solid var(--line)' }, search,
-        h('label', { class: 'row center', style: 'gap:8px;font-size:14.5px' }, h('input', { type: 'checkbox', checked: S.paid, onchange: e => { S.paid = e.target.checked; drawCancel(); } }), 'Sadece bonservisli transferler')),
-      rows.length ? list : h('div', { class: 'empty' }, h('h3', null, 'Transfer bulunamadı'), h('div', null, 'Aramayı değiştir ya da başka bir dönem seç.')),
-      rows.length > S.shown ? h('div', { style: 'padding:14px 20px' }, h('button', { class: 'btn', onclick: () => { S.shown += 60; drawCancel(); } }, `Daha fazla göster (${rows.length - S.shown})`)) : null), { tight: true }));
+        h('label', { class: 'row center', style: 'gap:8px;font-size:14.5px' }, h('input', { type: 'checkbox', checked: S.paid, onchange: e => { S.paid = e.target.checked; drawCancel(); } }), t('Sadece bonservisli transferler'))),
+      rows.length ? list : h('div', { class: 'empty' }, h('h3', null, t('Transfer bulunamadı')), h('div', null, t('Aramayı değiştir ya da başka bir dönem seç.'))),
+      rows.length > S.shown ? h('div', { style: 'padding:14px 20px' }, h('button', { class: 'btn', onclick: () => { S.shown += 60; drawCancel(); } }, t('Daha fazla göster ({n})', { n: rows.length - S.shown }))) : null), { tight: true }));
     if (document.activeElement === document.body && S.q) search.focus();
   }
-  function cancelTransfer(t, p) {
-    store.addEdit({ t: 'transfer', mode: 'cancel', season, pid: t.pid, from: t.from, to: t.to, fee: t.fee || 0, label: `İptal: ${p?.name || t.pid} ${ctx.clubName(t.from)} → ${ctx.clubName(t.to)} (${seasonLabel(season)})` });
-    toast('Transfer iptal edildi'); S.impact = null; refresh();
+  function cancelTransfer(tr, p) {
+    store.addEdit({ t: 'transfer', mode: 'cancel', season, pid: tr.pid, from: tr.from, to: tr.to, fee: tr.fee || 0, label: t('İptal: {p} {from} → {to} ({s})', { p: p?.name || tr.pid, from: ctx.clubName(tr.from), to: ctx.clubName(tr.to), s: seasonLabel(season) }) });
+    toast(t('Transfer iptal edildi')); S.impact = null; refresh();
   }
 
   // ------------------------------------------------------------ 2) yeni transfer
@@ -67,91 +68,91 @@ export async function render(app, seasonArg) {
       h('div', { class: 'row center', style: 'gap:12px' }, h('span', { class: 'chip', style: `background:${done ? 'var(--brand-soft)' : 'var(--surface-3)'};color:${done ? 'var(--brand)' : 'var(--ink-2)'}` }, done ? '✓' : n), h('h3', { style: 'font-size:18px' }, title)), content));
     const pickPlayer = h('button', { class: 'btn lg', onclick: async () => {
       const items = P.list.filter(x => x.value >= 1e6 && (x.lastSeason ?? 0) >= season).sort((a, c) => c.value - a.value).slice(0, 6000).map(x => ({ id: x.id, label: x.name, sub: x.nat || '', right: fmtMoney(x.value), tag: x.pos || x.line, tagCls: x.line }));
-      const id = await pick({ title: 'Oyuncu seç', items, placeholder: 'Oyuncu ara… (ör. Icardi)' });
+      const id = await pick({ title: t('Oyuncu seç'), items, placeholder: t('Oyuncu ara… (ör. Icardi)') });
       if (id) { b.pid = id; b.fee = P.byId.get(id).value || 0; drawNew(); }
-    } }, p ? `${p.name} · ${fmtMoney(p.value)}` : 'Oyuncu seç');
+    } }, p ? `${p.name} · ${fmtMoney(p.value)}` : t('Oyuncu seç'));
     const pickClub = h('button', { class: 'btn lg', disabled: !p, onclick: async () => {
       const ids = Object.keys(ctx.clubs).map(Number).filter(i => ctx.clubs[i].c && ctx.comps[ctx.clubs[i].c]?.type === 'league');
-      const id = await pick({ title: 'Hangi kulübe gitsin?', items: clubItems(ctx, ids, i => ctx.compName(ctx.clubs[i].c)), placeholder: 'Kulüp ara…' });
+      const id = await pick({ title: t('Hangi kulübe gitsin?'), items: clubItems(ctx, ids, i => ctx.compName(ctx.clubs[i].c)), placeholder: t('Kulüp ara…') });
       if (id) { b.to = id; drawNew(); }
-    } }, b.to ? ctx.clubName(b.to) : 'Kulüp seç');
-    const fee = h('div', { class: 'row center' }, h('input', { type: 'number', min: 0, step: 1, value: Math.round((b.fee || 0) / 1e6), style: 'width:120px', 'aria-label': 'Bonservis milyon euro', onchange: e => { b.fee = Math.max(0, +e.target.value || 0) * 1e6; } }), h('span', { class: 'mute' }, 'milyon € (varsayılan: oyuncunun piyasa değeri)'));
+    } }, b.to ? ctx.clubName(b.to) : t('Kulüp seç'));
+    const fee = h('div', { class: 'row center' }, h('input', { type: 'number', min: 0, step: 1, value: Math.round((b.fee || 0) / 1e6), style: 'width:120px', 'aria-label': t('Bonservis milyon euro'), onchange: e => { b.fee = Math.max(0, +e.target.value || 0) * 1e6; } }), h('span', { class: 'mute' }, t('milyon € (varsayılan: oyuncunun piyasa değeri)')));
     mount(bodyBox,
-      step(1, 'Hangi oyuncu?', !!p, pickPlayer),
-      step(2, 'Hangi kulübe gitsin?', !!b.to, pickClub),
-      step(3, 'Ne kadar bonservis?', !!(p && b.to), fee),
-      h('button', { class: 'btn primary lg', disabled: !(b.pid && b.to), onclick: () => addNew(b) }, 'Transferi yap ve sonucu gör'));
+      step(1, t('Hangi oyuncu?'), !!p, pickPlayer),
+      step(2, t('Hangi kulübe gitsin?'), !!b.to, pickClub),
+      step(3, t('Ne kadar bonservis?'), !!(p && b.to), fee),
+      h('button', { class: 'btn primary lg', disabled: !(b.pid && b.to), onclick: () => addNew(b) }, t('Transferi yap ve sonucu gör')));
   }
   async function addNew(b) {
     const sq = await loadSquads(season);
     let from = 0;
     for (const [cid, list] of Object.entries(sq)) if (list.some(r => r[0] === b.pid)) { from = +cid; break; }
     const p = P.byId.get(b.pid);
-    if (!from) { toast('Bu oyuncu o sezon bir takım kadrosunda görünmüyor; başka bir dönem dene'); return; }
-    if (from === b.to) { toast('Oyuncu zaten bu kulüpte'); return; }
-    store.addEdit({ t: 'transfer', mode: 'move', season, pid: b.pid, from, to: b.to, fee: b.fee, label: `Yeni: ${p.name} ${ctx.clubName(from)} → ${ctx.clubName(b.to)} (${seasonLabel(season)})` });
-    toast('Transfer yapıldı'); S.impact = null; S.b = { pid: null, to: null, fee: 0 }; refresh();
+    if (!from) { toast(t('Bu oyuncu o sezon bir takım kadrosunda görünmüyor; başka bir dönem dene')); return; }
+    if (from === b.to) { toast(t('Oyuncu zaten bu kulüpte')); return; }
+    store.addEdit({ t: 'transfer', mode: 'move', season, pid: b.pid, from, to: b.to, fee: b.fee, label: t('Yeni: {p} {from} → {to} ({s})', { p: p.name, from: ctx.clubName(from), to: ctx.clubName(b.to), s: seasonLabel(season) }) });
+    toast(t('Transfer yapıldı')); S.impact = null; S.b = { pid: null, to: null, fee: 0 }; refresh();
   }
 
   // ------------------------------------------------------------ sonuç
   async function drawImpact() {
     const es = edits();
     if (!es.length) {
-      mount(impactBox, sheet(h('h2', null, 'Ne değişti?'), h('div', { class: 'empty' }, h('h3', null, 'Henüz bir transfer değiştirmedin'), h('div', null, S.mode === 'cancel' ? 'Soldan bir transferin yanındaki “İptal et” düğmesine bas.' : 'Soldaki adımları tamamla.'), h('div', { class: 'dim' }, 'Sonuç, gelecek 3 sezon için hesaplanır.'))));
+      mount(impactBox, sheet(h('h2', null, t('Ne değişti?')), h('div', { class: 'empty' }, h('h3', null, t('Henüz bir transfer değiştirmedin')), h('div', null, S.mode === 'cancel' ? t('Soldan bir transferin yanındaki “İptal et” düğmesine bas.') : t('Soldaki adımları tamamla.')), h('div', { class: 'dim' }, t('Sonuç, gelecek 3 sezon için hesaplanır.')))));
       return;
     }
-    mount(impactBox, sheet(h('h2', null, 'Ne değişti?'), h('div', null, editList(es), h('div', { class: 'skel', style: 'height:140px;margin-top:14px' }))));
+    mount(impactBox, sheet(h('h2', null, t('Ne değişti?')), h('div', null, editList(es), h('div', { class: 'skel', style: 'height:140px;margin-top:14px' }))));
     const imp = S.impact ??= await computeImpact(ctx, P, season, es);
     if (!document.body.contains(impactBox)) return;
-    mount(impactBox, sheet(h('h2', null, 'Ne değişti?'), h('div', null, editList(es), impactView(imp))));
+    mount(impactBox, sheet(h('h2', null, t('Ne değişti?')), h('div', null, editList(es), impactView(imp))));
   }
-  const editList = es => h('ul', { class: 'list-plain', style: 'margin:calc(var(--pad) * -1) calc(var(--pad) * -1) 16px' }, es.map(e => h('li', null, h('span', { class: `chip ${e.mode === 'cancel' ? 'rel' : 'promo'}` }, e.mode === 'cancel' ? 'İptal' : 'Yeni'), h('span', { style: 'flex:1;min-width:160px' }, e.label),
-    h('button', { class: 'btn sm ghost', onclick: () => { store.removeEdit(x => x.t === 'transfer' && x.pid === e.pid && x.season === e.season); S.impact = null; refresh(); } }, 'Kaldır'))));
+  const editList = es => h('ul', { class: 'list-plain', style: 'margin:calc(var(--pad) * -1) calc(var(--pad) * -1) 16px' }, es.map(e => h('li', null, h('span', { class: `chip ${e.mode === 'cancel' ? 'rel' : 'promo'}` }, e.mode === 'cancel' ? t('İptal') : t('Yeni')), h('span', { style: 'flex:1;min-width:160px' }, e.label),
+    h('button', { class: 'btn sm ghost', onclick: () => { store.removeEdit(x => x.t === 'transfer' && x.pid === e.pid && x.season === e.season); S.impact = null; refresh(); } }, t('Kaldır')))));
 
   function impactView(imp) {
-    if (!imp.rows.length) return h('div', { class: 'note' }, 'Bu değişiklik, elimizdeki kadro verisiyle ölçülebilir bir güç farkı yaratmıyor (oyuncu kadro listesinde olmayabilir).');
+    if (!imp.rows.length) return h('div', { class: 'note' }, t('Bu değişiklik, elimizdeki kadro verisiyle ölçülebilir bir güç farkı yaratmıyor (oyuncu kadro listesinde olmayabilir).'));
     const byClub = new Map();
     for (const r of imp.rows) (byClub.get(r.club) || byClub.set(r.club, []).get(r.club)).push(r);
-    const f1 = x => x.toFixed(1).replace('.', ',');
+    const f1 = x => (lang === 'en' ? x.toFixed(1) : x.toFixed(1).replace('.', ','));
     const ord = x => (x >= 0 ? '+' : '−') + f1(Math.abs(x));
     const kpi = (l, v, sub, tone) => h('div', { class: 'kpi' }, h('div', { class: 'v', style: `font-size:20px;${tone === 'up' ? 'color:var(--win)' : tone === 'dn' ? 'color:var(--loss)' : ''}` }, v), h('div', { class: 'l' }, l), sub ? h('div', { class: 'dim', style: 'font-size:12px' }, sub) : null);
     const playerLines = [...imp.players.values()].map(o => {
       const p = P.byId.get(o.pid); if (!p) return null;
-      const where = (c, st) => `${ctx.clubName(c)}${st == null ? '' : st ? ' (ilk 11)' : ' (yedek)'}`;
+      const where = (c, st) => (st == null ? ctx.clubName(c) : st ? t('{c} (ilk 11)', { c: ctx.clubName(c) }) : t('{c} (yedek)', { c: ctx.clubName(c) }));
       return h('div', { class: 'row center', style: 'gap:12px;padding:10px 0;border-bottom:1px solid var(--line)' }, avatar({ name: p.name, img: p.img }),
         h('div', { style: 'flex:1;min-width:0' }, h('div', { style: 'font-weight:700' }, p.name, h('span', { class: 'dim', style: 'font-weight:500' }, `  ${p.pos || p.line} · ${fmtMoney(o.v)}`)),
-          h('div', { class: 'dim', style: 'font-size:13.5px' }, `Gerçekte ${where(o.realClub, o.startsReal)}  ·  Değişiklikle ${where(o.altClub, o.startsAlt)}`)));
+          h('div', { class: 'dim', style: 'font-size:13.5px' }, t('Gerçekte {a}  ·  Değişiklikle {b}', { a: where(o.realClub, o.startsReal), b: where(o.altClub, o.startsAlt) }))));
     }).filter(Boolean);
     const blocks = [...byClub].map(([club, rs]) => {
       const first = rs.find(r => r.sim) || rs[0], cash = imp.cash.get(club) || 0, sm = first.sim;
-      let sentence = 'Takım gücü değişirdi.', tone = 'eq';
+      let sentence = t('Takım gücü değişirdi.'), tone = 'eq';
       if (sm) {
         tone = sm.dPts > 0.4 ? 'up' : sm.dPts < -0.4 ? 'dn' : 'eq';
-        const pos = Math.round(sm.expPos[0]) === Math.round(sm.expPos[1]) ? `Beklenen sıra aynı kalırdı (${f1(sm.expPos[1])}).` : `Beklenen sıra ${f1(sm.expPos[0])} → ${f1(sm.expPos[1])}.`;
-        sentence = Math.abs(sm.dPts) < 0.4 ? `Sezon sonucu neredeyse değişmezdi (${ord(sm.dPts)} puan). ${pos}` : `Sezonu ortalama ${f1(Math.abs(sm.dPts))} puan ${sm.dPts > 0 ? 'daha fazla' : 'daha az'} bitirirdi. ${pos}`;
+        const pos = Math.round(sm.expPos[0]) === Math.round(sm.expPos[1]) ? t('Beklenen sıra aynı kalırdı ({p}).', { p: f1(sm.expPos[1]) }) : t('Beklenen sıra {a} → {b}.', { a: f1(sm.expPos[0]), b: f1(sm.expPos[1]) });
+        sentence = Math.abs(sm.dPts) < 0.4 ? t('Sezon sonucu neredeyse değişmezdi ({d} puan). {pos}', { d: ord(sm.dPts), pos }) : sm.dPts > 0 ? t('Sezonu ortalama {d} puan daha fazla bitirirdi. {pos}', { d: f1(Math.abs(sm.dPts)), pos }) : t('Sezonu ortalama {d} puan daha az bitirirdi. {pos}', { d: f1(Math.abs(sm.dPts)), pos });
       }
       const head = first, hs = head.sim;
       const tiles = hs ? h('div', { class: 'grid', style: 'grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:10px;margin:10px 0' },
-        kpi('Puan (ortalama)', ord(hs.dPts), `güç ${head.dElo >= 0 ? '+' : '−'}${Math.abs(Math.round(head.dElo))} Elo`, hs.dPts > 0.4 ? 'up' : hs.dPts < -0.4 ? 'dn' : ''),
-        kpi('Şampiyonluk', `%${Math.round(hs.title[1] * 100)}`, `önce %${Math.round(hs.title[0] * 100)}`, hs.title[1] > hs.title[0] + .005 ? 'up' : hs.title[1] < hs.title[0] - .005 ? 'dn' : ''),
-        kpi('Avrupa', `%${Math.round(hs.euro[1] * 100)}`, `önce %${Math.round(hs.euro[0] * 100)}`, hs.euro[1] > hs.euro[0] + .005 ? 'up' : hs.euro[1] < hs.euro[0] - .005 ? 'dn' : ''),
-        hs.slots.rel > 0 ? kpi('Küme düşme', `%${Math.round(hs.rel[1] * 100)}`, `önce %${Math.round(hs.rel[0] * 100)}`, hs.rel[1] < hs.rel[0] - .005 ? 'up' : hs.rel[1] > hs.rel[0] + .005 ? 'dn' : '') : null) : null;
-      const tb = h('table', { class: 'tbl' }, h('thead', null, h('tr', null, h('th', null, 'Sezon'), h('th', { class: 'num' }, 'Puan'), h('th', { class: 'num' }, 'Beklenen sıra'), h('th', { class: 'num' }, 'Şampiyonluk'), h('th', { class: 'num' }, 'Avrupa'), h('th', { class: 'num' }, 'Gelir'))),
-        h('tbody', null, rs.map(r => h('tr', null, h('td', null, seasonLabel(r.season), r.real ? h('span', { class: 'dim' }, `  (gerçek ${r.real}.)`) : null),
+        kpi(t('Puan (ortalama)'), ord(hs.dPts), t('güç {d} Elo', { d: `${head.dElo >= 0 ? '+' : '−'}${Math.abs(Math.round(head.dElo))}` }), hs.dPts > 0.4 ? 'up' : hs.dPts < -0.4 ? 'dn' : ''),
+        kpi(t('Şampiyonluk'), t('%{p}', { p: Math.round(hs.title[1] * 100) }), t('önce %{p}', { p: Math.round(hs.title[0] * 100) }), hs.title[1] > hs.title[0] + .005 ? 'up' : hs.title[1] < hs.title[0] - .005 ? 'dn' : ''),
+        kpi(t('Avrupa'), t('%{p}', { p: Math.round(hs.euro[1] * 100) }), t('önce %{p}', { p: Math.round(hs.euro[0] * 100) }), hs.euro[1] > hs.euro[0] + .005 ? 'up' : hs.euro[1] < hs.euro[0] - .005 ? 'dn' : ''),
+        hs.slots.rel > 0 ? kpi(t('Küme düşme'), t('%{p}', { p: Math.round(hs.rel[1] * 100) }), t('önce %{p}', { p: Math.round(hs.rel[0] * 100) }), hs.rel[1] < hs.rel[0] - .005 ? 'up' : hs.rel[1] > hs.rel[0] + .005 ? 'dn' : '') : null) : null;
+      const tb = h('table', { class: 'tbl' }, h('thead', null, h('tr', null, h('th', null, t('Sezon')), h('th', { class: 'num' }, t('Puan')), h('th', { class: 'num' }, t('Beklenen sıra')), h('th', { class: 'num' }, t('Şampiyonluk')), h('th', { class: 'num' }, t('Avrupa')), h('th', { class: 'num' }, t('Gelir')))),
+        h('tbody', null, rs.map(r => h('tr', null, h('td', null, seasonLabel(r.season), r.real ? h('span', { class: 'dim' }, '  ' + t('(gerçek {n}.)', { n: r.real })) : null),
           h('td', { class: 'num' }, r.sim ? delta(r.sim.dPts, { digits: 1 }) : h('span', { class: 'dim' }, '—')),
           h('td', { class: 'num' }, r.sim ? `${f1(r.sim.expPos[0])} → ${f1(r.sim.expPos[1])}` : '—'),
           h('td', { class: 'num' }, r.sim ? pp(r.sim.title) : '—'), h('td', { class: 'num' }, r.sim ? pp(r.sim.euro) : '—'), h('td', { class: 'num' }, r.sim ? moneyDelta(r.sim.rev) : '—')))));
       return h('div', { style: 'margin-bottom:22px;padding-bottom:6px' },
-        h('div', { class: 'row center', style: 'margin-bottom:4px' }, teamLink(ctx, club, season), h('span', { class: 'dim' }, 'transfer kasası:'), moneyDelta(cash)),
+        h('div', { class: 'row center', style: 'margin-bottom:4px' }, teamLink(ctx, club, season), h('span', { class: 'dim' }, t('transfer kasası:')), moneyDelta(cash)),
         h('p', { style: `margin:4px 0 0;font-size:16.5px;font-weight:600;${tone === 'up' ? 'color:var(--win)' : tone === 'dn' ? 'color:var(--loss)' : ''}` }, sentence), tiles,
-        hs ? h('div', null, h('div', { class: 'cap', style: 'margin:6px 0 2px' }, `${seasonLabel(head.season)} · sezon sonu sıra olasılığı (gri: gerçek, yeşil: değişiklikle)`), posChart(hs)) : null,
+        hs ? h('div', null, h('div', { class: 'cap', style: 'margin:6px 0 2px' }, t('{s} · sezon sonu sıra olasılığı (gri: gerçek, yeşil: değişiklikle)', { s: seasonLabel(head.season) })), posChart(hs)) : null,
         h('div', { style: 'overflow:auto;margin:12px calc(var(--pad) * -1) 0' }, tb));
     });
-    return h('div', null, playerLines.length ? h('div', { style: 'margin-bottom:16px' }, ...playerLines) : null, ...blocks, h('div', { class: 'dim', style: 'font-size:13.5px' }, `Her sezon ${imp.n} kez yeniden oynatıldı. Takım gücü, en iyi dizilişteki ilk 11’in konuma ve yaşa göre hesaplanan hücum/savunma kalitesinden ve takım kimyasından (kim kiminle daha önce oynadı, yeni gelen kulübe ne kadar uyum sağladı) bulunur; oyuncu gerçekte bir sonraki kulüp değişikliğine kadar yeni takımında kalıyor sayıldı.`));
+    return h('div', null, playerLines.length ? h('div', { style: 'margin-bottom:16px' }, ...playerLines) : null, ...blocks, h('div', { class: 'dim', style: 'font-size:13.5px' }, t('Her sezon {n} kez yeniden oynatıldı. Takım gücü, en iyi dizilişteki ilk 11’in konuma ve yaşa göre hesaplanan hücum/savunma kalitesinden ve takım kimyasından (kim kiminle daha önce oynadı, yeni gelen kulübe ne kadar uyum sağladı) bulunur; oyuncu gerçekte bir sonraki kulüp değişikliğine kadar yeni takımında kalıyor sayıldı.', { n: imp.n })));
   }
   function posChart(sm) {
     const n = Math.min(sm.nC, 20), W = 620, Hh = 110, pl = 6, bw = (W - pl * 2) / n, max = Math.max(0.05, ...sm.pa.slice(0, n), ...sm.pb.slice(0, n));
-    const root = svg('svg', { viewBox: `0 0 ${W} ${Hh + 20}`, width: '100%', role: 'img', 'aria-label': 'Sezon sonu sıra olasılığı' });
+    const root = svg('svg', { viewBox: `0 0 ${W} ${Hh + 20}`, width: '100%', role: 'img', 'aria-label': t('Sezon sonu sıra olasılığı') });
     const zone = i => (i < sm.slots.ucl ? 'var(--ucl)' : i < sm.slots.ucl + sm.slots.el ? 'var(--el)' : sm.slots.rel > 0 && i >= sm.nC - sm.slots.rel ? 'var(--loss)' : 'var(--line-2)');
     for (let i = 0; i < n; i++) {
       const x = pl + i * bw, ha = sm.pa[i] / max * Hh, hb = sm.pb[i] / max * Hh;

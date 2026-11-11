@@ -1,0 +1,21 @@
+/* Web Apps menüsü (ana sayfa + oyunlar sayfası). Sitenin belirteçlerini kullanır: --surface, --ink, --line, --brand… */
+.apps-menu{position:relative}
+.apps-trigger{display:flex;align-items:center;gap:7px;color:var(--ink-2);font:500 14.5px var(--f-body);padding:9px 13px 9px 15px;border:0;border-radius:9px;background:transparent;cursor:pointer;transition:color .2s,background .2s}
+.apps-trigger:hover,.apps-menu.open .apps-trigger,.apps-trigger.active{color:var(--ink);background:var(--bg-soft)}
+.apps-trigger .dot{width:6px;height:6px;border-radius:50%;background:var(--brand);box-shadow:0 0 0 3px color-mix(in srgb,var(--brand) 22%,transparent)}
+.apps-trigger svg{width:11px;height:11px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;transition:transform .22s}
+.apps-menu.open .apps-trigger svg{transform:rotate(180deg)}
+.apps-pop{position:absolute;left:50%;top:calc(100% + 10px);width:360px;padding:8px;background:var(--surface);border:1px solid var(--line);border-radius:16px;box-shadow:var(--shadow-2,0 18px 44px rgba(0,0,0,.18));opacity:0;visibility:hidden;transform:translate(-50%,-6px);transition:opacity .2s var(--ease),transform .2s var(--ease),visibility .2s;z-index:230}
+.apps-menu.open .apps-pop{opacity:1;visibility:visible;transform:translate(-50%,0)}
+.apps-pop-title{padding:8px 10px 8px;color:var(--ink-3);font-family:var(--f-mono);font-size:10px;letter-spacing:.12em;text-transform:uppercase}
+.app-item{display:grid!important;grid-template-columns:44px 1fr auto;align-items:center;gap:12px;padding:10px!important;border-radius:11px!important;color:var(--ink)!important;text-decoration:none;transition:background .2s}
+.app-item:hover,.app-item:focus-visible{background:var(--bg-soft)}
+.app-item img{width:44px;height:44px;border-radius:11px;display:block}
+.app-item b{display:block;font-family:var(--f-display);font-size:15.5px;font-weight:700;letter-spacing:-.01em}
+.app-item small{display:block;color:var(--ink-3);font-size:12.5px;line-height:1.4;margin-top:1px}
+.app-item .tag{font-family:var(--f-mono);font-size:9.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--brand);border:1px solid color-mix(in srgb,var(--brand) 40%,transparent);border-radius:999px;padding:3px 7px}
+.apps-all{display:flex!important;align-items:center;justify-content:space-between;margin-top:6px;padding:12px 10px!important;border-top:1px solid var(--line);border-radius:0 0 10px 10px!important;color:var(--ink-2)!important;font-size:13.5px;font-weight:600}
+.apps-all:hover{color:var(--brand)!important;background:transparent!important}
+@media(max-width:1060px){.apps-menu{display:none}}
+/* telefon alt çubuğu: Apps */
+.dock a.apps-dock svg{stroke:currentColor}
