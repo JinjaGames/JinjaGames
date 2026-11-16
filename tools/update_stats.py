@@ -67,7 +67,7 @@ def from_profile():
     mods, total = {}, None
     for page in range(1, 6):
         html = get('https://www.curseforge.com/members/%s/projects%s' % (MEMBER, '' if page == 1 else '?page=%d' % page))
-        if 'member-project-card' not in html:
+        if 'project-card' not in html:
             if page == 1:
                 raise RuntimeError('profil sayfası okunamadı (Cloudflare?)')
             break
@@ -75,10 +75,11 @@ def from_profile():
             m = re.search(r'downloadCount\\?"\s*:\s*(\d+)', html)
             total = int(m.group(1)) if m else None
         added = 0
-        for card in html.split('member-project-card')[1:]:
+        # CurseForge kart sınıfını değiştirdi (member-project-card -> project-card); ikisi de okunur
+        for card in re.split(r'(?:member-)?project-card', html)[1:]:
             s = re.search(r'href="/minecraft/mc-mods/([a-z0-9-]+)"', card)
             n = re.search(r'aria-label="Go to (.*?) Project Page"', card)
-            dl = re.search(r'downloads">\s*([\d.,]+)\s*([KkMm]?)<', card)
+            dl = re.search(r'(?:detail-)?downloads">\s*([\d.,]+)\s*([KkMm]?)<', card)
             if not s or not dl:
                 continue
             num = float(dl.group(1).replace(',', ''))
@@ -206,7 +207,8 @@ def main_stats():
         except Exception as e:
             print('cfwidget başarısız:', e)
             print('Güncelleme yok; mevcut sayılar kalıyor.')
-            return 0
+            # Sessizce yeşil kalmasın: iş akışı kırmızı olsun ki fark edilsin (CurseForge sayfa düzeni değişmiş olabilir).
+            return 1
 
     new = sorted(s for s in mods if s not in known)
 

@@ -1,29 +1,29 @@
 /* Otomatik: tools/update_stats.py (6 saatte bir, GitHub Actions). Elle düzenleme. */
 window.BB_STATS={
- "total": 6266,
+ "total": 6521,
  "projects": 24,
  "mods": {
   "all-irons": {
    "name": "All irons",
-   "dl": 172,
+   "dl": 175,
    "created": "2026-09-16T08:34Z",
    "updated": "2026-10-24T10:11Z"
   },
   "board-games": {
    "name": "Board Games",
-   "dl": 752,
+   "dl": 780,
    "created": "2026-10-16T07:48Z",
    "updated": "2026-10-16T07:48Z"
   },
   "card-lootbags": {
    "name": "Card Loot bags",
-   "dl": 201,
+   "dl": 203,
    "created": "2026-09-17T09:00Z",
    "updated": "2026-10-03T21:47Z"
   },
   "chest-hauler": {
    "name": "Chest Hauler",
-   "dl": 66,
+   "dl": 67,
    "created": "2026-10-05T11:28Z",
    "updated": "2026-10-05T11:28Z"
   },
@@ -35,7 +35,7 @@ window.BB_STATS={
   },
   "elemental-arcana": {
    "name": "Elemental Arcana",
-   "dl": 133,
+   "dl": 136,
    "created": "2026-09-30T08:22Z",
    "updated": "2026-10-03T21:48Z"
   },
@@ -53,25 +53,25 @@ window.BB_STATS={
   },
   "frontier-structures": {
    "name": "Frontier Structures",
-   "dl": 461,
+   "dl": 477,
    "created": "2026-10-05T10:25Z",
    "updated": "2026-10-07T15:52Z"
   },
   "gilded-gambit": {
    "name": "Gilded Gambit",
-   "dl": 64,
+   "dl": 65,
    "created": "2026-10-11T12:41Z",
    "updated": "2026-10-11T12:41Z"
   },
   "hard-mobs-and-bosses": {
    "name": "Hard Mobs and bosses",
-   "dl": 547,
+   "dl": 573,
    "created": "2026-09-18T05:55Z",
    "updated": "2026-10-24T10:10Z"
   },
   "hearthly": {
    "name": "Hearthly",
-   "dl": 633,
+   "dl": 676,
    "created": "2026-10-12T12:44Z",
    "updated": "2026-10-24T21:07Z"
   },
@@ -83,49 +83,49 @@ window.BB_STATS={
   },
   "ore-elemental-golems": {
    "name": "Ore & Elemental Golems",
-   "dl": 884,
+   "dl": 922,
    "created": "2026-10-12T11:21Z",
    "updated": "2026-10-12T11:21Z"
   },
   "pale-contagion": {
    "name": "Pale Contagion",
-   "dl": 130,
+   "dl": 136,
    "created": "2026-10-11T12:42Z",
    "updated": "2026-10-11T12:42Z"
   },
   "pantheon-of-legends": {
    "name": "Pantheon of Legends",
-   "dl": 200,
+   "dl": 205,
    "created": "2026-10-05T11:54Z",
    "updated": "2026-10-05T11:54Z"
   },
   "power-generators": {
    "name": "Power generators",
-   "dl": 245,
+   "dl": 252,
    "created": "2026-09-18T06:42Z",
    "updated": "2026-10-24T10:10Z"
   },
   "real-animals": {
    "name": "Real Animals",
-   "dl": 641,
+   "dl": 683,
    "created": "2026-10-09T10:52Z",
    "updated": "2026-11-07T18:12Z"
   },
   "seraph": {
    "name": "Seraph",
-   "dl": 217,
+   "dl": 221,
    "created": "2026-10-05T11:03Z",
    "updated": "2026-10-24T10:11Z"
   },
   "towers": {
    "name": "Towers",
-   "dl": 165,
+   "dl": 175,
    "created": "2026-10-05T11:47Z",
    "updated": "2026-10-05T11:47Z"
   },
   "uncraft-and-unfurnace": {
    "name": "Uncraft and Unfurnace",
-   "dl": 221,
+   "dl": 226,
    "created": "2026-09-17T08:53Z",
    "updated": "2026-10-03T21:50Z"
   },
@@ -137,13 +137,13 @@ window.BB_STATS={
   },
   "veinminer-all-types": {
    "name": "Veinminer All Types",
-   "dl": 138,
+   "dl": 140,
    "created": "2026-09-15T08:51Z",
    "updated": "2026-09-15T08:51Z"
   },
   "vivacity": {
    "name": "Vivacity",
-   "dl": 151,
+   "dl": 164,
    "created": "2026-10-25T12:13Z",
    "updated": "2026-10-25T12:13Z"
   }
@@ -151,7 +151,7 @@ window.BB_STATS={
  "unlisted": [
   "vivacity"
  ],
- "updated": "2026-11-15T00:56Z",
+ "updated": "2026-11-16T17:33Z",
  "source": "profile",
- "datesAt": "2026-11-14T19:51Z"
+ "datesAt": "2026-11-16T17:33Z"
 };
