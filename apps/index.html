@@ -28,7 +28,7 @@ if ((location.protocol === 'https:' || location.protocol === 'http:') && locatio
 <link rel="preload" as="font" type="font/woff2" href="../assets/fonts/inter-latin-400.woff2" crossorigin />
 <link rel="stylesheet" href="../assets/fonts.css?v=20261012d" />
 <script type="application/ld+json">
-{"@context":"https://schema.org","@type":"CollectionPage","name":"Web apps by JinjaGames","url":"https://jinjagames.com/apps/","isPartOf":{"@type":"WebSite","name":"JinjaGames","url":"https://jinjagames.com/"},"hasPart":[{"@type":"WebApplication","name":"Jinja Football","url":"https://jinjagames.com/football/","applicationCategory":"SportsApplication","operatingSystem":"Any","offers":{"@type":"Offer","price":"0","priceCurrency":"USD"}},{"@type":"WebApplication","name":"JinjaPeer","url":"https://jinjagames.com/peer/","applicationCategory":"UtilitiesApplication","operatingSystem":"Any","offers":{"@type":"Offer","price":"0","priceCurrency":"USD"}}]}
+{"@context":"https://schema.org","@type":"CollectionPage","name":"Web apps by JinjaGames","url":"https://jinjagames.com/apps/","isPartOf":{"@type":"WebSite","name":"JinjaGames","url":"https://jinjagames.com/"},"hasPart":[{"@type":"WebApplication","name":"Jinja Football","url":"https://jinjagames.com/football/","applicationCategory":"SportsApplication","operatingSystem":"Any","offers":{"@type":"Offer","price":"0","priceCurrency":"USD"}},{"@type":"WebApplication","name":"JinjaPeer","url":"https://jinjagames.com/peer/","applicationCategory":"UtilitiesApplication","operatingSystem":"Any","offers":{"@type":"Offer","price":"0","priceCurrency":"USD"}},{"@type":"WebApplication","name":"JinjaCut","url":"https://jinjagames.com/apps/cut/","applicationCategory":"MultimediaApplication","operatingSystem":"Any","offers":{"@type":"Offer","price":"0","priceCurrency":"USD"}}]}
 </script>
 <script>
 (function(){
@@ -276,6 +276,7 @@ html[data-theme="dark"] .app .btn.p{color:#fff}
             <div class="apps-pop-title"><span class="en i">Use in your browser, no install</span><span class="tr i">Tarayıcıda kullan, kurulum yok</span></div>
             <a class="app-item" href="/football/"><img src="/assets/img/apps/football.svg" alt="" width="44" height="44"><span><b>Jinja Football</b><small class="en i">Change one match, transfer or penalty in real football history</small><small class="tr i">Gerçek futbol tarihinde bir maçı, transferi ya da penaltıyı değiştir</small></span><span class="tag">Live</span></a>
             <a class="app-item" href="/peer/"><img src="/assets/img/apps/jinjapeer.svg" alt="" width="44" height="44"><span><b>JinjaPeer</b><small class="en i">Send files device to device, end-to-end encrypted</small><small class="tr i">Cihazdan cihaza uçtan uca şifreli dosya gönder</small></span><span class="tag">New</span></a>
+            <a class="app-item" href="/apps/cut/"><img src="/assets/img/apps/jinjacut.svg" alt="" width="44" height="44"><span><b>JinjaCut</b><small class="en i">Save a video or its audio from a link as MP4 or MP3</small><small class="tr i">Bağlantıdan videoyu ya da sesini MP4 / MP3 olarak kaydet</small></span><span class="tag">New</span></a>
             <a class="apps-all" href="/apps/"><span class="en i">All web apps</span><span class="tr i">Tüm web uygulamaları</span><span aria-hidden="true">&rarr;</span></a>
           </div>
         </li>
@@ -366,6 +367,28 @@ html[data-theme="dark"] .app .btn.p{color:#fff}
           <li><span class="en i">Nothing is saved without your approval; every file is hash-checked</span><span class="tr i">Onayın olmadan hiçbir şey kaydedilmez; her dosya özetle doğrulanır</span></li>
         </ul>
         <div class="acts"><a class="btn p" href="/peer/"><span class="en i">Open JinjaPeer</span><span class="tr i">JinjaPeer'i aç</span> <span class="arw">&rarr;</span></a><span class="note">EN · TR</span></div>
+      </div>
+    </article>
+
+    <article class="app rv" style="--accent:var(--brand)">
+      <a class="app-media pr" href="/apps/cut/" tabindex="-1" aria-hidden="true">
+        <div class="pr-row">
+          <div class="dev"><svg viewBox="0 0 32 24"><rect x="1" y="1" width="30" height="18" rx="2.5"/><path d="M11 23h10M16 19v4"/></svg><b class="en i">Your computer</b><b class="tr i">Bilgisayarın</b><span>yt-dlp · ffmpeg</span></div>
+          <div class="beam"><i></i><i></i><i></i></div>
+          <div class="dev"><svg viewBox="0 0 16 24"><rect x="1" y="1" width="14" height="22" rx="3"/><path d="M6.5 20h3"/></svg><b class="en i">Phone</b><b class="tr i">Telefon</b><span>video.mp4 · 1080p</span></div>
+        </div>
+        <div class="pr-verify"><span class="en i">Format</span><span class="tr i">Biçim</span><code>MP4 · MP3 320</code></div>
+      </a>
+      <div class="app-body">
+        <div class="app-head"><img src="/assets/img/apps/jinjacut.svg" alt="" width="52" height="52"><div><span class="kind"><span class="en i">Video and audio · from a link</span><span class="tr i">Video ve ses · bağlantıdan</span></span><h2>JinjaCut</h2></div><span class="badge new">New</span></div>
+        <p class="en">Paste a link, pick the quality and save it as MP4 or MP3. No server in the middle: a small free helper on your own computer does the download and hands the file to the page, on the computer or on your phone.</p>
+        <p class="tr">Bağlantıyı yapıştır, kaliteyi seç, MP4 ya da MP3 olarak kaydet. Arada sunucu yok: indirmeyi kendi bilgisayarındaki küçük, ücretsiz yardımcı yapar ve dosyayı sayfaya verir; bilgisayarda da telefonda da.</p>
+        <ul class="feat">
+          <li><span class="en i">Every quality the source offers, plus MP3 up to 320 kbps</span><span class="tr i">Kaynağın sunduğu her kalite, ayrıca 320 kbps'ye kadar MP3</span></li>
+          <li><span class="en i">Save straight to the gallery on iPhone and Android</span><span class="tr i">iPhone ve Android'de doğrudan galeriye kaydet</span></li>
+          <li><span class="en i">Free, no account; your phone pairs with a QR code</span><span class="tr i">Ücretsiz, hesap yok; telefon QR kodla eşleşir</span></li>
+        </ul>
+        <div class="acts"><a class="btn p" href="/apps/cut/"><span class="en i">Open JinjaCut</span><span class="tr i">JinjaCut'ı aç</span> <span class="arw">&rarr;</span></a><span class="note">EN · TR</span></div>
       </div>
     </article>
 
