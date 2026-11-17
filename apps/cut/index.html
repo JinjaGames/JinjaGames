@@ -74,12 +74,13 @@
         <h2 data-i18n="setupTitle">Start the helper on your computer</h2>
         <p class="hint" data-i18n="setupIntro">A browser cannot fetch videos from other sites by itself, so a small free helper runs on your own computer and does it. Nothing is installed on a JinjaGames server and nothing is paid.</p>
         <ol class="how setup-steps">
-          <li data-i18n-html="setup1">Download the helper and unzip it.</li>
-          <li data-i18n-html="setup2">Open <b>Start</b> (Windows: <code>Baslat.bat</code>, Mac/Linux: <code>baslat.sh</code>).</li>
+          <li data-i18n-html="setup1">Download the helper and open it. Windows needs nothing else.</li>
+          <li data-i18n-html="setup2">If Windows shows a blue warning, choose <b>More info</b>, then <b>Run anyway</b>.</li>
           <li data-i18n-html="setup3">Pick <b>1</b> for this computer or <b>2</b> for your phone. This page opens by itself, already connected. For the phone, scan the QR code it shows.</li>
         </ol>
         <div class="actions">
-          <a class="btn p" href="helper/JinjaCutHelper.zip" download data-i18n="dlHelper">Download the helper (.zip)</a>
+          <a class="btn p" href="helper/JinjaCutHelper.exe" download data-i18n="dlHelper">Download for Windows (.exe)</a>
+          <a class="btn" href="helper/JinjaCutHelper.zip" download data-i18n="dlZip">Mac / Linux (.zip)</a>
           <button class="btn" id="retry" type="button" data-i18n="retry">I started it, check again</button>
         </div>
         <p class="hint" data-i18n="setupReq">Needs Python 3.8 or newer. The Start file offers to install it on Windows. The first start downloads yt-dlp and ffmpeg, which takes a minute.</p>
@@ -161,6 +162,6 @@
 </footer>
 
 <div class="toasts" id="toasts" aria-live="assertive"></div>
-<script src="cut.js?v=1"></script>
+<script src="cut.js?v=2"></script>
 </body>
 </html>

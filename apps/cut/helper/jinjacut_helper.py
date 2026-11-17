@@ -39,6 +39,7 @@ MAX_PARALLEL = 2
 JOB_TTL = 3600  # bitmiş işin dosyası 1 saat sonra silinir
 IS_WIN = os.name == 'nt'
 NOWIN = subprocess.CREATE_NO_WINDOW if IS_WIN else 0
+FROZEN = getattr(sys, 'frozen', False)  # tek dosyalık .exe olarak paketlenmiş
 
 
 def log(*a):
@@ -66,7 +67,28 @@ def have(mod):
         return False
 
 
+def ensure_ytdlp_exe(update):
+    """Paketlenmiş sürüm: yt-dlp'nin kendi .exe'sini indirir ve her açılışta günceller."""
+    exe = os.path.join(HOME, 'yt-dlp.exe')
+    if not os.path.exists(exe):
+        log('yt-dlp indiriliyor, bir kez yapılır…')
+        try:
+            download('https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp.exe', exe + '.tmp')
+            os.replace(exe + '.tmp', exe)
+        except Exception as e:
+            sys.exit('yt-dlp indirilemedi. İnternet bağlantını kontrol et. (%s)' % e)
+    elif update:
+        log('yt-dlp güncelleniyor…')
+        try:
+            subprocess.run([exe, '-U'], capture_output=True, timeout=180, creationflags=NOWIN)
+        except Exception:
+            pass
+    return exe
+
+
 def ensure_python_deps(update):
+    if FROZEN:
+        return
     if not have('yt_dlp'):
         log('yt-dlp kuruluyor…')
         if not pip('yt-dlp[default]'):
@@ -129,12 +151,13 @@ def ensure_js_runtime():
 
 
 class Engine:
-    def __init__(self):
+    def __init__(self, update=True):
+        self.ytdlp = [ensure_ytdlp_exe(update)] if FROZEN else [sys.executable, '-m', 'yt_dlp']
         self.ffmpeg = ffmpeg_path()
         self.js = ensure_js_runtime()
 
     def base(self):
-        a = [sys.executable, '-m', 'yt_dlp', '--no-playlist', '--encoding', 'utf-8', '--ffmpeg-location', self.ffmpeg]
+        a = self.ytdlp + ['--no-playlist', '--encoding', 'utf-8', '--ffmpeg-location', self.ffmpeg]
         if self.js:
             a += ['--js-runtimes', self.js]
         return a
@@ -235,6 +258,18 @@ class Job:
             self.file = line[7:].strip()
 
     def run(self):
+        # siteler ara sıra geçici 403 döndürür; bir kez daha denenir
+        for attempt in range(2):
+            self.error, self.file, self.total = None, None, None
+            self.base_bytes = self.last_cur = self.ema = 0.0
+            self.progress = 0.0
+            self._attempt()
+            if self.state != 'failed' or self.killed or '403' not in (self.error or ''):
+                break
+            time.sleep(1.5)
+        self.finished = time.time()
+
+    def _attempt(self):
         self.state, self.status = 'running', 'preparing'
         try:
             self.proc = subprocess.Popen(self.args(), stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True,
@@ -257,7 +292,6 @@ class Job:
         except Exception as e:
             self.error = str(e)
             self.state, self.status = 'failed', 'failed'
-        self.finished = time.time()
 
     def cancel(self):
         self.killed = True
@@ -535,7 +569,7 @@ def start_tunnel(port):
 
 def print_qr(text):
     try:
-        if not have('segno'):
+        if not FROZEN and not have('segno'):
             pip('segno')
         import segno
         out = io.StringIO()
@@ -579,6 +613,14 @@ def main():
     ap.add_argument('--no-update', action='store_true', help='yt-dlp güncellemesini atla')
     ap.add_argument('--no-browser', action='store_true')
     args = ap.parse_args()
+    if FROZEN and len(sys.argv) == 1:
+        for line in ('', '  JinjaCut Helper', '', '  1) Bu bilgisayar / This computer',
+                     '  2) Telefon (QR kod) / Phone (QR code)', ''):
+            print(line)
+        try:
+            args.phone = input('  Secim / Choice [1]: ').strip() == '2'
+        except EOFError:
+            pass
 
     for st in (sys.stdout, sys.stderr):
         try:
@@ -588,7 +630,7 @@ def main():
     os.makedirs(HOME, exist_ok=True)
     log('JinjaCut Helper %s' % VERSION)
     ensure_python_deps(not args.no_update)
-    engine = Engine()
+    engine = Engine(not args.no_update)
     for d in os.listdir(HOME):  # önceki oturumdan kalan geçici klasörler
         if d.startswith('jc_'):
             shutil.rmtree(os.path.join(HOME, d), ignore_errors=True)

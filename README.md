@@ -379,6 +379,9 @@ Tarayıcıda çalışabilen küçük modeller yeterli kaliteyi vermediği için 
 Bağlantıdan video (MP4) ya da ses (MP3) indirme sayfası. Sunucu yoktur: sayfa, kullanıcının kendi
 bilgisayarında çalışan `apps/cut/helper/jinjacut_helper.py` yardımcısına bağlanır (yt-dlp + ffmpeg).
 Telefon için yardımcı `--phone` ile ücretsiz bir Cloudflare tüneli açar ve QR kod gösterir.
+Windows için tek dosyalık `JinjaCutHelper.exe` de aynı betikten PyInstaller ile derlenir
+(`python -m PyInstaller --onefile --console --name JinjaCutHelper --collect-all imageio_ffmpeg --hidden-import segno apps/cut/helper/jinjacut_helper.py`);
+yt-dlp'yi ilk açılışta kendisi indirir ve her açılışta günceller.
 Yardımcı değişirse `apps/cut/helper/JinjaCutHelper.zip` yeniden paketlenmelidir (içinde dört dosya:
 `jinjacut_helper.py`, `Baslat.bat`, `baslat.sh`, `OKU-README.txt`).
 Yerel deneme: `python tools/dev_server.py 8000` ve `python apps/cut/helper/jinjacut_helper.py --site http://localhost:8000/apps/cut/`.
