@@ -11,6 +11,13 @@ window.BB_COMMENTS={
  ],
  "board-games": [
   {
+   "id": 8741978,
+   "n": "depravedhavoc",
+   "t": "ai is terrible.... its a always best move it can make style of ai no mistakes doesn`t fall for traps, castling doesn`t work. and for hells sake... lol... letters for pieces ? are there not enough clip arts of chess for you?",
+   "d": "2026-11-18",
+   "p": false
+  },
+  {
    "id": 8553096,
    "n": "JinjaGames",
    "t": "This looks like an incredibly ambitious and creative mod! Bringing 25 tabletop games into Minecraft, complete with AI opponents, multiplayer support, village Game Masters, progression is a fantastic idea. I’m looking forward to trying it great work!",
@@ -277,6 +284,13 @@ window.BB_COMMENTS={
   }
  ],
  "towers": [
+  {
+   "id": 8738680,
+   "n": "Theillegitimatesonofnotch",
+   "t": "An amazing mod I can't wait for it to come to 1.21.1!!",
+   "d": "2026-11-17",
+   "p": false
+  },
   {
    "id": 8519674,
    "n": "JinjaGames",
