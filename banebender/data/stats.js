@@ -1,6 +1,6 @@
 /* Otomatik: tools/update_stats.py (6 saatte bir, GitHub Actions). Elle düzenleme. */
 window.BB_STATS={
- "total": 6934,
+ "total": 7003,
  "projects": 24,
  "mods": {
   "all-irons": {
@@ -11,7 +11,7 @@ window.BB_STATS={
   },
   "board-games": {
    "name": "Board Games",
-   "dl": 833,
+   "dl": 836,
    "created": "2026-10-16T07:48Z",
    "updated": "2026-10-16T07:48Z"
   },
@@ -53,7 +53,7 @@ window.BB_STATS={
   },
   "frontier-structures": {
    "name": "Frontier Structures",
-   "dl": 516,
+   "dl": 525,
    "created": "2026-10-05T10:25Z",
    "updated": "2026-10-07T15:52Z"
   },
@@ -65,13 +65,13 @@ window.BB_STATS={
   },
   "hard-mobs-and-bosses": {
    "name": "Hard Mobs and bosses",
-   "dl": 590,
+   "dl": 592,
    "created": "2026-09-18T05:55Z",
    "updated": "2026-10-24T10:10Z"
   },
   "hearthly": {
    "name": "Hearthly",
-   "dl": 725,
+   "dl": 739,
    "created": "2026-10-12T12:44Z",
    "updated": "2026-10-24T21:07Z"
   },
@@ -83,7 +83,7 @@ window.BB_STATS={
   },
   "ore-elemental-golems": {
    "name": "Ore & Elemental Golems",
-   "dl": 971,
+   "dl": 991,
    "created": "2026-10-12T11:21Z",
    "updated": "2026-10-12T11:21Z"
   },
@@ -95,25 +95,25 @@ window.BB_STATS={
   },
   "pantheon-of-legends": {
    "name": "Pantheon of Legends",
-   "dl": 229,
+   "dl": 233,
    "created": "2026-10-05T11:54Z",
    "updated": "2026-10-05T11:54Z"
   },
   "power-generators": {
    "name": "Power generators",
-   "dl": 261,
+   "dl": 262,
    "created": "2026-09-18T06:42Z",
    "updated": "2026-10-24T10:10Z"
   },
   "real-animals": {
    "name": "Real Animals",
-   "dl": 732,
+   "dl": 744,
    "created": "2026-10-09T10:52Z",
    "updated": "2026-11-07T18:12Z"
   },
   "seraph": {
    "name": "Seraph",
-   "dl": 229,
+   "dl": 231,
    "created": "2026-10-05T11:03Z",
    "updated": "2026-10-24T10:11Z"
   },
@@ -143,7 +143,7 @@ window.BB_STATS={
   },
   "vivacity": {
    "name": "Vivacity",
-   "dl": 179,
+   "dl": 181,
    "created": "2026-10-25T12:13Z",
    "updated": "2026-10-25T12:13Z"
   }
@@ -151,7 +151,7 @@ window.BB_STATS={
  "unlisted": [
   "vivacity"
  ],
- "updated": "2026-11-19T11:24Z",
+ "updated": "2026-11-19T22:37Z",
  "source": "profile",
  "datesAt": "2026-11-19T11:24Z"
 };
