@@ -326,7 +326,7 @@ button:disabled {
   background: var(--accent);
   animation: blink 1.4s infinite;
 }
-.me {
+.meBtn {
   display: flex;
   align-items: center;
   gap: 10px;
@@ -338,10 +338,9 @@ button:disabled {
   font-size: 14px;
   max-width: 200px;
 }
-.me span:last-child {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+.meBtn span:last-child {
+  line-height: 1.1;
+  overflow-wrap: anywhere;
 }
 
 /* avatar */
@@ -2010,10 +2009,10 @@ body:has(.dock) #toast {
   }
 }
 @media (max-width: 560px) {
-  .me span:last-child {
+  .meBtn span:last-child {
     display: none;
   }
-  .me {
+  .meBtn {
     padding: 0 4px;
   }
   .heroActions .btn {
@@ -2113,4 +2112,111 @@ body:has(.dock) #toast {
 }
 .jg-back + .brand {
   margin-right: auto;
+}
+
+/* =====================================================================
+   JinjaQuiz eklemeleri: tam isimler, isimli cevaplar, topluluk, animasyon
+   ===================================================================== */
+
+/* İsimler asla üç noktayla kesilmez; gerekirse alt satıra geçer. */
+.players li b, .rowName b, .pod b, .cardInfo b, .qInfo b, .gq b, .pickItem b, .list li b, .vchip b, .typed b {
+  overflow: visible;
+  text-overflow: clip;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  line-height: 1.2;
+}
+.meBtn { max-width: 240px; }
+
+/* ana sayfa: oluştur ve topluluk kartları */
+.catHead h2 { margin-right: auto; }
+.createBtn { order: 2; }
+.catHead .chips { order: 3; flex-basis: 100%; overflow-x: auto; }
+.grid .card { animation: rise 0.45s var(--ease) backwards; animation-delay: calc(var(--i, 0) * 35ms); }
+.card.community .cardBtn { border-color: color-mix(in srgb, var(--accent) 30%, var(--line)); }
+.cardInfo small .ic { width: 12px; height: 12px; margin-right: 4px; vertical-align: -1px; }
+.cardTools { position: absolute; top: 8px; right: 8px; display: flex; gap: 6px; }
+.cardTools .icon { width: 32px; height: 32px; border-radius: 50%; background: #000b; color: #fff; display: grid; place-items: center; }
+.cardTools .icon:hover { background: var(--accent); color: var(--accent-ink); }
+
+/* lobi: genel sıralama ve geçmiş */
+.standHead { display: flex; align-items: center; gap: 8px; margin: 2px 0 10px; color: var(--gold); font: 800 15px var(--display); letter-spacing: 0.06em; text-transform: uppercase; }
+.standings li { animation: rise 0.4s var(--ease) backwards; animation-delay: calc(var(--i, 0) * 60ms); }
+.players li.me { box-shadow: inset 0 0 0 1.5px color-mix(in srgb, var(--accent) 55%, transparent); }
+.rank { flex: none; width: 26px; height: 26px; border-radius: 8px; display: grid; place-items: center; background: var(--s3); color: var(--muted); font: 800 15px var(--display); }
+.rank.r1 { background: var(--gold); color: #2a1d02; }
+.rank.r2 { background: #cfd3dc; color: #1f2228; }
+.rank.r3 { background: #d99a63; color: #2b1606; }
+.pscore { margin-left: auto; font: 800 22px var(--display); color: var(--ink); }
+.history .hist { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+.history .hist li { display: flex; align-items: center; gap: 12px; padding: 8px; border-radius: var(--r); background: var(--s2); animation: rise 0.4s var(--ease) backwards; }
+.history .qImg { width: 44px; height: 44px; border-radius: 10px; object-fit: cover; flex: none; }
+.history .qInfo { flex: 1; min-width: 0; display: grid; gap: 2px; }
+.history .qInfo small { color: var(--muted); display: flex; align-items: center; gap: 4px; flex-wrap: wrap; }
+.history .qInfo em { font-style: normal; color: var(--gold); font-weight: 800; }
+
+/* oyun: kendi puanın ve +puan fırlaması */
+.myScore { position: relative; display: inline-flex; align-items: baseline; gap: 4px; padding: 6px 12px; border-radius: 999px; background: var(--accent); color: var(--accent-ink); }
+.myScore b { font: 800 20px var(--display); }
+.myScore small { font-size: 11px; font-weight: 700; opacity: 0.8; }
+.myScore.up { animation: bump 0.5s var(--ease); }
+.myScore .plus { position: absolute; right: 100%; top: 50%; margin-right: 8px; translate: 0 -50%; font: 800 22px var(--display); font-style: normal; color: var(--gold); white-space: nowrap; animation: floatUp 1.6s var(--ease) both; pointer-events: none; }
+.myScore .plus.zero { color: var(--muted); }
+
+/* şıklar: kimin hangi şıkkı seçtiği, adı ve puanıyla */
+.ans { flex-wrap: wrap; }
+.ans .voters { flex-basis: 100%; display: flex; flex-wrap: wrap; gap: 6px; padding-left: 42px; }
+.vchip { display: inline-flex; align-items: center; gap: 6px; padding: 3px 9px 3px 3px; border-radius: 999px; background: #0006; font-size: 13px; font-weight: 600; animation: pop 0.3s var(--ease) backwards; }
+.vchip.me { box-shadow: inset 0 0 0 1.5px var(--ink); }
+.vchip em { font-style: normal; font-weight: 800; color: var(--muted); }
+.vchip em.good { color: var(--good); }
+.ans.right { animation: rightPop 0.6s var(--ease); }
+.ans.wrong { animation: shake 0.45s var(--ease); }
+.typed > span { flex-wrap: wrap; }
+.typed .said { opacity: 0.85; }
+.typed em { font-style: normal; font-weight: 800; margin-left: auto; }
+.typed .right em { color: var(--good); }
+.reveal { animation: pop 0.45s var(--ease); }
+.board .row { animation: rise 0.4s var(--ease) backwards; animation-delay: calc(var(--i, 0) * 70ms); }
+.rowName b { font-size: 15px; }
+
+/* sıralama: taç, konfeti, genel toplam */
+.ranking { position: relative; padding-bottom: 150px; }
+.pod.me b { color: var(--accent-2); }
+.crownTop { display: grid; place-items: center; color: var(--gold); font-size: 26px; animation: crown 1.2s var(--ease) 0.6s backwards; }
+.p1 .av.lg { box-shadow: 0 0 0 3px var(--gold), 0 0 40px #ffc23d55; }
+.totals { width: min(460px, 100%); margin-top: 26px; display: grid; gap: 4px; }
+.totals h2 { display: flex; align-items: center; justify-content: center; gap: 8px; font-size: 22px; }
+.totals h2 small { color: var(--muted); font-size: 0.6em; }
+.list li { animation: rise 0.4s var(--ease) backwards; animation-delay: calc(0.5s + var(--i, 0) * 60ms); }
+.list li.me { box-shadow: inset 0 0 0 1.5px color-mix(in srgb, var(--accent) 55%, transparent); color: var(--ink); }
+.list li span:last-child { margin-left: auto; font: 800 20px var(--display); color: var(--ink); }
+.confetti { position: fixed; inset: 0; pointer-events: none; overflow: hidden; z-index: 30; }
+.confetti i { position: absolute; top: -20px; left: var(--x); width: 9px; height: 14px; border-radius: 2px; background: var(--c); animation: fall var(--t) cubic-bezier(0.3, 0.6, 0.6, 1) var(--d) forwards; opacity: 0; }
+.confetti i:nth-child(3n) { width: 7px; height: 7px; border-radius: 50%; }
+
+/* quiz oluştur */
+.tsRes { display: grid; gap: 8px; margin-top: 8px; }
+.artistAdd { display: flex; flex-wrap: wrap; gap: 6px; }
+.chipBtn { display: inline-flex; align-items: center; gap: 6px; padding: 7px 12px; border-radius: 999px; background: var(--s3); font-size: 13px; font-weight: 600; }
+.chipBtn:hover { background: var(--accent); color: var(--accent-ink); }
+.tsList, .selList { display: grid; gap: 6px; max-height: 260px; overflow: auto; padding-right: 4px; }
+.tsHit, .selRow { display: grid; grid-template-columns: 40px minmax(0, 1fr) auto; align-items: center; gap: 10px; padding: 6px 8px; border-radius: 12px; background: var(--s2); text-align: left; }
+.tsHit:hover { background: var(--s3); }
+.tsHit.on { box-shadow: inset 0 0 0 1.5px var(--good); }
+.tsHit.on > .ic { color: var(--good); }
+.tsHit img, .selRow img, .tsHit .noart, .selRow .noart { width: 40px; height: 40px; border-radius: 8px; object-fit: cover; display: grid; place-items: center; background: var(--s3); }
+.tsHit span, .selRow span { display: grid; min-width: 0; }
+.tsHit small, .selRow small { color: var(--muted); font-size: 12px; }
+.selRow { animation: rise 0.3s var(--ease) backwards; }
+
+@keyframes floatUp { 0% { opacity: 0; transform: translateY(10px) scale(0.6); } 20% { opacity: 1; transform: translateY(-4px) scale(1.15); } 70% { opacity: 1; transform: translateY(-14px) scale(1); } 100% { opacity: 0; transform: translateY(-30px); } }
+@keyframes bump { 40% { transform: scale(1.18); } }
+@keyframes rightPop { 0% { transform: scale(1); } 35% { transform: scale(1.04); box-shadow: 0 0 0 8px #34d67f33; } 100% { transform: scale(1); box-shadow: 0 0 0 16px #34d67f00; } }
+@keyframes shake { 20%, 60% { transform: translateX(-6px); } 40%, 80% { transform: translateX(6px); } }
+@keyframes crown { from { opacity: 0; transform: translateY(-20px) rotate(-20deg) scale(0.5); } }
+@keyframes fall { 0% { opacity: 1; transform: translate3d(0, 0, 0) rotate(0); } 100% { opacity: 0.9; transform: translate3d(calc(var(--r) / 6), 105vh, 0) rotate(var(--r)); } }
+@media (prefers-reduced-motion: reduce) { .confetti { display: none; } }
+@media (max-width: 600px) {
+  .ans .voters { padding-left: 0; }
 }

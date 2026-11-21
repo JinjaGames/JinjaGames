@@ -99,6 +99,7 @@ export const FEATURED = {
 // Bir listenin şarkılarını getirir: sanatçıların en popüler 100 şarkısı, tekrarsız ve
 // remix / canlı / hızlandırılmış sürümler ayıklanmış olarak.
 export async function loadTracks(list) {
+  if (Array.isArray(list.tracks) && list.tracks.length) return cleanTracks(list.tracks);
   const key = list.artists.join(",");
   if (memo.has(key)) return memo.get(key);
   const p = (async () => {
@@ -136,6 +137,23 @@ export async function loadTracks(list) {
   return p;
 }
 
+export const cleanTracks = (arr) => {
+  const seen = new Set();
+  return arr
+    .map((t) => ({ id: int(t?.id), title: str(t?.title, 120), artist: str(t?.artist, 80), cover: cdn(t?.cover) }))
+    .filter((t) => t.id && t.title && !seen.has(t.id) && seen.add(t.id))
+    .slice(0, 100);
+};
+
+// Şarkı araması (quiz oluştururken): yalnızca önizlemesi olan, çalınabilir kayıtlar.
+export async function searchTracks(q) {
+  const r = await jsonp("search/track", { q, limit: 25 });
+  return (r.data || [])
+    .filter((t) => cdn(t.preview) && t.readable !== false)
+    .map((t) => ({ id: int(t.id), title: str((t.title_short || t.title || "").trim()), artist: str(t.artist?.name, 80), artistId: int(t.artist?.id), cover: cdn(t.album?.cover_medium) }))
+    .filter((t) => t.id && t.title);
+}
+
 export async function searchArtists(q) {
   const r = await jsonp("search/artist", { q, limit: 8 });
   return (r.data || []).map((a) => ({
@@ -170,9 +188,10 @@ export function customLists() {
         name: str(l.name, 80),
         picture: cdn(l.picture),
         artists: (Array.isArray(l.artists) ? l.artists : []).map(int).filter(Boolean).slice(0, 6),
+        tracks: Array.isArray(l.tracks) ? cleanTracks(l.tracks) : undefined,
         genre: "Senin",
       }))
-      .filter((l) => l.id && l.artists.length);
+      .filter((l) => l.id && (l.artists.length || l.tracks?.length));
   } catch {
     return [];
   }

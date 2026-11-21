@@ -68,6 +68,7 @@ export class Game {
     this.phase = "lobby";
     this.seconds = 20;
     this.autoNext = true;
+    this.history = []; // bu lobide biten quizler (en yeni sonda)
     this.question = null;
     this.timer = null;
     this.join(host.pid, host.profile);
@@ -80,6 +81,7 @@ export class Game {
   }
   static restore(data, onChange) {
     const g = Object.assign(Object.create(Game.prototype), data, { onChange, timer: null });
+    g.history ??= [];
     for (const p of g.players) p.online = p.pid === g.hostId;
     if (g.phase === "preparing") g.prepare();
     g.schedule();
@@ -145,6 +147,16 @@ export class Game {
     this.index++;
     if (this.index >= set.questions.length) {
       this.phase = this.set + 1 >= this.queue.length ? "done" : "ranking";
+      this.history.push({
+        id: uid(),
+        name: set.name,
+        art: set.art,
+        picture: set.picture,
+        count: set.questions.length,
+        top: [...this.players].sort((a, b) => b.round - a.round).map((p) => ({ pid: p.pid, name: p.name, pts: p.round })),
+        set: { name: set.name, art: set.art, picture: set.picture, tracks: set.tracks, pool: set.questions.length, mode: set.mode, clip: set.clip },
+      });
+      if (this.history.length > 10) this.history.shift();
       this.question = null;
       this.emit();
       return;
@@ -302,6 +314,7 @@ export class Game {
         needHost();
         return this.skip();
       case "again":
+        // Solo: aynı quizleri baştan oyna (puan sıfırlanır).
         needHost();
         this.phase = "lobby";
         this.set = -1;
@@ -309,6 +322,43 @@ export class Game {
         this.question = null;
         for (const p of this.players) (p.score = 0), (p.round = 0);
         this.queue = this.queue.map((s) => ({ ...s, id: uid(), questions: shuffle(s.questions) }));
+        break;
+      case "lobby":
+        // Çok oyunculu: herkes lobiye döner; genel puanlar ve geçmiş kalır, oynanan quizler sıradan çıkar.
+        needHost();
+        if (!["done", "ranking"].includes(this.phase)) throw Error("Oyun sürüyor.");
+        clearTimeout(this.timer);
+        this.phase = "lobby";
+        this.queue = this.queue.slice(this.set + 1);
+        this.set = -1;
+        this.index = -1;
+        this.question = null;
+        for (const p of this.players) p.round = 0;
+        break;
+      case "requeue": {
+        needHost();
+        if (this.phase !== "lobby") throw Error("Oyun başladı.");
+        const h = this.history.find((x) => x.id === a.id);
+        if (!h) throw Error("Bu quiz artık yok.");
+        if (this.queue.length >= 12) throw Error("Kuyrukta en fazla 12 quiz olabilir.");
+        const pool = h.set.tracks;
+        this.queue.push({
+          id: uid(),
+          name: h.set.name,
+          art: h.set.art,
+          picture: h.set.picture,
+          tracks: pool,
+          questions: shuffle(pool).slice(0, h.set.pool),
+          mode: h.set.mode,
+          clip: h.set.clip,
+        });
+        break;
+      }
+      case "reset":
+        needHost();
+        if (this.phase !== "lobby") throw Error("Oyun başladı.");
+        for (const p of this.players) (p.score = 0), (p.round = 0);
+        this.history = [];
         break;
       default:
         throw Error("Bilinmeyen işlem.");
@@ -352,6 +402,7 @@ export class Game {
       })),
       set: this.set,
       index: this.index,
+      history: this.history.map(({ id, name, art, picture, count, top }) => ({ id, name, art, picture, count, top })),
       question:
         q && ["preparing", "question", "reveal"].includes(this.phase)
           ? {
