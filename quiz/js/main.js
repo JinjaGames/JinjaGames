@@ -535,7 +535,7 @@ function qcard(l, k = 0) {
 }
 function acard(l, k = 0) {
   return `<button class="acard" data-list="${esc(l.id)}" style="--i:${k}" aria-label="${esc(l.name)} quizini aç">
-    <span class="acardArt">${cover(l, "acardImg")}<span class="acardPlay">${ic("play")}</span></span>
+    <span class="acardArt">${cover(l, "acardImg")}</span>
     <b>${esc(l.name)}</b><small>${esc(l.genre)}</small>
   </button>`;
 }
@@ -765,7 +765,7 @@ function gameHtml(v) {
     const r = reveal ? q.reveal.results[v.me] : null;
     const verdict = !reveal ? "" : r?.correct ? `<span class="verdict good">${ic("check")} +${num(r.points)}</span>` : r ? `<span class="verdict bad">${ic("x")} Yanlış</span>` : `<span class="verdict">${ic("timer")} Süre doldu</span>`;
     stage = `<div class="tq ${reveal ? "done" : ""}">
-      <div class="countdown" id="countdown"></div>
+      <div class="countdown" id="countdown" aria-hidden="true"><div class="cdRing"><svg viewBox="0 0 100 100"><circle cx="50" cy="50" r="46" pathLength="100"/><circle class="cdArc" id="cdArc" cx="50" cy="50" r="46" pathLength="100"/></svg><b id="cdNum"></b><small>Başlıyor</small></div></div>
       <span class="tqNo">${ic("circle-help")} Soru ${num(v.index) + 1}</span>
       <h2 class="tqText">${esc(q.text)}</h2>
       ${reveal ? `<div class="tqAns"><small>Doğru cevap</small><b>${esc(q.reveal.title)}</b>${verdict}</div>` : ""}
@@ -784,7 +784,7 @@ function gameHtml(v) {
     </div>`;
   } else {
     stage = `<div class="stage">
-      <div class="countdown" id="countdown"></div>
+      <div class="countdown" id="countdown" aria-hidden="true"><div class="cdRing"><svg viewBox="0 0 100 100"><circle cx="50" cy="50" r="46" pathLength="100"/><circle class="cdArc" id="cdArc" cx="50" cy="50" r="46" pathLength="100"/></svg><b id="cdNum"></b><small>Başlıyor</small></div></div>
       <button class="disc" data-do="listen" id="disc" aria-label="Kesiti dinle">
         <svg class="ring" viewBox="0 0 100 100"><circle cx="50" cy="50" r="47" pathLength="100"/><circle id="clipArc" cx="50" cy="50" r="47" pathLength="100"/></svg>
         <span class="eq"><i></i><i></i><i></i><i></i><i></i></span>
@@ -957,8 +957,19 @@ function paint() {
     }
     const cd = $("#countdown");
     if (cd) {
-      cd.textContent = pre ? Math.ceil((q.start - now) / 1000) : "";
+      const s = pre ? String(Math.ceil((q.start - now) / 1000)) : "";
       cd.classList.toggle("on", pre);
+      const n = $("#cdNum");
+      if (n && n.textContent !== s) {
+        n.textContent = s;
+        cd.dataset.s = s;
+        // Her yeni saniyede sayı ve dalga animasyonunu yeniden başlat
+        cd.classList.remove("beat");
+        void cd.offsetWidth;
+        cd.classList.add("beat");
+      }
+      const arc = $("#cdArc");
+      if (arc && pre) arc.style.strokeDashoffset = 100 - (((q.start - now) % 1000) / 1000) * 100;
     }
     const used = playsUsed(q.id);
     const disc = $("#disc");

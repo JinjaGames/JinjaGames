@@ -2653,3 +2653,49 @@ footer a:hover { color: var(--accent-2); border-color: var(--accent-2); }
 .crCover.emo { position: relative; padding: 0; overflow: hidden; }
 .crCover.emo > .noart.art { position: absolute; inset: 0; }
 .crCover.emo .crCount { z-index: 1; }
+
+/* Sanatçı kartları: oynat düğmesi yerine üstüne gelince plak gibi döner */
+.acardArt::before { content: ""; position: absolute; z-index: 2; width: 17%; aspect-ratio: 1; border-radius: 50%; background: var(--bg); box-shadow: 0 0 0 4px #ffffff26, 0 0 0 9px #0000004d, inset 0 1px 3px #000a; opacity: 0; scale: 0.3; transition: opacity 0.3s, scale 0.4s var(--ease); pointer-events: none; }
+.acardArt::after { z-index: 1; }
+.acard:hover .acardArt::before, .acard:focus-visible .acardArt::before { opacity: 1; scale: 1; }
+.acard:hover .acardArt::after, .acard:focus-visible .acardArt::after { background: repeating-radial-gradient(circle, transparent 0 3px, #0000001c 3px 4px), radial-gradient(circle, transparent 30%, #00000040 31%, transparent 34%), linear-gradient(135deg, #ffffff26, transparent 45%); }
+.acard:hover .acardImg, .acard:focus-visible .acardImg { transform: none; animation: rot 3.2s linear infinite; }
+.acard:focus-visible { outline: none; }
+.acard:focus-visible .acardArt { box-shadow: 0 0 0 3px var(--accent), 0 20px 44px #000a; }
+@media (prefers-reduced-motion: reduce) { .acard:hover .acardImg, .acard:focus-visible .acardImg { animation: none; } }
+
+/* Soru öncesi geri sayım: renk değiştiren halka, her saniye yeniden doğan sayı */
+.countdown { --cd: #ff5b3a; font: inherit; text-shadow: none; transition: opacity 0.25s; }
+.countdown[data-s="3"] { --cd: #ffc23d; }
+.countdown[data-s="2"] { --cd: #ff8a5c; }
+.stage .countdown { place-items: start center; padding-top: 28px; }
+.cdRing { position: relative; width: min(200px, 52vw); aspect-ratio: 1; border-radius: 50%; display: grid; place-content: center; justify-items: center;
+  background: radial-gradient(circle, color-mix(in srgb, var(--cd) 26%, transparent), transparent 64%), #141419e6;
+  box-shadow: inset 0 0 0 1px #ffffff12, 0 30px 80px -24px color-mix(in srgb, var(--cd) 70%, transparent);
+  transition: box-shadow 0.4s, background 0.4s; scale: 0.85; }
+.countdown.on .cdRing { scale: 1; transition: scale 0.4s var(--ease), box-shadow 0.4s; }
+.cdRing svg { position: absolute; inset: 0; transform: rotate(-90deg); overflow: visible; }
+.cdRing circle { fill: none; stroke: #ffffff12; stroke-width: 3.5; }
+.cdRing .cdArc { stroke: var(--cd); stroke-dasharray: 100; stroke-linecap: round; filter: drop-shadow(0 0 5px var(--cd)); transition: stroke 0.3s; }
+.cdRing b { font: 800 clamp(76px, 20vw, 104px)/0.85 var(--display); color: var(--cd); text-shadow: 0 0 36px color-mix(in srgb, var(--cd) 65%, transparent); transition: color 0.3s; }
+.cdRing small { margin-top: 8px; font-size: 11px; font-weight: 800; letter-spacing: 0.22em; text-transform: uppercase; color: var(--muted); }
+.cdRing::after { content: ""; position: absolute; inset: 0; border-radius: 50%; border: 2px solid var(--cd); opacity: 0; pointer-events: none; }
+.countdown.beat .cdRing b { animation: cdPop 0.55s var(--ease); }
+.countdown.beat .cdRing::after { animation: cdWave 0.9s ease-out; }
+@keyframes cdPop { from { transform: scale(1.7); opacity: 0; filter: blur(8px); } to { transform: none; opacity: 1; filter: none; } }
+@keyframes cdWave { from { opacity: 0.7; transform: scale(1); } to { opacity: 0; transform: scale(1.35); } }
+.countdown.on ~ .disc { opacity: 0; transform: scale(0.85); }
+.tq .countdown { backdrop-filter: blur(4px); -webkit-backdrop-filter: blur(4px); }
+.tq .cdRing { width: min(170px, 46vw); }
+@media (prefers-reduced-motion: reduce) { .countdown.beat .cdRing b, .countdown.beat .cdRing::after { animation: none; } }
+/* Dar ekranda oyun çubuğu taşmasın: ses sürgüsü varken yalnızca logo simgesi kalsın */
+@media (max-width: 460px) {
+  .bar:has(.vol) .brand > b, .bar:has(.vol) .brand > span:not(.mark) { display: none; }
+  .bar:has(.vol) .brand .mark { margin-right: 0; }
+  .bar:has(.pill.live) .vol input { width: 52px; }
+}
+/* Trivia kutusu kısa olabilir: halka kutunun yüksekliğine sığsın */
+.cdRing { container-type: size; }
+.cdRing b { font-size: 50cqh; }
+.cdRing small { font-size: max(9px, 5.5cqh); }
+.tq .cdRing { width: auto; height: min(170px, calc(100% - 16px)); }
