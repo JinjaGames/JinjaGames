@@ -1,11 +1,29 @@
+import { MORE } from "./trivia-more.js";
+
 // Trivia quizleri: müzik dışı bilgi soruları. Her soru { q: soru, a: [doğru, yanlış, yanlış, yanlış] }
 // biçimindedir; ilk cevap her zaman doğrudur, oyunda şıklar karıştırılır. Doğru/Yanlış soruları iki şıklıdır.
 
 export const T_MIN = 5;
 export const T_MAX = 100;
 export const TCATS = ["Genel Kültür", "Tarih", "Coğrafya", "Bilim", "Spor", "Film & Dizi", "Müzik", "Oyun", "Edebiyat & Sanat", "Yemek", "Teknoloji", "Eğlence"];
-export const EMOJIS = ["🧠", "🔥", "🌍", "🏛️", "🎖️", "📜", "🏅", "🚀", "🧪", "🦁", "⚽", "🏆", "🎬", "🍿", "📺", "🎸", "🎮", "📚", "🎨", "🍕", "💻", "⚡", "✅", "🔢", "🗺️", "🎯", "💡", "🌟", "❤️", "😂", "🐉"];
+export const EMOJIS = ["🧠", "🔥", "🌍", "🏛️", "🎖️", "📜", "🏅", "🚀", "🧪", "🦁", "⚽", "🏆", "🎬", "🍿", "📺", "🎸", "🎮", "📚", "🎨", "🍕", "💻", "⚡", "✅", "🔢", "🗺️", "🎯", "💡", "🌟", "❤️", "😂", "🐉",
+  "🚩", "🏰", "🌋", "🏙️", "🗿", "👑", "🦖", "🦈", "🧬", "🪐", "🐾", "🏀", "🏎️", "🎾", "🥇", "🦸", "🧸", "🎥", "🧙", "🎤", "🎹", "🎧", "👾", "🕹️", "📖", "📝", "💬", "🍰", "🍔", "📱", "🤖", "🕵️", "🧩", "🎲"];
 
+// Kapak görselleri: kategori başına renk tonu ve süs simgeleri
+export const TART = {
+  "Genel Kültür": [265, "💡", "❓"],
+  Tarih: [32, "⚔️", "🏺"],
+  Coğrafya: [168, "🧭", "🏔️"],
+  Bilim: [208, "⚛️", "🔭"],
+  Spor: [135, "🥇", "⏱️"],
+  "Film & Dizi": [352, "🎞️", "⭐"],
+  Müzik: [298, "🎵", "🎧"],
+  Oyun: [248, "🕹️", "👾"],
+  "Edebiyat & Sanat": [14, "🖋️", "🖼️"],
+  Yemek: [38, "🌶️", "🍴"],
+  Teknoloji: [188, "🤖", "💾"],
+  Eğlence: [322, "🎉", "✨"],
+};
 const s = (v, n) => (typeof v === "string" ? v.replace(/[\u0000-\u001f\u007f]/g, " ").replace(/\s+/g, " ").trim().slice(0, n) : "");
 const key = (v) => v.toLocaleLowerCase("tr").replace(/\s+/g, "");
 
@@ -500,5 +518,5 @@ export const TRIVIA = [
     Q("Logosunda sıçrayan bir kedi bulunan spor markası hangisidir?", "Puma", "Jack Wolfskin", "Under Armour", "Lotto"),
     Q("Kırmızı-beyaz logosu ve kıvrımlı yazısıyla bilinen içecek markası hangisidir?", "Coca-Cola", "Pepsi", "Fanta", "Sprite"),
     Q("Logosunda kırmızı bir 'play' düğmesi bulunan platform hangisidir?", "YouTube", "Netflix", "Twitch", "Vimeo"),
-  ]),
+  ]),  ...MORE,
 ];

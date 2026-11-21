@@ -1,7 +1,7 @@
 import { PRESETS, loadTracks, searchArtists, customLists, saveCustom, removeCustom, fold, cdn, realPic, loadPresetPictures } from "./music.js";
 import { fetchCommunity, removeQuiz, hideQuiz } from "./community.js";
 import { Game, MAX_PLAYERS } from "./engine.js";
-import { TRIVIA, TCATS, EMOJIS, cleanItems } from "./trivia.js";
+import { TRIVIA, TCATS, TART, EMOJIS, cleanItems } from "./trivia.js";
 import { hostRoom, guestRoom, newCode, validCode } from "./net.js";
 
 // ---------- yardımcılar ----------
@@ -101,7 +101,7 @@ function topbar() {
   const inRoom = mode && mode.role !== "solo" && screen !== "room"; // solo oyunda "Lobiye dön" yok
   const html = `
     <a class="jg-back" href="/" title="JinjaGames ana sayfasına dön" aria-label="JinjaGames ana sayfasına dön"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14.5 5.5L8 12l6.5 6.5"/></svg><img src="/favicon-j-shuriken-32.png" width="20" height="20" alt=""></a>
-    <button class="brand" data-go="home" aria-label="JinjaQuiz ana sayfa"><span class="mark">${ic("audio-lines")}</span><b lang="en">JINJA</b><span lang="en">QUIZ</span></button>
+    <button class="brand" data-go="home" aria-label="JinjaQuiz ana sayfa"><span class="mark"><svg class="logo" viewBox="0 0 40 40" aria-hidden="true"><defs><linearGradient id="jqG" x1="4" y1="4" x2="36" y2="36" gradientUnits="userSpaceOnUse"><stop stop-color="#ff5b3a"/><stop offset=".55" stop-color="#ff8a5c"/><stop offset="1" stop-color="#ffc23d"/></linearGradient></defs><path d="M11 3h18a8 8 0 0 1 8 8v12a8 8 0 0 1-8 8H19l-7.4 5.6c-.7.5-1.6 0-1.6-.8V31a8 8 0 0 1-7-8V11a8 8 0 0 1 8-8z" fill="url(#jqG)"/><g stroke="#141217" stroke-width="2.8" stroke-linecap="round"><path d="M11.5 15v4"/><path d="M16 11.5v11"/><path d="M20.5 9v16"/><path d="M25 12.5v9"/><path d="M29.5 15.5v3"/></g><circle cx="33" cy="5" r="2.6" fill="#f6f1ef"/></svg></span><b lang="en">JINJA</b><span lang="en">QUIZ</span></button>
     <div class="barEnd">
       ${inRoom ? `<button class="pill live" data-go="room">${ic("users")}<span>Lobiye dön</span></button>` : ""}
       ${screen === "room" && mode ? `<label class="vol" title="Ses düzeyi">${ic("volume-2")}<input type="range" id="vol" min="0" max="100" step="1" value="${Math.round(volume() * 100)}" aria-label="Ses düzeyi"></label>` : ""}
@@ -360,8 +360,13 @@ const hue = (name) => {
   for (const c of String(name || "?")) h = (h * 31 + c.charCodeAt(0)) >>> 0;
   return h % 360;
 };
-function cover(l, cls = "") {
-  if (EMOJIS.includes(l?.emoji)) return `<span class="${esc(cls)} noart mono emo" style="--h:${hue(l.name)}">${l.emoji}</span>`;
+function cover(l, cls = "", big = false) {
+  if (EMOJIS.includes(l?.emoji)) {
+    const [h, d1, d2] = TART[l.cat] || [hue(l.name), "✨", "❓"];
+    const hh = TART[l.cat] ? (h + (hue(l.name) % 36) - 18 + 360) % 360 : h;
+    if (!big) return `<span class="${esc(cls)} noart mono emo" style="--h:${hh}">${l.emoji}</span>`;
+    return `<span class="${esc(cls)} noart art" style="--h:${hh}"><i class="artGhost">${l.emoji}</i><i class="artDeco d1">${d1}</i><i class="artDeco d2">${d2}</i><i class="artMain">${l.emoji}</i></span>`;
+  }
   if (realPic(l?.picture)) return `<img class="${esc(cls)}" src="${esc(l.picture)}" alt="" loading="lazy" referrerpolicy="no-referrer">`;
   // Görsel yoksa addan türeyen renkli harf rozeti
   const name = String(l?.name || "?");
@@ -446,6 +451,16 @@ function renderHome() {
       <div class="hm-actions"><a class="btn primary lg" href="olustur/">${ic("music")}Şarkı quizi oluştur</a><a class="btn light lg" href="olustur/?tur=trivia">${ic("circle-help")}Trivia oluştur</a></div></div>
   </section>
   <footer>Şarkı önizlemeleri ve sanatçı görselleri <a href="https://www.deezer.com" target="_blank" rel="noopener noreferrer">Deezer</a> kataloğundan gelir. Oyun verisi oyuncular arasında doğrudan (P2P) akar. · <a href="/">JinjaGames</a> · <a href="/apps/">Diğer web uygulamaları</a> · <a href="/privacy/">Gizlilik</a></footer>`;
+  keepVisible('.subChips [aria-pressed="true"]');
+  keepVisible('.hm-tabs [aria-selected="true"]');
+}
+// Seçili sekme/alt kategori yatay kaydırmalı şeritte görünür kalsın
+function keepVisible(sel) {
+  const b = app.querySelector(sel);
+  const bar = b?.parentElement;
+  if (!bar || bar.scrollWidth <= bar.clientWidth) return;
+  const r = b.getBoundingClientRect(), br = bar.getBoundingClientRect();
+  bar.scrollLeft += r.left - br.left - (br.width - r.width) / 2;
 }
 // Katalog sekmeleri: [ad, simge, başlık]
 const TABS = [
@@ -473,6 +488,14 @@ function tabCount(name, mine) {
   if (name === "Senin") return mine.length;
   return 0;
 }
+// Rafta her kategoriden sırayla birer quiz göster (hepsi Genel Kültür'le başlamasın)
+function mixCats(list) {
+  const groups = TCATS.map((c) => list.filter((t) => t.cat === c));
+  const out = [];
+  const most = Math.max(0, ...groups.map((g) => g.length));
+  for (let i = 0; i < most; i++) for (const g of groups) if (g[i]) out.push(g[i]);
+  return out;
+}
 function triviaRail(comm) {
   const cats = TCATS.filter((c) => TRIVIA.some((t) => t.cat === c) || comm.some((t) => t.cat === c));
   return `<div class="hm-rail trivia">
@@ -481,10 +504,10 @@ function triviaRail(comm) {
       .map((c) => {
         const n = TRIVIA.filter((t) => t.cat === c).length + comm.filter((t) => t.cat === c).length;
         const e = TRIVIA.find((t) => t.cat === c)?.emoji || "🧠";
-        return `<button class="catTile" data-tab="Trivia" data-cat="${esc(c)}" style="--h:${hue(c)}"><span>${e}</span><b>${esc(c)}</b><small>${n} quiz</small></button>`;
+        return `<button class="catTile" data-tab="Trivia" data-cat="${esc(c)}" style="--h:${TART[c]?.[0] ?? hue(c)}"><span>${e}</span><b>${esc(c)}</b><small>${n} quiz</small></button>`;
       })
       .join("")}</div>
-    <div class="hm-track">${[...comm.slice(0, 4), ...TRIVIA].map((l, k) => qcard(l, k)).join("")}</div>
+    <div class="hm-track">${[...comm.slice(0, 4), ...mixCats(TRIVIA).slice(0, 24)].map((l, k) => qcard(l, k)).join("")}</div>
   </div>`;
 }
 function rail(title, icon, inner, more, cls = "") {
@@ -502,7 +525,7 @@ function communityState() {
 function qcard(l, k = 0) {
   return `<div class="qcard ${l.genre === "Topluluk" ? "community" : ""}" style="--i:${Math.min(k, 20)}">
     <button class="qcardBtn" data-list="${esc(l.id)}" aria-label="${esc(l.name)} quizini aç">
-      <span class="qcardArt">${cover(l, "qcardImg")}</span>
+      <span class="qcardArt">${cover(l, "qcardImg", true)}</span>
       <span class="qcardTag">${esc(l.genre)}</span>
       <span class="qcardInfo"><b>${esc(l.name)}</b><small>${cardSub(l)}</small></span>
       <span class="qcardPlay">${ic("play")}</span>

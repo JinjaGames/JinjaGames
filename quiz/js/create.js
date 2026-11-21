@@ -2,7 +2,7 @@
 // sanatçının popüler şarkıları ve tüm albümleri tek tek ya da topluca eklenebilir.
 import { searchArtists, searchTracks, artistInfo, artistTop, artistAlbums, albumTracks, isAlternate, customLists, saveCustom, removeCustom, cleanTracks, fold, cdn } from "./music.js";
 import { fetchCommunity, publishQuiz, removeQuiz, myPubkey, MIN_TRACKS, MAX_TRACKS } from "./community.js";
-import { TCATS, EMOJIS, T_MIN, T_MAX, cleanItems, cleanCat, cleanEmoji, isTF } from "./trivia.js";
+import { TCATS, TART, EMOJIS, T_MIN, T_MAX, cleanItems, cleanCat, cleanEmoji, isTF } from "./trivia.js";
 
 const $ = (s, r = document) => r.querySelector(s);
 const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
@@ -127,7 +127,7 @@ const filled = () => st.items.filter((e) => !isBlank(e)).length;
 function triviaSide() {
   return `<div class="crCard">
     ${kindSwitch()}
-    <div class="crCover emo" style="--h:${hue(st.name || st.cat)}">${esc(st.emoji)}<span class="crCount"><b>${filled()}</b>/${T_MAX} soru</span></div>
+    <div class="crCover emo"><span class="noart art" style="--h:${(TART[st.cat]?.[0] ?? hue(st.cat)) + (hue(st.name || st.cat) % 36) - 18}"><i class="artGhost">${esc(st.emoji)}</i><i class="artDeco d1">${TART[st.cat]?.[1] || "✨"}</i><i class="artDeco d2">${TART[st.cat]?.[2] || "❓"}</i><i class="artMain">${esc(st.emoji)}</i></span><span class="crCount"><b>${filled()}</b>/${T_MAX} soru</span></div>
     <label class="field"><span>Trivia adı</span><input id="qName" maxlength="60" value="${esc(st.name)}" placeholder="Örn. 90'lar Çizgi Filmleri" autocomplete="off"></label>
     <label class="field"><span>Kısa açıklama <small class="muted">(isteğe bağlı)</small></span><input id="qDesc" maxlength="160" value="${esc(st.desc)}" placeholder="Bu trivia ne hakkında?" autocomplete="off"></label>
     <label class="field"><span>Kategori</span><select id="qCat">${TCATS.map((c) => `<option ${c === st.cat ? "selected" : ""}>${esc(c)}</option>`).join("")}</select></label>
@@ -435,7 +435,7 @@ document.addEventListener("change", (e) => {
   const t = e.target;
   if (t.id === "qPublic") { st.public = t.checked; drawLists(); }
   if (t.id === "hideAlt") { st.hideAlt = t.checked; drawLists(); }
-  if (t.id === "qCat") st.cat = cleanCat(t.value);
+  if (t.id === "qCat") { st.cat = cleanCat(t.value); drawLists(); }
 });
 document.addEventListener("submit", (e) => {
   e.preventDefault();
