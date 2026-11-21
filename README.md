@@ -332,6 +332,7 @@ Simgeler `assets/img/apps/` altındadır.
 
 - `/football/` — Jinja Football (aşağıda). Logo `football/js/logo.js` (shuriken + top); `assets/img/apps/football.svg` aynı koddan üretilir.
 - `/peer/` — JinjaPeer web istemcisi (masaüstü/Android uygulamasıyla aynı protokol).
+- `/quiz/` — JinjaQuiz, arkadaşlarla müzik quiz (kaynak: `Desktop/Challenge Me!/web`, eski adı Ritim Arena).
 
 ### Jinja Football (eski adı What If Football): adresler `#` içermez
 
@@ -373,3 +374,11 @@ kaldırıldı. Kod ve veri `git stash list` içinde "kits-boots shelved" adıyla
 
 Tarayıcıda çalışabilen küçük modeller yeterli kaliteyi vermediği için yayından kaldırıldı. Kod `git stash list` içinde
 "humanizer-web shelved" adıyla duruyor.
+
+### JinjaQuiz (`/quiz/`)
+
+- Sunucusuz: kurucunun tarayıcısı oyun motorunu çalıştırır (`quiz/js/engine.js`), oyuncular WebRTC ile bağlanır (`quiz/js/net.js`, Trystero 0.26 `quiz/vendor/`). Eşleşme herkese açık Nostr röleleriyle, STUN Google/Cloudflare.
+- Şarkılar Deezer önizlemeleri. Deezer yalnızca JSONP sunduğu için istekler `quiz/catalog.html` içinde, `sandbox="allow-scripts"` bir iframe'de yapılır; sayfaya yalnızca düz JSON gelir (`quiz/js/music.js`, `cdn()` yalnızca `*.dzcdn.net` adreslerine izin verir).
+- Kurucudan gelen oyun durumu `cleanView()` ile, oyuncu kimlikleri `net.js` içinde süzülür; `quiz/index.html` sıkı bir CSP taşır.
+- Hazır sanatçıların fotoğrafları sitede tutulmaz, Deezer'dan istenir. `assets/art/hero.webp` yapay zekâ üretimidir.
+- Kaynak proje `C:\Users\user\Desktop\Challenge Me!\web`; oradan güncellerken bu değişiklikleri koru.

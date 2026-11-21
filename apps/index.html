@@ -9,8 +9,8 @@ if ((location.protocol === 'https:' || location.protocol === 'http:') && locatio
 }
 </script>
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-<title>Web Apps | JinjaGames: Jinja Football and JinjaPeer in your browser</title>
-<meta name="description" content="JinjaGames web apps run right in your browser: Jinja Football, the football what-if machine, and JinjaPeer, end-to-end encrypted device-to-device file transfer. Free, no account, no tracking." />
+<title>Web Apps | JinjaGames: Jinja Football, JinjaPeer and JinjaQuiz in your browser</title>
+<meta name="description" content="JinjaGames web apps run right in your browser: Jinja Football, the football what-if machine, JinjaPeer, end-to-end encrypted device-to-device file transfer, and JinjaQuiz, a music quiz to play with friends. Free, no account, no tracking." />
 <meta name="robots" content="index,follow" />
 <link rel="canonical" href="https://jinjagames.com/apps/" />
 <meta name="theme-color" content="#FCFAF8" media="(prefers-color-scheme: light)" />
@@ -19,7 +19,7 @@ if ((location.protocol === 'https:' || location.protocol === 'http:') && locatio
 <link rel="icon" type="image/png" sizes="48x48" href="../favicon-j-shuriken-48.png?v=2" />
 <link rel="apple-touch-icon" href="../favicon-j-shuriken-180.png?v=2" />
 <meta property="og:title" content="Web Apps | JinjaGames" />
-<meta property="og:description" content="Jinja Football and JinjaPeer: use them in your browser, no install." />
+<meta property="og:description" content="Jinja Football, JinjaPeer and JinjaQuiz: use them in your browser, no install." />
 <meta property="og:type" content="website" />
 <meta property="og:url" content="https://jinjagames.com/apps/" />
 <meta property="og:image" content="https://jinjagames.com/JinjaGamesBanner.png" />
@@ -28,7 +28,7 @@ if ((location.protocol === 'https:' || location.protocol === 'http:') && locatio
 <link rel="preload" as="font" type="font/woff2" href="../assets/fonts/inter-latin-400.woff2" crossorigin />
 <link rel="stylesheet" href="../assets/fonts.css?v=20261012d" />
 <script type="application/ld+json">
-{"@context":"https://schema.org","@type":"CollectionPage","name":"Web apps by JinjaGames","url":"https://jinjagames.com/apps/","isPartOf":{"@type":"WebSite","name":"JinjaGames","url":"https://jinjagames.com/"},"hasPart":[{"@type":"WebApplication","name":"Jinja Football","url":"https://jinjagames.com/football/","applicationCategory":"SportsApplication","operatingSystem":"Any","offers":{"@type":"Offer","price":"0","priceCurrency":"USD"}},{"@type":"WebApplication","name":"JinjaPeer","url":"https://jinjagames.com/peer/","applicationCategory":"UtilitiesApplication","operatingSystem":"Any","offers":{"@type":"Offer","price":"0","priceCurrency":"USD"}}]}
+{"@context":"https://schema.org","@type":"CollectionPage","name":"Web apps by JinjaGames","url":"https://jinjagames.com/apps/","isPartOf":{"@type":"WebSite","name":"JinjaGames","url":"https://jinjagames.com/"},"hasPart":[{"@type":"WebApplication","name":"Jinja Football","url":"https://jinjagames.com/football/","applicationCategory":"SportsApplication","operatingSystem":"Any","offers":{"@type":"Offer","price":"0","priceCurrency":"USD"}},{"@type":"WebApplication","name":"JinjaPeer","url":"https://jinjagames.com/peer/","applicationCategory":"UtilitiesApplication","operatingSystem":"Any","offers":{"@type":"Offer","price":"0","priceCurrency":"USD"}},{"@type":"WebApplication","name":"JinjaQuiz","url":"https://jinjagames.com/quiz/","applicationCategory":"GameApplication","operatingSystem":"Any","offers":{"@type":"Offer","price":"0","priceCurrency":"USD"}}]}
 </script>
 <script>
 (function(){
@@ -229,6 +229,19 @@ footer{border-top:1px solid var(--line);padding:40px 0}
 .pr .beam i{width:8px;height:8px;border-radius:50%;background:var(--brand);opacity:.2;animation:pr-dot 1.4s infinite}
 .pr .beam i:nth-child(2){animation-delay:.2s}.pr .beam i:nth-child(3){animation-delay:.4s}
 @keyframes pr-dot{0%,100%{opacity:.2;transform:scale(.8)}40%{opacity:1;transform:scale(1.15)}}
+.qz{background:var(--surface-2);border:1px solid var(--line);box-shadow:none;display:grid;align-content:center;justify-items:center;gap:clamp(12px,2.2vw,20px);padding:5% 6%}
+.qz .qz-top{display:flex;justify-content:space-between;align-items:center;width:100%;max-width:520px;font:400 11px var(--f-mono);letter-spacing:.08em;text-transform:uppercase;color:var(--ink-3)}
+.qz .qz-time{display:inline-grid;place-items:center;width:34px;height:34px;border-radius:50%;border:2px solid var(--brand);color:var(--ink);font:700 13px var(--f-mono)}
+.qz .qz-disc{width:clamp(64px,11vw,92px);aspect-ratio:1;border-radius:50%;background:var(--surface);border:1px solid var(--line-2);display:flex;align-items:center;justify-content:center;gap:4px}
+.qz .qz-disc i{width:5px;height:30%;border-radius:3px;background:var(--brand);animation:qz-eq 1s ease-in-out infinite}
+.qz .qz-disc i:nth-child(2){animation-delay:.15s}.qz .qz-disc i:nth-child(3){animation-delay:.3s}.qz .qz-disc i:nth-child(4){animation-delay:.45s}
+@keyframes qz-eq{0%,100%{height:22%}50%{height:58%}}
+.qz .qz-opts{display:grid;grid-template-columns:1fr 1fr;gap:8px;width:100%;max-width:520px}
+.qz .qz-opts span{padding:10px 12px;border-radius:12px;background:var(--surface);border:1px solid var(--line-2);font:600 13px var(--f-body);color:var(--ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.qz .qz-opts span.ok{border-color:var(--brand);box-shadow:inset 0 0 0 1px var(--brand)}
+.qz .qz-pl{display:flex;gap:6px}
+.qz .qz-pl b{width:26px;height:26px;border-radius:50%;display:grid;place-items:center;font:700 11px var(--f-display);color:#fff;background:var(--brand)}
+.qz .qz-pl b:nth-child(2){background:#3d7bd9}.qz .qz-pl b:nth-child(3){background:#2f9b6a}.qz .qz-pl b:nth-child(4){background:#a35bd6}
 .pr .pr-verify{display:flex;align-items:center;gap:12px;flex-wrap:wrap;justify-content:center;font:400 11px var(--f-mono);letter-spacing:.08em;text-transform:uppercase;color:var(--ink-3)}
 .pr .pr-verify code{font:700 14px var(--f-mono);letter-spacing:.06em;color:var(--ink);background:var(--surface);border:1px solid var(--line-2);padding:7px 11px;border-radius:8px}
 .app-head{display:grid;grid-template-columns:52px 1fr auto;gap:14px;align-items:center;margin-bottom:18px}
@@ -253,7 +266,7 @@ html[data-theme="dark"] .app .btn.p{color:#fff}
 .rv.in{opacity:1;transform:none}
 @media(max-width:900px){.app{grid-template-columns:1fr}.app.flip .app-media{order:0}}
 @media(max-width:680px){.app-head{grid-template-columns:44px 1fr}.app-head img{width:44px;height:44px}.app-head .badge{grid-column:1/-1;justify-self:start}.pr .dev{padding:10px}.pr .dev span{display:none}.app-body>p{font-size:16px}.app-head .kind,.acts .note,.badge{font-size:12px}}
-@media(prefers-reduced-motion:reduce){.fb .ball,.fb .keeper,.pr .beam i{animation:none}.rv{opacity:1;transform:none}}
+@media(prefers-reduced-motion:reduce){.fb .ball,.fb .keeper,.pr .beam i,.qz .qz-disc i{animation:none}.rv{opacity:1;transform:none}}
 </style>
 <script src="../assets/clean-scroll.js?v=20261012d" defer></script>
 <script src="../assets/local-links.js?v=20261012d"></script>
@@ -276,6 +289,7 @@ html[data-theme="dark"] .app .btn.p{color:#fff}
             <div class="apps-pop-title"><span class="en i">Use in your browser, no install</span><span class="tr i">Tarayıcıda kullan, kurulum yok</span></div>
             <a class="app-item" href="/football/"><img src="/assets/img/apps/football.svg" alt="" width="44" height="44"><span><b>Jinja Football</b><small class="en i">Change one match, transfer or penalty in real football history</small><small class="tr i">Gerçek futbol tarihinde bir maçı, transferi ya da penaltıyı değiştir</small></span><span class="tag">Live</span></a>
             <a class="app-item" href="/peer/"><img src="/assets/img/apps/jinjapeer.svg" alt="" width="44" height="44"><span><b>JinjaPeer</b><small class="en i">Send files device to device, end-to-end encrypted</small><small class="tr i">Cihazdan cihaza uçtan uca şifreli dosya gönder</small></span><span class="tag">New</span></a>
+            <a class="app-item" href="/quiz/"><img src="/assets/img/apps/jinjaquiz.svg" alt="" width="44" height="44"><span><b>JinjaQuiz</b><small class="en i">Guess the song from a one second clip, with friends</small><small class="tr i">Bir saniyelik kesitten şarkıyı bil, arkadaşlarınla</small></span><span class="tag">New</span></a>
             <a class="apps-all" href="/apps/"><span class="en i">All web apps</span><span class="tr i">Tüm web uygulamaları</span><span aria-hidden="true">&rarr;</span></a>
           </div>
         </li>
@@ -366,6 +380,26 @@ html[data-theme="dark"] .app .btn.p{color:#fff}
           <li><span class="en i">Nothing is saved without your approval; every file is hash-checked</span><span class="tr i">Onayın olmadan hiçbir şey kaydedilmez; her dosya özetle doğrulanır</span></li>
         </ul>
         <div class="acts"><a class="btn p" href="/peer/"><span class="en i">Open JinjaPeer</span><span class="tr i">JinjaPeer'i aç</span> <span class="arw">&rarr;</span></a><span class="note">EN · TR</span></div>
+      </div>
+    </article>
+
+    <article class="app rv" style="--accent:var(--brand)">
+      <a class="app-media qz" href="/quiz/" tabindex="-1" aria-hidden="true">
+        <div class="qz-top"><span class="en i">Question 3/10</span><span class="tr i">Soru 3/10</span><span class="qz-time">12</span></div>
+        <div class="qz-disc"><i></i><i></i><i></i><i></i></div>
+        <div class="qz-opts"><span>Gece Yarısı</span><span class="ok">Son Durak</span><span>Mavi Sokak</span><span>Yalnız Rüzgâr</span></div>
+        <div class="qz-pl"><b>E</b><b>M</b><b>A</b><b>D</b></div>
+      </a>
+      <div class="app-body">
+        <div class="app-head"><img src="/assets/img/apps/jinjaquiz.svg" alt="" width="52" height="52"><div><span class="kind"><span class="en i">Music quiz · multiplayer</span><span class="tr i">Müzik quiz · çok oyunculu</span></span><h2>JinjaQuiz</h2></div><span class="badge new">New</span></div>
+        <p class="en">Hear a one to five second clip and name the song before your friends do. Open a lobby, send the link, and up to twelve people play together straight from the browser. Faster right answers score more.</p>
+        <p class="tr">Bir ile beş saniyelik kesiti dinle, şarkıyı arkadaşlarından önce bil. Lobi kur, bağlantıyı gönder; on iki kişiye kadar doğrudan tarayıcıdan birlikte oynayın. Hızlı doğru cevap daha çok puan getirir.</p>
+        <ul class="feat">
+          <li><span class="en i">Lobby with a five letter code or an invite link, no account</span><span class="tr i">Beş harfli kod ya da davet bağlantısıyla lobi, hesap yok</span></li>
+          <li><span class="en i">Ready lists or any artist you search for, multiple choice or typed answers</span><span class="tr i">Hazır listeler ya da aradığın herhangi bir sanatçı; şıklı ya da yazarak cevap</span></li>
+          <li><span class="en i">Solo mode, three listens per question, live scoreboard</span><span class="tr i">Solo mod, soru başına üç dinleme hakkı, canlı puan tablosu</span></li>
+        </ul>
+        <div class="acts"><a class="btn p" href="/quiz/"><span class="en i">Open JinjaQuiz</span><span class="tr i">JinjaQuiz'i aç</span> <span class="arw">&rarr;</span></a><span class="note"><span class="en i">Interface in Turkish</span><span class="tr i">Türkçe arayüz</span></span></div>
       </div>
     </article>
 

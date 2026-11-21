@@ -1,0 +1,27 @@
+<!doctype html>
+<html lang="tr">
+  <head>
+    <meta charset="utf-8" />
+    <!-- Scripts only from this site. Deezer's catalog runs inside the sandboxed catalog.html frame; previews and
+         artwork come from Deezer's CDN; the lobby finds peers through public Nostr relays and connects
+         directly over WebRTC. Inline style attributes are used for small dynamic widths. -->
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https://*.dzcdn.net; media-src https://*.dzcdn.net; font-src 'self'; frame-src 'self'; connect-src 'self' wss://relay.damus.io wss://nos.lol wss://relay.primal.net wss://nostr.mom wss://relay.nostr.band wss://offchain.pub; worker-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'" />
+    <meta name="referrer" content="strict-origin-when-cross-origin" />
+    <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
+    <meta name="theme-color" content="#0d0d10" />
+    <meta name="description" content="JinjaQuiz: arkadaşlarınla tarayıcıda oynanan müzik quiz oyunu. Bir saniyelik kesitten şarkıyı bil. Kurulum yok, kayıt yok." />
+    <title>JinjaQuiz · JinjaGames</title>
+    <link rel="canonical" href="https://jinjagames.com/quiz/" />
+    <link rel="icon" type="image/svg+xml" href="/assets/img/apps/jinjaquiz.svg" />
+    <link rel="stylesheet" href="assets/fonts.css" />
+    <link rel="stylesheet" href="style.css" />
+  </head>
+  <body>
+    <header id="bar" class="bar"></header>
+    <main id="app" class="wrap"></main>
+    <dialog id="sheet" class="sheet"><div id="sheetBody"></div></dialog>
+    <div id="toast" role="status" aria-live="polite"></div>
+    <noscript>JinjaQuiz için JavaScript gerekli.</noscript>
+    <script type="module" src="js/main.js"></script>
+  </body>
+</html>
