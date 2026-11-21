@@ -15,7 +15,7 @@ const str = (v, n) => (typeof v === "string" ? v.replace(/[\u0000-\u001f\u007f]/
 const int = (v) => (Number.isSafeInteger(Number(v)) && Number(v) > 0 ? Number(v) : 0);
 
 export const MIN_TRACKS = 5;
-export const MAX_TRACKS = 100;
+export const MAX_TRACKS = 200;
 
 function secret() {
   let k = null;

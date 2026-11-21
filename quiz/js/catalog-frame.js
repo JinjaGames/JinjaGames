@@ -2,7 +2,7 @@
 (function () {
   'use strict';
   var seq = 0;
-  var PATH = /^(search\/artist|search\/track|artist\/\d{1,12}(\/top)?|track\/\d{1,14})$/;
+  var PATH = /^(search\/artist|search\/track|artist\/\d{1,12}(\/top|\/albums)?|album\/\d{1,14}\/tracks|track\/\d{1,14})$/;
   function reply(id, ok, payload) {
     // The parent's origin is unknown to an opaque frame; the data is public catalog JSON.
     parent.postMessage({ dz: 1, id: id, ok: ok, data: ok ? payload : undefined, error: ok ? undefined : String(payload) }, '*');

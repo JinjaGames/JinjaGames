@@ -1,5 +1,5 @@
-import { PRESETS, FEATURED, loadTracks, searchArtists, customLists, saveCustom, removeCustom, fold, cdn, loadPresetPictures, searchTracks, cleanTracks } from "./music.js";
-import { fetchCommunity, publishQuiz, removeQuiz, hideQuiz, MIN_TRACKS, MAX_TRACKS } from "./community.js";
+import { PRESETS, loadTracks, searchArtists, customLists, saveCustom, removeCustom, fold, cdn, loadPresetPictures } from "./music.js";
+import { fetchCommunity, removeQuiz, hideQuiz } from "./community.js";
 import { Game, MAX_PLAYERS } from "./engine.js";
 import { hostRoom, guestRoom, newCode, validCode } from "./net.js";
 
@@ -74,6 +74,7 @@ const ui = { genre: "Tümü", query: "", results: null, searching: false, commun
 let mode = null; // { role: "host"|"guest"|"solo", game?, net?, code }
 let view = null; // oyuncuya özel oyun durumu
 let lastSig = "";
+let lastCore = "";
 
 // ---------- bildirim ----------
 let toastT;
@@ -92,20 +93,56 @@ function avatar(p, size = "") {
   const av = AVATARS.includes(p.avatar) ? p.avatar : "headphones";
   return `<span class="av ${color} ${esc(size)}">${PHOTO.test(p.photo || "") ? `<img src="${esc(p.photo)}" alt="">` : ic(av)}</span>`;
 }
+let barHtml = "";
 function topbar() {
   const inRoom = mode && screen !== "room";
-  $("#bar").innerHTML = `
+  const html = `
     <a class="jg-back" href="/" title="JinjaGames ana sayfasına dön" aria-label="JinjaGames ana sayfasına dön"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14.5 5.5L8 12l6.5 6.5"/></svg><img src="/favicon-j-shuriken-32.png" width="20" height="20" alt=""></a>
     <button class="brand" data-go="home" aria-label="JinjaQuiz ana sayfa"><span class="mark">${ic("audio-lines")}</span><b lang="en">JINJA</b><span lang="en">QUIZ</span></button>
     <div class="barEnd">
       ${inRoom ? `<button class="pill live" data-go="room">${ic("users")}<span>Lobiye dön</span></button>` : ""}
+      <label class="vol" title="Ses düzeyi">${ic("volume-2")}<input type="range" id="vol" min="0" max="100" step="1" value="${Math.round(volume() * 100)}" aria-label="Ses düzeyi"></label>
       <button class="meBtn" data-sheet="profile" aria-label="Profili düzenle">${avatar(profile || {})}<span>${esc(profile?.name || "Profil")}</span></button>
     </div>`;
+  // Yalnızca değiştiğinde yeniden çiz: ses sürgüsü sürüklenirken ya da düğmeye basılırken kaybolmasın.
+  if (html !== barHtml) {
+    barHtml = html;
+    $("#bar").innerHTML = html;
+  }
 }
 
 // ---------- ses ----------
 const audio = new Audio();
 audio.preload = "auto";
+const volume = () => Math.min(1, Math.max(0, num(store.get("jqVolume", 0.8))));
+audio.volume = volume();
+// Bir olayı bekler; hata ya da zaman aşımında reddeder.
+function waitAudio(ev, ms) {
+  return new Promise((res, rej) => {
+    const done = (fn) => () => {
+      clearTimeout(t);
+      audio.removeEventListener(ev, ok);
+      audio.removeEventListener("error", bad);
+      fn();
+    };
+    const ok = done(res);
+    const bad = done(() => rej(Error("load")));
+    const t = setTimeout(done(() => rej(Error("timeout"))), ms);
+    audio.addEventListener(ev, ok, { once: true });
+    audio.addEventListener("error", bad, { once: true });
+  });
+}
+async function startAt(offset) {
+  if (audio.readyState < 1) await waitAudio("loadedmetadata", 7000);
+  if (Math.abs(audio.currentTime - offset) > 0.05) {
+    const seeked = waitAudio("seeked", 5000);
+    audio.currentTime = offset;
+    await seeked;
+  }
+  if (audio.readyState < 3) await waitAudio("canplay", 5000).catch(() => {});
+  audio.volume = volume();
+  await audio.play();
+}
 const player = { url: null, qid: null, playing: false, stopT: null, startedAt: 0, clip: 0 };
 function prime(url) {
   url = cdn(url);
@@ -128,21 +165,29 @@ async function listen(auto = false) {
   if (!q || view.phase !== "question" || !q.url || player.playing || q.mine) return;
   const now = hostNow();
   if (now < q.start || now >= q.end || playsUsed(q.id) >= 3) return;
+  if (player.loading) return;
   prime(q.url);
+  player.loading = true;
+  paint();
   try {
-    if (audio.readyState < 1)
-      await new Promise((res, rej) => {
-        audio.addEventListener("loadedmetadata", res, { once: true });
-        audio.addEventListener("error", () => rej(Error("Kesit yüklenemedi.")), { once: true });
-        setTimeout(() => rej(Error("Kesit yüklenemedi.")), 8000);
-      });
-    audio.currentTime = q.offset;
-    audio.volume = store.get("jqVolume", 0.9);
-    await audio.play();
+    try {
+      await startAt(q.offset);
+    } catch (e) {
+      if (e.name === "NotAllowedError") throw e;
+      // Takılan ya da yarım kalan yükleme: kaynağı baştan yükleyip bir kez daha dene.
+      audio.src = player.url;
+      audio.load();
+      await startAt(q.offset);
+    }
   } catch (e) {
-    if (!auto) fail(e.name === "NotAllowedError" ? Error("Dinlemek için butona dokun.") : e);
+    player.loading = false;
+    if (!auto) fail(e.name === "NotAllowedError" ? Error("Dinlemek için butona dokun.") : Error("Kesit yüklenemedi. Tekrar dinle'ye bas."));
+    paint();
     return;
   }
+  player.loading = false;
+  // Soru bu arada değiştiyse çalma.
+  if (view?.question?.id !== q.id) return stopClip();
   store.set(playsKey(q.id), playsUsed(q.id) + 1, sessionStorage);
   player.playing = true;
   player.qid = q.id;
@@ -160,15 +205,32 @@ async function listen(auto = false) {
 const hostNow = () => Date.now() + (mode?.role === "guest" ? mode.net.offset : 0);
 
 // ---------- oturum ----------
+// Kurucunun oyun durumu (cevaplar dahil) oturum deposunda düz metin durmasın: basit karıştırma.
+// Tam gizlilik değildir; geliştirici araçlarına bakıp cevabı okumayı zorlaştırır.
+function seal(obj) {
+  let k = sessionStorage.getItem("jqK");
+  if (!k) sessionStorage.setItem("jqK", (k = Array.from(crypto.getRandomValues(new Uint8Array(16)), (b) => b.toString(16).padStart(2, "0")).join("")));
+  const bytes = new TextEncoder().encode(JSON.stringify(obj));
+  for (let i = 0; i < bytes.length; i++) bytes[i] ^= parseInt(k.substr((i % 16) * 2, 2), 16) ^ (i * 31) & 255;
+  let bin = "";
+  for (let i = 0; i < bytes.length; i += 0x8000) bin += String.fromCharCode.apply(null, bytes.subarray(i, i + 0x8000));
+  return btoa(bin);
+}
+function unseal(str) {
+  const k = sessionStorage.getItem("jqK");
+  if (!k || typeof str !== "string") return null;
+  const bytes = Uint8Array.from(atob(str), (c) => c.charCodeAt(0));
+  for (let i = 0; i < bytes.length; i++) bytes[i] ^= parseInt(k.substr((i % 16) * 2, 2), 16) ^ (i * 31) & 255;
+  return JSON.parse(new TextDecoder().decode(bytes));
+}
 function persist() {
   if (!mode || mode.role === "solo") return;
-  store.set(
-    "jqSession",
-    { role: mode.role, code: mode.code, game: mode.role === "host" ? mode.game : null },
-    sessionStorage,
-  );
+  try {
+    store.set("jqSession", { role: mode.role, code: mode.code, game: mode.role === "host" ? seal(mode.game) : null }, sessionStorage);
+  } catch {}
 }
 function onGame(game) {
+  if (!mode || mode.game !== game) return; // lobiden çıkıldıktan sonra gelen olaylar
   view = game.view(pid);
   mode.net?.sendState((p) => game.view(p));
   persist();
@@ -212,6 +274,7 @@ function startGuest(code) {
   screen = "room";
   mode.net = guestRoom(code, pid, profile, {
     onState(s) {
+      if (mode?.role !== "guest") return;
       if (!s || typeof s !== "object") return;
       mode.connecting = false;
       mode.lost = false;
@@ -220,14 +283,17 @@ function startGuest(code) {
       render();
     },
     onDenied(reason) {
+      if (mode?.role !== "guest") return;
       leaveRoom(true);
       toast(reason, "bad");
     },
     onHostLost() {
+      if (mode?.role !== "guest") return;
       mode.lost = true;
       render();
     },
     onHostBack() {
+      if (mode?.role !== "guest") return;
       mode.lost = false;
       toast("Kurucu geri döndü.");
     },
@@ -287,7 +353,6 @@ function allLists() {
   return [...PRESETS, ...(ui.community || []), ...customLists().map((l) => ({ ...l, genre: "Senin" }))];
 }
 function cover(l, cls = "") {
-  if (l?.art === "hero") return `<img class="${esc(cls)}" src="assets/art/hero.webp" alt="" loading="lazy">`;
   if (cdn(l?.picture)) return `<img class="${esc(cls)}" src="${esc(cdn(l.picture))}" alt="" loading="lazy" referrerpolicy="no-referrer">`;
   return `<span class="${esc(cls)} noart">${ic("disc-3")}</span>`;
 }
@@ -305,7 +370,7 @@ function renderHome() {
       <p>Bir saniyelik kesitten şarkıyı tahmin et. Lobi kur, bağlantıyı at, arkadaşların anında katılsın.</p>
       <div class="heroActions">
         <button class="btn primary lg" data-do="create">${ic("users")}Lobi kur</button>
-        <button class="btn ghost lg" data-do="featured">${ic("play")}Hızlı solo</button>
+        <a class="btn ghost lg" href="olustur/">${ic("plus")}Quiz oluştur</a>
       </div>
     </div>
     <form class="joinCard" id="joinForm" autocomplete="off">
@@ -316,20 +381,11 @@ function renderHome() {
     </form>
   </section>
 
-  <button class="feature" data-list="${FEATURED.id}">
-    <img src="assets/art/hero.webp" alt="">
-    <span class="featureText">
-      <span class="tag">${ic("flame")} Öne çıkan</span>
-      <b>${esc(FEATURED.name)}</b>
-      <span>${esc(FEATURED.blurb)}</span>
-    </span>
-    <span class="btn light">${ic("play")}Oyna</span>
-  </button>
 
   <section class="catalog">
     <div class="catHead">
       <h2>Quiz seç</h2>
-      <button class="btn primary sm createBtn" data-sheet="create">${ic("plus")}Quiz oluştur</button>
+      <a class="btn primary sm createBtn" href="olustur/">${ic("plus")}Quiz oluştur</a>
       <div class="seg chips" role="tablist">
         ${["Tümü", "Topluluk", "Rap", "Pop", "Rock", ...(mine ? ["Senin"] : [])]
           .map((g) => `<button role="tab" aria-selected="${ui.genre === g}" data-genre="${esc(g)}">${esc(g)}</button>`)
@@ -406,6 +462,16 @@ function renderRoom() {
   const v = view;
   const sig = JSON.stringify({ ...v, now: 0, lost: mode.lost });
   if (sig === lastSig) return paint();
+  // Soru sürerken başkası cevaplayınca yalnızca küçük parçaları güncelle; düğmeleri baştan çizme
+  // (aksi halde o an basılan şık kaybolabiliyor).
+  const core = JSON.stringify({ ...v, now: 0, lost: mode.lost, players: v.players.map((p) => ({ ...p, online: 0 })), question: v.question ? { ...v.question, answered: 0, votes: 0 } : null });
+  if (core === lastCore && v.phase === "question" && !v.question?.mine && $("#ansCount")) {
+    lastSig = sig;
+    $(".gEnd .mini").innerHTML = miniHtml(v);
+    $("#ansCount").textContent = ansCountText(v);
+    return paint();
+  }
+  lastCore = core;
   // Yazılı cevap kutusundaki metni ve odağı koru.
   const typed = $("#guess")?.value || "";
   const focused = document.activeElement?.id === "guess";
@@ -427,6 +493,15 @@ function renderRoom() {
 
 const isHost = () => view && view.host === view.me;
 const playerMap = () => new Map(view.players.map((p) => [p.pid, p]));
+
+function miniHtml(v) {
+  const q = v.question;
+  return v.players
+    .filter((p) => p.online)
+    .map((p) => `<span class="dotAv ${q?.answered?.includes(p.pid) ? "done" : ""}" title="${esc(p.name)}">${avatar(p, "xs")}</span>`)
+    .join("");
+}
+const ansCountText = (v) => (v.solo ? "" : `${num(v.question?.answered?.length)}/${v.players.filter((p) => p.online).length} cevapladı`);
 
 function vchip(p, q, reveal, me) {
   const r = reveal ? q.reveal?.results?.[p.pid] : null;
@@ -553,10 +628,7 @@ function gameHtml(v) {
       <span class="gq">${cover(set, "gImg")}<span><b>${esc(set.name)}</b><small>Soru ${num(v.index) + 1}/${num(set.count)} · ${LEVELS[set.clip] || ""} ${num(set.clip)} sn</small></span></span>
       <span class="gEnd">
         <span class="myScore ${myRes?.correct ? "up" : ""}" title="Bu quizdeki puanın"><b>${myPts}</b><small>puan</small>${myRes ? `<i class="plus ${myRes.correct ? "" : "zero"}">+${num(myRes.points)}</i>` : ""}</span>
-        <span class="mini">${v.players
-          .filter((p) => p.online)
-          .map((p) => `<span class="dotAv ${q?.answered.includes(p.pid) ? "done" : ""}" title="${esc(p.name)}">${avatar(p, "xs")}</span>`)
-          .join("")}</span>
+        <span class="mini">${miniHtml(v)}</span>
         ${reveal ? "" : `<span class="timer" id="timer"><svg viewBox="0 0 36 36"><circle cx="18" cy="18" r="16"/><circle id="timerArc" cx="18" cy="18" r="16" pathLength="100"/></svg><b id="timerNum"></b></span>`}
       </span>
     </div>
@@ -575,7 +647,7 @@ function gameHtml(v) {
         <small>Doğru cevap</small>
         <h2>${esc(q.reveal.title)}</h2>
         <p>${esc(q.reveal.artist)}${q.reveal.album && fold(q.reveal.album) !== fold(q.reveal.title) ? ` · ${esc(q.reveal.album)}` : ""}</p>
-        ${verdict}
+        <div class="revealActs">${verdict}<a class="btn yt sm" href="https://www.youtube.com/results?search_query=${encodeURIComponent(`${q.reveal.artist} ${q.reveal.title}`)}" target="_blank" rel="noopener noreferrer">${ic("circle-play")}YouTube'da aç</a></div>
       </div>
     </div>`;
   } else {
@@ -639,7 +711,7 @@ function gameHtml(v) {
     ? host
       ? `<button class="btn primary lg wide" data-do="next" id="nextBtn">${v.index + 1 >= set.count ? "Sonuçları gör" : "Sonraki soru"} ${ic("chevron-right")}</button>`
       : `<p class="waiting" id="autoInfo">${spinner()} Sıradaki soru birazdan</p>`
-    : `<p class="waiting">${mine ? `${ic("check")} Cevabın kilitlendi · ` : ""}${v.solo ? "" : `${answeredCount}/${online} cevapladı`}</p>${
+    : `<p class="waiting">${mine ? `${ic("check")} Cevabın kilitlendi · ` : ""}<span id="ansCount">${v.solo ? "" : ansCountText(v)}</span></p>${
         host ? `<button class="btn ghost sm" data-do="skip">${ic("skip-forward")}${v.solo ? "Pas" : "Süreyi bitir"}</button>` : ""
       }`;
   return `${mode.lost ? `<div class="banner">${spinner()} Kurucunun bağlantısı koptu, bekleniyor…</div>` : ""}
@@ -753,10 +825,12 @@ function paint() {
     const used = playsUsed(q.id);
     const disc = $("#disc");
     if (disc) {
-      const can = !pre && left > 0 && used < 3 && !q.mine && !player.playing;
+      const can = !pre && left > 0 && used < 3 && !q.mine && !player.playing && !player.loading;
       disc.disabled = !can && !player.playing;
       disc.classList.toggle("on", player.playing && player.qid === q.id);
-      $("#listenLabel").textContent = player.playing
+      $("#listenLabel").textContent = player.loading
+        ? "Yükleniyor…"
+        : player.playing
         ? "Çalıyor…"
         : q.mine
           ? "Cevap verildi"
@@ -806,7 +880,6 @@ function openSheet(kind, ctx = {}) {
   if (kind === "profile") profileSheet();
   if (kind === "picker") pickerSheet();
   if (kind === "setup") setupSheet();
-  if (kind === "create") createSheet();
   if (kind === "leave") {
     sheetBody.innerHTML = `<div class="sheetHead"><h2>Lobiden ayrılsın mı?</h2></div>
       <p class="muted">${isHost() && !view?.solo ? "Kurucu sensin; ayrılırsan oyun herkes için biter." : "Puanın bu lobide kalır, kodla geri dönebilirsin."}</p>
@@ -848,91 +921,21 @@ async function resizePhoto(file) {
   }
 }
 
-// ---- quiz oluştur / düzenle ----
-function createSheet() {
-  const dr = (sheetCtx.draft ??= { name: "", desc: "", tracks: [], public: true });
-  sheetBody.innerHTML = `<div class="sheetHead"><h2>${dr.d || dr.localId ? "Quizi düzenle" : "Quiz oluştur"}</h2><button class="icon" data-close aria-label="Kapat">${ic("x")}</button></div>
-    <label class="field"><span>Quiz adı</span><input id="qName" maxlength="60" value="${esc(dr.name)}" placeholder="Örn. 2010'ların Türkçe pop hitleri" autocomplete="off"></label>
-    <label class="field"><span>Kısa açıklama <small class="muted">(isteğe bağlı)</small></span><input id="qDesc" maxlength="160" value="${esc(dr.desc)}" placeholder="Bu quiz ne hakkında?" autocomplete="off"></label>
-    <div class="field"><span>Şarkı ekle</span>
-      <form class="search" id="trackSearch" autocomplete="off">${ic("search")}<input id="tsq" type="search" placeholder="Şarkı ya da sanatçı ara…" value="${esc(dr.q || "")}"><button class="btn soft" type="submit">Ara</button></form>
-      <div id="tsRes" class="tsRes">${tsResHtml()}</div>
-    </div>
-    <div class="field"><span>Quizdeki şarkılar <b id="selN">${dr.tracks.length}</b>/${MAX_TRACKS} <small class="muted">(en az ${MIN_TRACKS})</small></span><div id="selList" class="selList">${selHtml()}</div></div>
-    <label class="setRow toggle"><span>Herkese açık yayınla<small>Topluluk sekmesinde herkes görür ve oynar. Yazar olarak "${esc(profile?.name || "Anonim")}" görünür.</small></span>
-      <input type="checkbox" id="qPublic" ${dr.public ? "checked" : ""}><span class="sw"></span></label>
-    <div class="sheetFoot"><button class="btn primary wide" data-do="saveQuiz">${ic("check")}${dr.public ? "Yayınla" : "Kaydet"}</button></div>`;
-}
-function tsResHtml() {
-  const dr = sheetCtx.draft;
-  if (dr.searching) return `<p class="muted">${spinner()} Aranıyor…</p>`;
-  if (!dr.res) return "";
-  if (!dr.res.length) return `<p class="muted">Sonuç yok.</p>`;
-  const have = new Set(dr.tracks.map((t) => t.id));
-  const artists = [...new Map(dr.res.filter((t) => t.artistId).map((t) => [t.artistId, t.artist])).entries()].slice(0, 3);
-  return `${artists.length ? `<div class="artistAdd">${artists.map(([id, name]) => `<button class="chipBtn" data-addartist="${num(id)}">${ic("list-plus")}${esc(name)}: popüler 15 şarkı</button>`).join("")}</div>` : ""}
-    <div class="tsList">${dr.res
-      .map((t, i) => `<button class="tsHit ${have.has(t.id) ? "on" : ""}" data-addt="${i}">${t.cover ? `<img src="${esc(t.cover)}" alt="" loading="lazy">` : `<span class="noart">${ic("disc-3")}</span>`}<span><b>${esc(t.title)}</b><small>${esc(t.artist)}</small></span>${ic(have.has(t.id) ? "check" : "plus")}</button>`)
-      .join("")}</div>`;
-}
-function selHtml() {
-  const dr = sheetCtx.draft;
-  if (!dr.tracks.length) return `<p class="muted">Henüz şarkı yok. Yukarıdan ara ve ekle.</p>`;
-  return dr.tracks
-    .map((t, i) => `<div class="selRow">${t.cover ? `<img src="${esc(t.cover)}" alt="" loading="lazy">` : `<span class="noart">${ic("disc-3")}</span>`}<span><b>${esc(t.title)}</b><small>${esc(t.artist)}</small></span><button class="icon sm" data-delt="${i}" aria-label="Çıkar">${ic("x")}</button></div>`)
-    .join("");
-}
-function redrawCreate() {
-  if (sheetCtx.kind !== "create") return;
-  $("#tsRes") && ($("#tsRes").innerHTML = tsResHtml());
-  $("#selList") && ($("#selList").innerHTML = selHtml());
-  $("#selN") && ($("#selN").textContent = sheetCtx.draft.tracks.length);
-}
-function addTracks(list) {
-  const dr = sheetCtx.draft;
-  const have = new Set(dr.tracks.map((t) => t.id));
-  for (const t of list) if (!have.has(t.id) && dr.tracks.length < MAX_TRACKS) (dr.tracks.push(t), have.add(t.id));
-  redrawCreate();
-}
-async function saveQuiz(btn) {
-  const dr = sheetCtx.draft;
-  dr.name = $("#qName").value.trim();
-  dr.desc = $("#qDesc").value.trim();
-  dr.public = $("#qPublic").checked;
-  if (!dr.name) return $("#qName").focus(), toast("Quize bir ad ver.", "bad");
-  const titles = new Set(dr.tracks.map((t) => fold(t.title)));
-  if (dr.tracks.length < MIN_TRACKS || titles.size < 4) return toast(`En az ${MIN_TRACKS} farklı şarkı ekle.`, "bad");
-  btn.disabled = true;
-  btn.innerHTML = `${spinner()} ${dr.public ? "Yayınlanıyor…" : "Kaydediliyor…"}`;
+function justPublished() {
   try {
-    const tracks = cleanTracks(dr.tracks);
-    if (dr.public) {
-      const q = await publishQuiz({ d: dr.d, name: dr.name, desc: dr.desc, author: profile?.name || "Anonim", tracks, prevAt: ui.community?.find((x) => x.d === dr.d && x.mine)?.at || 0 });
-      ui.community = [q, ...(ui.community || []).filter((x) => x.id !== q.id)];
-      if (dr.localId) removeCustom(dr.localId);
-      toast("Quiz yayınlandı! Topluluk sekmesinde herkes görebilir.");
-      ui.genre = "Topluluk";
-    } else {
-      if (dr.d) {
-        const old = ui.community?.find((x) => x.d === dr.d && x.mine);
-        if (old) await removeQuiz(old).catch(() => {});
-        ui.community = (ui.community || []).filter((x) => x.d !== dr.d);
-      }
-      saveCustom({ id: dr.localId || "my" + uid(), name: dr.name, picture: tracks.find((t) => t.cover)?.cover || "", artists: [], tracks, genre: "Senin" });
-      toast("Quiz bu tarayıcıya kaydedildi.");
-      ui.genre = "Senin";
-    }
-    closeSheet();
-    if (!mode) renderHome();
-  } catch (e) {
-    fail(e);
-    btn.disabled = false;
-    btn.innerHTML = `${ic("check")}${dr.public ? "Yayınla" : "Kaydet"}`;
+    const q = JSON.parse(sessionStorage.getItem("jqJustPublished"));
+    return q && q.id && Array.isArray(q.tracks) ? { ...q, tracks: cleanTracksLite(q.tracks), mine: true, genre: "Topluluk" } : null;
+  } catch {
+    return null;
   }
 }
+const cleanTracksLite = (arr) => arr.filter((t) => t && Number.isSafeInteger(t.id) && typeof t.title === "string").map((t) => ({ id: t.id, title: t.title.slice(0, 120), artist: String(t.artist || "").slice(0, 80), cover: cdn(t.cover) }));
 async function loadCommunity() {
+  const jp = justPublished();
+  if (jp && !ui.community) ui.community = [jp];
   try {
-    ui.community = await fetchCommunity();
+    const list = await fetchCommunity();
+    ui.community = jp && !list.some((x) => x.id === jp.id) ? [jp, ...list] : list;
     ui.communityErr = false;
   } catch {
     ui.community = [];
@@ -942,7 +945,7 @@ async function loadCommunity() {
 }
 
 function pickerSheet() {
-  const lists = [FEATURED, ...allLists()];
+  const lists = allLists();
   sheetBody.innerHTML = `<div class="sheetHead"><h2>Quiz ekle</h2><button class="icon" data-close aria-label="Kapat">${ic("x")}</button></div>
     <form class="search" id="pickSearch">${ic("search")}<input id="pickQ" type="search" placeholder="Başka sanatçı ara…"><button class="btn soft" type="submit">Ara</button></form>
     <div id="pickResults"></div>
@@ -1002,7 +1005,7 @@ function setupPayload() {
   };
 }
 function openList(id) {
-  const l = id === FEATURED.id ? FEATURED : allLists().find((x) => String(x.id) === String(id));
+  const l = allLists().find((x) => String(x.id) === String(id));
   if (!l) return;
   const last = store.get("jqSetup", {});
   openSheet("setup", { list: l, count: last.count || 10, mode: last.mode || "choice", clip: last.clip || 3 });
@@ -1013,9 +1016,6 @@ async function doAction(a, el) {
   switch (a) {
     case "create":
       return startHost();
-    case "featured":
-      openList(FEATURED.id);
-      return;
     case "leave":
       closeSheet();
       return leaveRoom();
@@ -1037,9 +1037,9 @@ async function doAction(a, el) {
       return act({ type: "lobby" });
     case "reset":
       return act({ type: "reset" });
-    case "saveQuiz":
-      return saveQuiz(el);
+
     case "listen":
+      if (el.dataset.pressed) return;
       return listen();
     case "saveProfile": {
       const ed = sheetCtx.ed;
@@ -1103,6 +1103,15 @@ function pickHit(i) {
   openSheet("setup", { list, count: last.count || 10, mode: last.mode || "choice", clip: last.clip || 3 });
 }
 
+document.addEventListener("pointerdown", (e) => {
+  if (e.button !== 0) return;
+  const b = e.target.closest?.("[data-ans], #disc");
+  if (!b || b.disabled) return;
+  b.dataset.pressed = "1";
+  if (b.id === "disc") return listen();
+  const q = view?.question;
+  if (q) act({ type: "answer", q: q.id, answer: q.options[Number(b.dataset.ans)] });
+});
 document.addEventListener("click", async (e) => {
   const b = e.target.closest("button, [data-close]");
   if (!b || b.disabled) return;
@@ -1124,9 +1133,8 @@ document.addEventListener("click", async (e) => {
     }
     if (d.requeue) return act({ type: "requeue", id: d.requeue });
     if (d.edit) {
-      const l = allLists().find((x) => String(x.id) === d.edit);
-      if (!l?.tracks) return;
-      return openSheet("create", { draft: { name: l.name, desc: l.desc || "", tracks: [...l.tracks], public: l.genre === "Topluluk", d: l.genre === "Topluluk" ? l.d : undefined, localId: l.genre === "Senin" ? l.id : undefined } });
+      location.href = "olustur/?duzenle=" + encodeURIComponent(d.edit);
+      return;
     }
     if (d.unpublish) {
       const l = ui.community?.find((x) => x.id === d.unpublish && x.mine);
@@ -1142,35 +1150,12 @@ document.addEventListener("click", async (e) => {
       toast("Bu quiz artık sana gösterilmeyecek.");
       return renderHome();
     }
-    if (d.addt !== undefined) {
-      const t = sheetCtx.draft?.res?.[Number(d.addt)];
-      if (!t) return;
-      const dr = sheetCtx.draft;
-      const at = dr.tracks.findIndex((x) => x.id === t.id);
-      if (at >= 0) dr.tracks.splice(at, 1);
-      else addTracks([t]);
-      return redrawCreate();
-    }
-    if (d.addartist) {
-      b.disabled = true;
-      try {
-        const top = await loadTracks({ artists: [Number(d.addartist)] });
-        addTracks(top.slice(0, 15));
-        toast(`${Math.min(15, top.length)} şarkı eklendi.`);
-      } finally {
-        b.disabled = false;
-      }
-      return;
-    }
-    if (d.delt !== undefined) {
-      sheetCtx.draft.tracks.splice(Number(d.delt), 1);
-      return redrawCreate();
-    }
     if (d.unsave) {
       removeCustom(d.unsave);
       return renderHome();
     }
     if (d.hit) return pickHit(Number(d.hit));
+    if (d.pressed) return; // basıldığı anda işlendi
     if (d.ans !== undefined) {
       const q = view.question;
       return act({ type: "answer", q: q.id, answer: q.options[Number(d.ans)] });
@@ -1229,8 +1214,12 @@ document.addEventListener("input", (e) => {
     s.setSelectionRange(pos, pos);
   }
   if (t.id === "trackQ") filterTracks(t.value);
-  if (t.id === "qName" && sheetCtx.draft) sheetCtx.draft.name = t.value;
-  if (t.id === "qDesc" && sheetCtx.draft) sheetCtx.draft.desc = t.value;
+  if (t.id === "vol") {
+    const v = Number(t.value) / 100;
+    audio.volume = v;
+    store.set("jqVolume", v);
+  }
+
   if (t.id === "joinCode") t.value = t.value.toUpperCase().replace(/[^A-Z0-9]/g, "");
 });
 document.addEventListener("change", async (e) => {
@@ -1242,10 +1231,6 @@ document.addEventListener("change", async (e) => {
       $("#selCount").textContent = `${sheetCtx.ids.size}/${sheetCtx.tracks.length}`;
     }
     if ("auto" in t.dataset) act({ type: "settings", autoNext: t.checked });
-    if (t.id === "qPublic" && sheetCtx.draft) {
-      sheetCtx.draft.public = t.checked;
-      $('[data-do="saveQuiz"]').innerHTML = `${ic("check")}${t.checked ? "Yayınla" : "Kaydet"}`;
-    }
     if (t.id === "pPhoto" && t.files[0]) {
       sheetCtx.ed.name = $("#pName").value;
       sheetCtx.ed.photo = await resizePhoto(t.files[0]);
@@ -1265,19 +1250,7 @@ document.addEventListener("submit", (e) => {
   }
   if (f.id === "searchForm") return runSearch($("#search").value, "home");
   if (f.id === "pickSearch") return runSearch($("#pickQ").value, "picker");
-  if (f.id === "trackSearch") {
-    const dr = sheetCtx.draft;
-    const q = $("#tsq").value.trim();
-    if (q.length < 2) return;
-    dr.q = q;
-    dr.searching = true;
-    redrawCreate();
-    searchTracks(q)
-      .then((r) => (dr.res = r))
-      .catch((e) => (fail(e), (dr.res = null)))
-      .finally(() => ((dr.searching = false), redrawCreate()));
-    return;
-  }
+
   if (f.id === "guessForm") {
     const v = $("#guess").value.trim();
     if (!v) return;
@@ -1296,10 +1269,15 @@ document.addEventListener("keydown", (e) => {
     listen();
   }
 });
-window.addEventListener("beforeunload", () => mode?.net?.close());
+// Sayfa yenilenirken lobi kapanmasın (kurucu geri dönebilir); "Ayrıl" ise lobiyi herkes için kapatır.
+window.addEventListener("beforeunload", () => mode?.net?.close({ quiet: true }));
 
 // ---------- açılış ----------
 function boot() {
+  const tab = new URLSearchParams(location.search).get("tab");
+  if (tab === "topluluk") ui.genre = "Topluluk";
+  if (tab === "senin" && customLists().length) ui.genre = "Senin";
+  if (tab) history.replaceState(null, "", location.pathname);
   loadCommunity();
   loadPresetPictures().then(() => {
     if (screen === "home" && !mode) renderHome();
@@ -1308,7 +1286,7 @@ function boot() {
   const invite = (new URLSearchParams(location.search).get("oda") || "").toUpperCase();
   if (saved?.role === "host" && saved.game) {
     try {
-      startHost({ restore: saved.game });
+      startHost({ restore: typeof saved.game === "string" ? unseal(saved.game) : saved.game });
       return;
     } catch {
       store.del("jqSession", sessionStorage);

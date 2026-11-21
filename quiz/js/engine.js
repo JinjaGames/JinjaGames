@@ -180,7 +180,17 @@ export class Game {
     const q = this.question;
     this.phase = "preparing";
     this.emit();
-    preview(q.track.id)
+    // Cevabı ağ kayıtlarından okumak zorlaşsın: doğru şarkının kaydı, diğer şıkların kayıtlarıyla
+    // birlikte ve karışık sırada istenir.
+    const set0 = this.queue[this.set];
+    const byTitle = new Map(set0.tracks.map((t) => [t.title, t]));
+    const decoys = (q.options ? q.options.filter((o) => o !== q.track.title).map((o) => byTitle.get(o)) : shuffle(set0.tracks).slice(0, 3)).filter((t) => t && t.id !== q.track.id);
+    let main;
+    for (const t of shuffle([q.track, ...decoys])) {
+      if (t === q.track) main = preview(t.id);
+      else preview(t.id).catch(() => {});
+    }
+    main
       .then((pv) => {
         if (this.question !== q) return;
         const clip = this.queue[this.set].clip;

@@ -381,6 +381,9 @@ Tarayıcıda çalışabilen küçük modeller yeterli kaliteyi vermediği için 
 - Şarkılar Deezer önizlemeleri. Deezer yalnızca JSONP sunduğu için istekler `quiz/catalog.html` içinde, `sandbox="allow-scripts"` bir iframe'de yapılır; sayfaya yalnızca düz JSON gelir (`quiz/js/music.js`, `cdn()` yalnızca `*.dzcdn.net` adreslerine izin verir).
 - Kurucudan gelen oyun durumu `cleanView()` ile, oyuncu kimlikleri `net.js` içinde süzülür; `quiz/index.html` sıkı bir CSP taşır.
 - Topluluk quizleri (`quiz/js/community.js`): imzalı Nostr kaydı (NIP-78, kind 30078, etiket `jinjaquiz`), yazar anahtarı tarayıcıda (`jqNostrKey`). Okurken imza doğrulanır, alanlar süzülür; aynı quizin en yeni sürümü kazanır, kaldırma boş sürüm + NIP-09. İmza: `quiz/vendor/nostr-sign.js` (@noble/curves secp256k1 schnorr, MIT).
+- Quiz oluşturma ayrı sayfa: `/quiz/olustur/` (`quiz/js/create.js`), düzenleme `?duzenle=<id>`. Sanatçı ve şarkı araması ayrı; sanatçı sayfasında popüler 100 şarkı ve albümler (Deezer `artist/{id}/top|albums`, `album/{id}/tracks`). Quiz başına en çok 200 şarkı.
+- Kopya zorlaştırma: kurucu her soruda doğru şarkıyla birlikte diğer şıkların önizlemelerini de karışık sırayla ister; kurucunun oturum kaydı (`jqSession`) karıştırılarak saklanır. Oyunculara cevap, süre dolmadan hiç gönderilmez.
+- Kurucu "Ayrıl" derse oyunculara `bye` gider ve lobi kapanır; sayfayı yenilerse 20 sn beklenir.
 - Lobi akışı: her quizin sıralaması yalnızca o quizin puanı (`round`), genel toplam `score`; son quizden sonra kurucu "Lobiye dön" der, geçmiş ve genel sıralama lobide kalır, oynanan quiz "Tekrar ekle" ile sıraya döner.
 - Hazır sanatçıların fotoğrafları sitede tutulmaz, Deezer'dan istenir. `assets/art/hero.webp` yapay zekâ üretimidir.
 - Kaynak proje `C:\Users\user\Desktop\Challenge Me!\web`; oradan güncellerken bu değişiklikleri koru.

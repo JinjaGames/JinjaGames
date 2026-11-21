@@ -14,7 +14,7 @@ function bridge() {
   if (ready) return ready;
   ready = new Promise((resolve) => {
     frame = document.createElement("iframe");
-    frame.src = "catalog.html";
+    frame.src = new URL("../catalog.html", import.meta.url).href; // /quiz/olustur/ altından da
     frame.setAttribute("sandbox", "allow-scripts");
     frame.setAttribute("aria-hidden", "true");
     frame.tabIndex = -1;
@@ -70,7 +70,6 @@ const alternate =
 export const PRESETS = [
   { id: "motive", name: "Motive", genre: "Rap", artists: [72196] },
   { id: "uzi", name: "UZI", genre: "Rap", artists: [98336572] },
-  { id: "sagopa", name: "Sagopa Kajmer", genre: "Rap", artists: [12934] },
   { id: "manifest", name: "manifest", genre: "Pop", artists: [301153511] },
   { id: "sezen", name: "Sezen Aksu", genre: "Pop", artists: [9289] },
   { id: "duman", name: "Duman", genre: "Rock", artists: [14826] },
@@ -87,14 +86,6 @@ export async function loadPresetPictures() {
     ),
   );
 }
-export const FEATURED = {
-  id: "rap-arena",
-  name: "Türkçe Rap Kapışması",
-  genre: "Rap",
-  art: "hero",
-  artists: [72196, 98336572, 12934],
-  blurb: "Motive, UZI ve Sagopa aynı arenada.",
-};
 
 // Bir listenin şarkılarını getirir: sanatçıların en popüler 100 şarkısı, tekrarsız ve
 // remix / canlı / hızlandırılmış sürümler ayıklanmış olarak.
@@ -142,16 +133,40 @@ export const cleanTracks = (arr) => {
   return arr
     .map((t) => ({ id: int(t?.id), title: str(t?.title, 120), artist: str(t?.artist, 80), cover: cdn(t?.cover) }))
     .filter((t) => t.id && t.title && !seen.has(t.id) && seen.add(t.id))
-    .slice(0, 100);
+    .slice(0, 200);
 };
 
 // Şarkı araması (quiz oluştururken): yalnızca önizlemesi olan, çalınabilir kayıtlar.
-export async function searchTracks(q) {
-  const r = await jsonp("search/track", { q, limit: 25 });
+// Sanatçının albümleri ve bir albümün şarkıları (quiz oluşturma sayfası için).
+export async function artistInfo(id) {
+  const a = await jsonp(`artist/${int(id)}`);
+  return { id: int(a.id), name: str(a.name, 80), picture: cdn(a.picture_big) || cdn(a.picture_medium), fans: int(a.nb_fan), albums: int(a.nb_album) };
+}
+export async function artistTop(id) {
+  const r = await jsonp(`artist/${int(id)}/top`, { limit: 100 });
+  return mapTracks(r.data || []);
+}
+export async function artistAlbums(id) {
+  const r = await jsonp(`artist/${int(id)}/albums`, { limit: 100 });
   return (r.data || [])
+    .map((a) => ({ id: int(a.id), title: str(a.title, 120), cover: cdn(a.cover_medium), year: str(a.release_date, 4), type: str(a.record_type, 12) }))
+    .filter((a) => a.id && a.title);
+}
+export async function albumTracks(album) {
+  const r = await jsonp(`album/${int(album.id)}/tracks`, { limit: 200 });
+  return mapTracks(r.data || [], album.cover);
+}
+export const isAlternate = (t) => alternate.test(t.title || "") || alternate.test(t.version || "");
+function mapTracks(arr, cover = "") {
+  return arr
     .filter((t) => cdn(t.preview) && t.readable !== false)
-    .map((t) => ({ id: int(t.id), title: str((t.title_short || t.title || "").trim()), artist: str(t.artist?.name, 80), artistId: int(t.artist?.id), cover: cdn(t.album?.cover_medium) }))
+    .map((t) => ({ id: int(t.id), title: str((t.title_short || t.title || "").trim()), version: str(t.title_version, 60), artist: str(t.artist?.name, 80), artistId: int(t.artist?.id), cover: cdn(t.album?.cover_medium) || cover, preview: cdn(t.preview) }))
     .filter((t) => t.id && t.title);
+}
+
+export async function searchTracks(q) {
+  const r = await jsonp("search/track", { q, limit: 40 });
+  return mapTracks(r.data || []);
 }
 
 export async function searchArtists(q) {
@@ -186,6 +201,7 @@ export function customLists() {
       .map((l) => ({
         id: str(l.id, 40).replace(/[^A-Za-z0-9_-]/g, ""),
         name: str(l.name, 80),
+        desc: str(l.desc, 160),
         picture: cdn(l.picture),
         artists: (Array.isArray(l.artists) ? l.artists : []).map(int).filter(Boolean).slice(0, 6),
         tracks: Array.isArray(l.tracks) ? cleanTracks(l.tracks) : undefined,

@@ -88,7 +88,13 @@ export function hostRoom(code, { onHello, onAction, onLeave }) {
           peers.delete(peerId);
         }
     },
-    close: () => room.leave(),
+    // "Ayrıl": oyunculara lobinin kapandığını söyle, sonra çık. Sayfa yenilenirken (quiet) söyleme;
+    // kurucu birkaç saniyede geri döner.
+    close({ quiet = false } = {}) {
+      if (quiet) return room.leave();
+      try { send({ t: "bye" }); } catch {}
+      setTimeout(() => room.leave(), 400);
+    },
   };
 }
 
@@ -137,6 +143,9 @@ export function guestRoom(code, pid, profile, { onState, onDenied, onHostLost, o
       }
     } else if (m.t === "denied") {
       onDenied(m.reason);
+    } else if (m.t === "bye") {
+      clearTimeout(lostTimer);
+      onDenied("Kurucu lobiyi kapattı.");
     } else if (m.t === "error") {
       pending.get(m.id)?.(m.error);
       pending.delete(m.id);
@@ -146,7 +155,8 @@ export function guestRoom(code, pid, profile, { onState, onDenied, onHostLost, o
     if (peerId !== hostPeer) return;
     hostPeer = null;
     onHostLost?.();
-    lostTimer = setTimeout(() => onDenied("Kurucunun bağlantısı koptu."), 45000);
+    // Kurucu sayfayı yenilediyse birkaç saniyede döner; dönmezse lobi kapanmış sayılır.
+    lostTimer = setTimeout(() => onDenied("Kurucu ayrıldı, lobi kapandı."), 20000);
   };
   const resync = setInterval(sync, 15000);
   return {

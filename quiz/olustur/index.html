@@ -1,0 +1,26 @@
+<!doctype html>
+<html lang="tr">
+  <head>
+    <meta charset="utf-8" />
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https://*.dzcdn.net; media-src https://*.dzcdn.net; font-src 'self'; frame-src 'self'; connect-src 'self' wss://relay.damus.io wss://nos.lol wss://relay.primal.net wss://nostr.mom wss://relay.nostr.band wss://offchain.pub; worker-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'" />
+    <meta name="referrer" content="strict-origin-when-cross-origin" />
+    <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
+    <meta name="theme-color" content="#0d0d10" />
+    <meta name="robots" content="noindex" />
+    <title>Quiz oluştur · JinjaQuiz</title>
+    <link rel="icon" type="image/svg+xml" href="/assets/img/apps/jinjaquiz.svg" />
+    <link rel="stylesheet" href="../assets/fonts.css" />
+    <link rel="stylesheet" href="../style.css" />
+  </head>
+  <body class="creator">
+    <header class="bar">
+      <a class="jg-back" href="../" title="JinjaQuiz'e dön" aria-label="JinjaQuiz'e dön"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14.5 5.5L8 12l6.5 6.5"/></svg><img src="/favicon-j-shuriken-32.png" width="20" height="20" alt=""></a>
+      <a class="brand" href="../" aria-label="JinjaQuiz ana sayfa"><span class="mark"><i class="ic" aria-hidden="true" style="--i:url(/quiz/assets/icons/audio-lines.svg)"></i></span><b lang="en">JINJA</b><span lang="en">QUIZ</span></a>
+      <div class="barEnd"><span class="crTitle" id="crTitle">Quiz oluştur</span></div>
+    </header>
+    <main id="app" class="wrap cr"></main>
+    <div id="toast" role="status" aria-live="polite"></div>
+    <noscript>Quiz oluşturmak için JavaScript gerekli.</noscript>
+    <script type="module" src="../js/create.js"></script>
+  </body>
+</html>
