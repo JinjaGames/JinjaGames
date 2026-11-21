@@ -1,6 +1,7 @@
 import { PRESETS, loadTracks, searchArtists, customLists, saveCustom, removeCustom, fold, cdn, realPic, loadPresetPictures } from "./music.js";
 import { fetchCommunity, removeQuiz, hideQuiz } from "./community.js";
 import { Game, MAX_PLAYERS } from "./engine.js";
+import { TRIVIA, TCATS, EMOJIS, cleanItems } from "./trivia.js";
 import { hostRoom, guestRoom, newCode, validCode } from "./net.js";
 
 // ---------- yardımcılar ----------
@@ -58,6 +59,8 @@ function cleanView(x, k = "", depth = 0) {
   if (k === "avatar") return AVATARS.includes(x) ? x : "headphones";
   if (k === "color") return COLORS.includes(x) ? x : "coral";
   if (k === "art") return x === "hero" ? "hero" : "";
+  if (k === "emoji") return EMOJIS.includes(x) ? x : "";
+  if (k === "kind") return x === "trivia" ? "trivia" : "song";
   if (typeof x === "string") return x.slice(0, 300);
   return typeof x === "number" || typeof x === "boolean" || x === null ? x : null;
 }
@@ -70,7 +73,7 @@ let profile = store.get("jqProfile", null);
 const pid = store.get("jqPid", null, sessionStorage) || uid();
 store.set("jqPid", pid, sessionStorage);
 
-const ui = { genre: "Tümü", query: "", results: null, searching: false, community: null, communityErr: false };
+const ui = { cat: "", genre: "Tümü", query: "", results: null, searching: false, community: null, communityErr: false };
 let mode = null; // { role: "host"|"guest"|"solo", game?, net?, code }
 let view = null; // oyuncuya özel oyun durumu
 let lastSig = "";
@@ -350,9 +353,15 @@ function render() {
 }
 
 function allLists() {
-  return [...PRESETS, ...(ui.community || []), ...customLists().map((l) => ({ ...l, genre: "Senin" }))];
+  return [...PRESETS, ...TRIVIA, ...(ui.community || []), ...customLists().map((l) => ({ ...l, genre: "Senin" }))];
 }
+const hue = (name) => {
+  let h = 0;
+  for (const c of String(name || "?")) h = (h * 31 + c.charCodeAt(0)) >>> 0;
+  return h % 360;
+};
 function cover(l, cls = "") {
+  if (EMOJIS.includes(l?.emoji)) return `<span class="${esc(cls)} noart mono emo" style="--h:${hue(l.name)}">${l.emoji}</span>`;
   if (realPic(l?.picture)) return `<img class="${esc(cls)}" src="${esc(l.picture)}" alt="" loading="lazy" referrerpolicy="no-referrer">`;
   // Görsel yoksa addan türeyen renkli harf rozeti
   const name = String(l?.name || "?");
@@ -364,9 +373,12 @@ function cover(l, cls = "") {
 function renderHome() {
   const q = fold(ui.query);
   const browsing = ui.genre !== "Tümü" || q;
+  const inGenre = (l) =>
+    ui.genre === "Tümü" || (ui.genre === "Trivia" ? l.kind === "trivia" && (!ui.cat || l.cat === ui.cat) : l.genre === ui.genre);
   const lists = allLists().filter(
-    (l) => (ui.genre === "Tümü" || l.genre === ui.genre) && (!q || fold(l.name).includes(q) || fold(l.author || "").includes(q)),
+    (l) => inGenre(l) && (!q || fold(l.name).includes(q) || fold(l.author || "").includes(q) || fold(l.cat || "").includes(q)),
   );
+  const commTrivia = (ui.community || []).filter((l) => l.kind === "trivia");
   const mine = customLists().map((l) => ({ ...l, genre: "Senin" }));
   const comm = ui.community || [];
   const pics = PRESETS.map((p) => realPic(p.picture)).filter(Boolean);
@@ -376,13 +388,13 @@ function renderHome() {
     <div class="hm-bg" aria-hidden="true"><i class="b1"></i><i class="b2"></i><i class="b3"></i>
       <span class="hm-eq">${Array.from({ length: 48 }, (_, k) => `<i style="--k:${k}"></i>`).join("")}</span></div>
     <div class="hm-copy">
-      <span class="hm-live"><i></i>Canlı lobi · ${MAX_PLAYERS} kişiye kadar · Ücretsiz</span>
+      <span class="hm-live"><i></i>Canlı lobi · ${MAX_PLAYERS} kişiye kadar · Müzik + Trivia · Ücretsiz</span>
       <h1>Şarkıyı<br><em>ilk sen</em> bil.</h1>
-      <p>Bir saniyelik kesiti dinle, dört şıktan doğrusunu herkesten önce bul. Lobi kur, bağlantıyı gönder; arkadaşların tek tıkla katılsın.</p>
+      <p>Bir saniyelik kesiti dinle ya da trivia sorusunu çöz; dört şıktan doğrusunu herkesten önce bul. Lobi kur, bağlantıyı gönder; arkadaşların tek tıkla katılsın.</p>
       <div class="hm-actions">
         <button class="btn primary lg" data-do="create">${ic("users")}Lobi kur</button>
         <button class="btn light lg" data-do="toCatalog">${ic("play")}Solo oyna</button>
-        <a class="btn ghost lg" href="olustur/">${ic("plus")}Quiz oluştur</a>
+        <button class="btn ghost lg" data-do="toTrivia">${ic("circle-help")}Trivia</button>
       </div>
       <form class="hm-join" id="joinForm" autocomplete="off">
         <span>${ic("log-in")}<b>Kodun mu var?</b></span>
@@ -415,18 +427,19 @@ function renderHome() {
 
   <section class="catalog hm-cat" id="catalog">
     <div class="hm-catHead">
-      <div><span class="kicker">${ic("disc-3")} Quizler</span><h2>Ne dinlemek istersin?</h2></div>
+      <div><span class="kicker">${ic("disc-3")} Quizler</span><h2>${ui.genre === "Trivia" ? "Ne kadar biliyorsun?" : "Ne dinlemek istersin?"}</h2></div>
       <form class="search hm-search" id="searchForm" role="search">
         ${ic("search")}
         <input id="search" type="search" placeholder="Quiz ya da sanatçı ara…" value="${esc(ui.query)}" aria-label="Quiz ya da sanatçı ara">
         <button class="btn soft" type="submit">Sanatçı bul</button>
       </form>
       <div class="seg chips" role="tablist">
-        ${["Tümü", "Topluluk", "Rap", "Pop", "Rock", ...(mine.length ? ["Senin"] : [])]
+        ${["Tümü", "Trivia", "Topluluk", "Rap", "Pop", "Rock", ...(mine.length ? ["Senin"] : [])]
           .map((g) => `<button role="tab" aria-selected="${ui.genre === g}" data-genre="${esc(g)}">${esc(g)}</button>`)
           .join("")}
       </div>
     </div>
+    ${ui.genre === "Trivia" ? `<div class="seg chips catChips">${["", ...TCATS].map((c) => `<button data-cat="${esc(c)}" aria-pressed="${ui.cat === c}">${esc(c || "Hepsi")}</button>`).join("")}</div>` : ""}
     <div id="results">${resultsHtml()}</div>
     ${
       browsing
@@ -434,6 +447,7 @@ function renderHome() {
           ${ui.genre === "Topluluk" ? communityState() : ""}
           ${!lists.length && !ui.results && ui.genre !== "Topluluk" ? `<p class="empty">Burada yok. "Sanatçı bul" ile ara, binlerce sanatçı var.</p>` : ""}`
         : `${rail("Popüler sanatçılar", "flame", PRESETS.map((l, k) => acard(l, k)).join(""), "")}
+          ${triviaRail(commTrivia)}
           ${rail("Topluluk quizleri", "users", comm.slice(0, 12).map((l, k) => qcard(l, k)).join("") || communityState(), comm.length > 12 ? "Topluluk" : "", "wide")}
           ${mine.length ? rail("Senin quizlerin", "bookmark", mine.map((l, k) => qcard(l, k)).join(""), mine.length > 8 ? "Senin" : "") : ""}`
     }
@@ -442,10 +456,24 @@ function renderHome() {
   <section class="hm-make">
     <div class="hm-makeArt" aria-hidden="true">${pics.slice(0, 5).map((u, k) => `<img src="${esc(u)}" alt="" style="--k:${k}">`).join("")}</div>
     <div><span class="kicker">${ic("sparkles")} Kendi quizin</span><h2>Sanatçını seç, şarkıları ekle, herkes oynasın.</h2>
-      <p>Bir sanatçının tüm albümlerinden ya da karışık şarkılardan quiz yap. Herkese açık yayınlarsan Topluluk'ta herkes görür.</p>
-      <a class="btn primary lg" href="olustur/">${ic("plus")}Quiz oluştur</a></div>
+      <p>Bir sanatçının tüm albümlerinden şarkı quizi ya da kendi sorularınla trivia yap. Herkese açık yayınlarsan Topluluk'ta herkes görür.</p>
+      <div class="hm-actions"><a class="btn primary lg" href="olustur/">${ic("music")}Şarkı quizi oluştur</a><a class="btn light lg" href="olustur/?tur=trivia">${ic("circle-help")}Trivia oluştur</a></div></div>
   </section>
   <footer>Şarkı önizlemeleri ve sanatçı görselleri <a href="https://www.deezer.com" target="_blank" rel="noopener noreferrer">Deezer</a> kataloğundan gelir. Oyun verisi oyuncular arasında doğrudan (P2P) akar. · <a href="/">JinjaGames</a> · <a href="/apps/">Diğer web uygulamaları</a> · <a href="/privacy/">Gizlilik</a></footer>`;
+}
+function triviaRail(comm) {
+  const cats = TCATS.filter((c) => TRIVIA.some((t) => t.cat === c) || comm.some((t) => t.cat === c));
+  return `<div class="hm-rail trivia">
+    <div class="hm-railHead"><h3>${ic("circle-help")}Trivia</h3><button class="hm-more" data-genre="Trivia">Tümünü gör ${ic("chevron-right")}</button></div>
+    <div class="catTiles">${cats
+      .map((c) => {
+        const n = TRIVIA.filter((t) => t.cat === c).length + comm.filter((t) => t.cat === c).length;
+        const e = TRIVIA.find((t) => t.cat === c)?.emoji || "🧠";
+        return `<button class="catTile" data-cat="${esc(c)}" data-scroll="1" style="--h:${hue(c)}"><span>${e}</span><b>${esc(c)}</b><small>${n} quiz</small></button>`;
+      })
+      .join("")}</div>
+    <div class="hm-track">${[...comm.slice(0, 4), ...TRIVIA].map((l, k) => qcard(l, k)).join("")}</div>
+  </div>`;
 }
 function rail(title, icon, inner, more, cls = "") {
   return `<div class="hm-rail ${cls}">
@@ -477,7 +505,9 @@ function acard(l, k = 0) {
   </button>`;
 }
 function cardSub(l) {
-  if (l.genre === "Topluluk") return `${ic("user")}${esc(l.author)} · ${l.tracks.length} şarkı`;
+  const n = l.kind === "trivia" ? `${num(l.items?.length)} soru` : `${num(l.tracks?.length)} şarkı`;
+  if (l.genre === "Topluluk") return `${ic("user")}${esc(l.author)} · ${l.kind === "trivia" ? esc(l.cat) + " · " : ""}${n}`;
+  if (l.kind === "trivia") return `Trivia · ${n}`;
   if (l.tracks?.length) return `${esc(l.genre)} · ${l.tracks.length} şarkı`;
   return esc(l.genre);
 }
@@ -486,7 +516,7 @@ function cardTools(l) {
   if (l.genre === "Topluluk")
     return `<span class="cardTools">${l.mine ? btn("data-edit", "sliders-horizontal", "Düzenle") + btn("data-unpublish", "trash-2", "Yayından kaldır") : btn("data-hidequiz", "x", "Bu quizi gizle")}</span>`;
   if (l.genre === "Senin")
-    return `<span class="cardTools">${l.tracks?.length ? btn("data-edit", "sliders-horizontal", "Düzenle") : ""}${btn("data-unsave", "x", "Listeden kaldır")}</span>`;
+    return `<span class="cardTools">${l.tracks?.length || l.items?.length ? btn("data-edit", "sliders-horizontal", "Düzenle") : ""}${btn("data-unsave", "x", "Listeden kaldır")}</span>`;
   return "";
 }
 function resultsHtml() {
@@ -598,7 +628,7 @@ function lobbyHtml(v) {
                 .map(
                   (s, i) => `<li>
               ${cover(s, "qImg")}
-              <span class="qInfo"><b>${esc(s.name)}</b><small>${num(s.count)} soru · ${s.mode === "text" ? "Yazarak" : "Şıklı"} · ${LEVELS[s.clip] || ""} (${num(s.clip)} sn)</small></span>
+              <span class="qInfo"><b>${esc(s.name)}</b><small>${num(s.count)} soru · ${s.kind === "trivia" ? "Trivia" : `${s.mode === "text" ? "Yazarak" : "Şıklı"} · ${LEVELS[s.clip] || ""} (${num(s.clip)} sn)`}</small></span>
               ${
                 host
                   ? `<span class="qBtns">
@@ -682,7 +712,7 @@ function gameHtml(v) {
   const myRes = reveal ? q?.reveal?.results?.[v.me] : null;
   const myPts = meP ? num(v.solo ? meP.score : meP.round) : 0;
   const head = `<div class="gameBar">
-      <span class="gq">${cover(set, "gImg")}<span><b>${esc(set.name)}</b><small>Soru ${num(v.index) + 1}/${num(set.count)} · ${LEVELS[set.clip] || ""} ${num(set.clip)} sn</small></span></span>
+      <span class="gq">${cover(set, "gImg")}<span><b>${esc(set.name)}</b><small>Soru ${num(v.index) + 1}/${num(set.count)} · ${set.kind === "trivia" ? "Trivia" : `${LEVELS[set.clip] || ""} ${num(set.clip)} sn`}</small></span></span>
       <span class="gEnd">
         <span class="myScore ${myRes?.correct ? "up" : ""}" title="Bu quizdeki puanın"><b>${myPts}</b><small>puan</small>${myRes ? `<i class="plus ${myRes.correct ? "" : "zero"}">+${num(myRes.points)}</i>` : ""}</span>
         <span class="mini">${miniHtml(v)}</span>
@@ -694,8 +724,18 @@ function gameHtml(v) {
     return `<section class="game">${head}<div class="stage"><div class="pulse">${ic("headphones")}</div><h2>Sıradaki şarkı hazırlanıyor…</h2></div></section>`;
 
   const mine = q.mine;
+  const trivia = q.kind === "trivia";
   let stage;
-  if (reveal) {
+  if (trivia) {
+    const r = reveal ? q.reveal.results[v.me] : null;
+    const verdict = !reveal ? "" : r?.correct ? `<span class="verdict good">${ic("check")} +${num(r.points)}</span>` : r ? `<span class="verdict bad">${ic("x")} Yanlış</span>` : `<span class="verdict">${ic("timer")} Süre doldu</span>`;
+    stage = `<div class="tq ${reveal ? "done" : ""}">
+      <div class="countdown" id="countdown"></div>
+      <span class="tqNo">${ic("circle-help")} Soru ${num(v.index) + 1}</span>
+      <h2 class="tqText">${esc(q.text)}</h2>
+      ${reveal ? `<div class="tqAns"><small>Doğru cevap</small><b>${esc(q.reveal.title)}</b>${verdict}</div>` : ""}
+    </div>`;
+  } else if (reveal) {
     const r = q.reveal.results[v.me];
     const verdict = r?.correct ? `<span class="verdict good">${ic("check")} +${num(r.points)}</span>` : r ? `<span class="verdict bad">${ic("x")} Yanlış</span>` : `<span class="verdict">${ic("timer")} Süre doldu</span>`;
     stage = `<div class="reveal">
@@ -787,7 +827,7 @@ function rankingHtml(v) {
     return `<section class="ranking">
       <span class="kicker">${final ? "Oyun bitti" : esc(set?.name || "") + " bitti"}</span>
       <h1><span data-count="${sc}">${sc}</span> <small>/ ${num(maxQ)} puan</small></h1>
-      <p class="muted">${sc >= maxQ * 0.7 ? "Kulağın keskin!" : sc >= maxQ * 0.4 ? "Fena değil, bir tur daha?" : "Isınma turuydu sayalım."}</p>
+      <p class="muted">${sc >= maxQ * 0.7 ? (set?.kind === "trivia" ? "Bilgin sağlam!" : "Kulağın keskin!") : sc >= maxQ * 0.4 ? "Fena değil, bir tur daha?" : "Isınma turuydu sayalım."}</p>
       ${sc >= maxQ * 0.7 ? confetti() : ""}
     </section>
     <div class="dock split">${
@@ -987,6 +1027,7 @@ async function resizePhoto(file) {
 function justPublished() {
   try {
     const q = JSON.parse(sessionStorage.getItem("jqJustPublished"));
+    if (q && q.id && q.kind === "trivia") return { ...q, items: cleanItems(q.items), mine: true, genre: "Topluluk" };
     return q && q.id && Array.isArray(q.tracks) ? { ...q, tracks: cleanTracksLite(q.tracks), mine: true, genre: "Topluluk" } : null;
   } catch {
     return null;
@@ -1017,9 +1058,27 @@ function pickerSheet() {
       .join("")}</div>`;
 }
 
+function setupFoot(enqueue, disabled = "") {
+  return enqueue
+    ? `<button class="btn primary wide" data-do="enqueue" ${disabled}>${ic("list-plus")}Sıraya ekle</button>`
+    : `<button class="btn ghost" data-do="soloGo" ${disabled}>${ic("play")}Solo oyna</button><button class="btn primary" data-do="hostGo" ${disabled}>${ic("users")}Arkadaşlarla oyna</button>`;
+}
 async function setupSheet() {
   const l = sheetCtx.list;
   const enqueue = mode && mode.role !== "solo" && isHost();
+  if (l.kind === "trivia") {
+    const n = num(l.items?.length);
+    const counts = [5, 10, 15, 20, 30].filter((c) => c < n);
+    if (!counts.includes(sheetCtx.count) && sheetCtx.count !== n) sheetCtx.count = Math.min(10, n);
+    sheetBody.innerHTML = `<div class="sheetHead setupHead">${cover(l, "sImg")}<div><small class="kicker">Trivia · ${esc(l.cat || "")}</small><h2>${esc(l.name)}</h2><small class="muted">${n} soru${l.author ? ` · ${esc(l.author)}` : ""}</small></div><button class="icon" data-close aria-label="Kapat">${ic("x")}</button></div>
+      ${l.desc ? `<p class="muted">${esc(l.desc)}</p>` : ""}
+      <div class="opts">
+        <div class="opt"><span>Soru sayısı</span><div class="seg" data-opt="count">${[...counts, n].map((c) => `<button data-v="${c}" aria-pressed="${sheetCtx.count === c}">${c === n ? `Hepsi (${c})` : c}</button>`).join("")}</div></div>
+      </div>
+      <p class="hint">Süre bitmeden doğru şıkkı seç; ne kadar hızlıysan o kadar puan. Cevap süresini lobiden değiştirebilirsin.</p>
+      <div class="sheetFoot">${setupFoot(enqueue)}</div>`;
+    return;
+  }
   sheetBody.innerHTML = `<div class="sheetHead setupHead">${cover(l, "sImg")}<div><small class="kicker">${esc(l.genre || "Quiz")}</small><h2>${esc(l.name)}</h2><small class="muted" id="trackCount">${spinner()} Şarkılar yükleniyor…</small></div><button class="icon" data-close aria-label="Kapat">${ic("x")}</button></div>
     <div class="opts">
       <div class="opt"><span>Soru sayısı</span><div class="seg" data-opt="count">${[5, 10, 15, 20, 30].map((n) => `<button data-v="${n}" aria-pressed="${sheetCtx.count === n}">${n}</button>`).join("")}</div></div>
@@ -1027,11 +1086,7 @@ async function setupSheet() {
       <div class="opt"><span>Kesit uzunluğu</span><div class="seg" data-opt="clip">${[5, 3, 1].map((n) => `<button data-v="${n}" aria-pressed="${sheetCtx.clip === n}">${LEVELS[n]} · ${n} sn</button>`).join("")}</div></div>
     </div>
     <details class="tracks" id="tracksBox"><summary>${ic("list-music")} Şarkıları seç <span id="selCount"></span></summary><div id="trackList"><p class="muted">${spinner()}</p></div></details>
-    <div class="sheetFoot">${
-      enqueue
-        ? `<button class="btn primary wide" data-do="enqueue" disabled>${ic("list-plus")}Sıraya ekle</button>`
-        : `<button class="btn ghost" data-do="soloGo" disabled>${ic("play")}Solo oyna</button><button class="btn primary" data-do="hostGo" disabled>${ic("users")}Arkadaşlarla oyna</button>`
-    }</div>`;
+    <div class="sheetFoot">${setupFoot(enqueue, "disabled")}</div>`;
   try {
     const tracks = await loadTracks(l);
     if (sheetCtx.list !== l || !sheet.open) return;
@@ -1055,6 +1110,8 @@ function drawTracks() {
 }
 function setupPayload() {
   const { list, tracks, ids, count, mode: m, clip } = sheetCtx;
+  if (list.kind === "trivia")
+    return { type: "add", kind: "trivia", list: { name: list.name, emoji: list.emoji || "" }, items: list.items, count, mode: "choice", clip: 0 };
   if (!tracks) throw Error("Şarkılar henüz yüklenmedi.");
   if (!ids.size) throw Error("En az bir şarkı seç.");
   return {
@@ -1080,6 +1137,11 @@ async function doAction(a, el) {
     case "create":
       return startHost();
     case "toCatalog":
+      return document.getElementById("catalog")?.scrollIntoView({ behavior: "smooth", block: "start" });
+    case "toTrivia":
+      ui.genre = "Trivia";
+      ui.cat = "";
+      renderHome();
       return document.getElementById("catalog")?.scrollIntoView({ behavior: "smooth", block: "start" });
     case "leave":
       closeSheet();
@@ -1126,7 +1188,7 @@ async function doAction(a, el) {
     case "soloGo":
     case "hostGo": {
       const payload = setupPayload();
-      store.set("jqSetup", { count: payload.count, mode: payload.mode, clip: payload.clip });
+      if (payload.kind !== "trivia") store.set("jqSetup", { count: payload.count, mode: payload.mode, clip: payload.clip });
       closeSheet();
       if (a === "enqueue") return act(payload);
       if (mode) leaveRoom(true);
@@ -1193,8 +1255,16 @@ document.addEventListener("click", async (e) => {
     if (d.sheet) return openSheet(d.sheet);
     if (d.do) return await doAction(d.do, b);
     if (d.list) return openList(d.list);
+    if (d.cat !== undefined) {
+      ui.genre = "Trivia";
+      ui.cat = d.cat;
+      renderHome();
+      if (d.scroll) document.getElementById("catalog")?.scrollIntoView({ behavior: "smooth", block: "start" });
+      return;
+    }
     if (d.genre) {
       ui.genre = d.genre;
+      ui.cat = "";
       if (d.genre === "Topluluk" && (ui.communityErr || ui.community?.length === 0)) (ui.community = null), loadCommunity();
       return renderHome();
     }
@@ -1343,6 +1413,7 @@ window.addEventListener("beforeunload", () => mode?.net?.close({ quiet: true }))
 function boot() {
   const tab = new URLSearchParams(location.search).get("tab");
   if (tab === "topluluk") ui.genre = "Topluluk";
+  if (tab === "trivia") ui.genre = "Trivia";
   if (tab === "senin" && customLists().length) ui.genre = "Senin";
   if (tab) history.replaceState(null, "", location.pathname);
   loadCommunity();

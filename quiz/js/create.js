@@ -2,6 +2,7 @@
 // sanatçının popüler şarkıları ve tüm albümleri tek tek ya da topluca eklenebilir.
 import { searchArtists, searchTracks, artistInfo, artistTop, artistAlbums, albumTracks, isAlternate, customLists, saveCustom, removeCustom, cleanTracks, fold, cdn } from "./music.js";
 import { fetchCommunity, publishQuiz, removeQuiz, myPubkey, MIN_TRACKS, MAX_TRACKS } from "./community.js";
+import { TCATS, EMOJIS, T_MIN, T_MAX, cleanItems, cleanCat, cleanEmoji, isTF } from "./trivia.js";
 
 const $ = (s, r = document) => r.querySelector(s);
 const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
@@ -27,7 +28,16 @@ const st = {
   tab: "artist", q: "", busy: false, results: null,
   artist: null,          // { info, top, albums, open: Set(albumId), albumTracks: Map }
   hideAlt: true, saving: false,
+  // trivia
+  kind: "song", items: [], cat: "Genel Kültür", emoji: "🧠", bulk: false,
 };
+const hue = (name) => { let h = 0; for (const c of String(name || "?")) h = (h * 31 + c.charCodeAt(0)) >>> 0; return h % 360; };
+const blank = () => ({ q: "", type: "4", a: ["", "", "", ""], tf: true });
+const toEditor = (it) => isTF(it.a) ? { q: it.q, type: "tf", a: ["", "", "", ""], tf: it.a[0] === "Doğru" } : { q: it.q, type: "4", a: [...it.a, "", "", ""].slice(0, 4), tf: true };
+const fromEditor = (e) => e.type === "tf" ? { q: e.q.trim(), a: e.tf ? ["Doğru", "Yanlış"] : ["Yanlış", "Doğru"] } : { q: e.q.trim(), a: [e.a[0].trim(), ...e.a.slice(1).map((x) => x.trim()).filter(Boolean)] };
+const isBlank = (e) => !e.q.trim() && (e.type === "tf" || e.a.every((x) => !x.trim()));
+const editing = () => !!(st.d || st.localId);
+const hasContent = () => st.tracks.length > 0 || st.items.some((e) => !isBlank(e));
 const have = () => new Set(st.tracks.map((t) => t.id));
 const full = () => st.tracks.length >= MAX_TRACKS;
 
@@ -87,6 +97,7 @@ function sideHtml() {
   const n = st.tracks.length;
   const cover = st.tracks.find((t) => t.cover)?.cover;
   return `<div class="crCard">
+    ${kindSwitch()}
     <div class="crCover">${cover ? `<img src="${esc(cover)}" alt="">` : `<span class="noart">${ic("list-music")}</span>`}<span class="crCount"><b>${n}</b>/${MAX_TRACKS} şarkı</span></div>
     <label class="field"><span>Quiz adı</span><input id="qName" maxlength="60" value="${esc(st.name)}" placeholder="Örn. 2010'ların Türkçe pop hitleri" autocomplete="off"></label>
     <label class="field"><span>Kısa açıklama <small class="muted">(isteğe bağlı)</small></span><input id="qDesc" maxlength="160" value="${esc(st.desc)}" placeholder="Bu quiz ne hakkında?" autocomplete="off"></label>
@@ -97,6 +108,82 @@ function sideHtml() {
     <button class="btn primary lg wide" data-do="save" ${st.saving ? "disabled" : ""}>${st.saving ? `${spinner()} ${st.public ? "Yayınlanıyor…" : "Kaydediliyor…"}` : `${ic("check")}${st.public ? (st.d ? "Güncelle ve yayınla" : "Yayınla") : "Kaydet (sadece bende)"}`}</button>
     ${st.d ? `<button class="btn ghost wide" data-do="unpublish">${ic("trash-2")}Yayından kaldır</button>` : ""}
   </div>`;
+}
+
+function kindSwitch() {
+  if (editing()) return "";
+  return `<div class="seg crKind" role="tablist" aria-label="Quiz türü">
+    <button role="tab" aria-selected="${st.kind === "song"}" data-kind="song">${ic("music")}Şarkı quizi</button>
+    <button role="tab" aria-selected="${st.kind === "trivia"}" data-kind="trivia">${ic("circle-help")}Trivia</button>
+  </div>`;
+}
+function publishBlock() {
+  return `<label class="setRow toggle"><span>Herkese açık yayınla<small>Topluluk sekmesinde herkes görür ve oynar.</small></span><input type="checkbox" id="qPublic" ${st.public ? "checked" : ""}><span class="sw"></span></label>
+    ${st.public ? `<label class="field"><span>Yazar adı</span><input id="qAuthor" maxlength="24" value="${esc(st.author)}" placeholder="Quizde görünecek adın" autocomplete="nickname"></label>` : ""}
+    <button class="btn primary lg wide" data-do="save" ${st.saving ? "disabled" : ""}>${st.saving ? `${spinner()} ${st.public ? "Yayınlanıyor…" : "Kaydediliyor…"}` : `${ic("check")}${st.public ? (st.d ? "Güncelle ve yayınla" : "Yayınla") : "Kaydet (sadece bende)"}`}</button>
+    ${st.d ? `<button class="btn ghost wide" data-do="unpublish">${ic("trash-2")}Yayından kaldır</button>` : ""}`;
+}
+const filled = () => st.items.filter((e) => !isBlank(e)).length;
+function triviaSide() {
+  return `<div class="crCard">
+    ${kindSwitch()}
+    <div class="crCover emo" style="--h:${hue(st.name || st.cat)}">${esc(st.emoji)}<span class="crCount"><b>${filled()}</b>/${T_MAX} soru</span></div>
+    <label class="field"><span>Trivia adı</span><input id="qName" maxlength="60" value="${esc(st.name)}" placeholder="Örn. 90'lar Çizgi Filmleri" autocomplete="off"></label>
+    <label class="field"><span>Kısa açıklama <small class="muted">(isteğe bağlı)</small></span><input id="qDesc" maxlength="160" value="${esc(st.desc)}" placeholder="Bu trivia ne hakkında?" autocomplete="off"></label>
+    <label class="field"><span>Kategori</span><select id="qCat">${TCATS.map((c) => `<option ${c === st.cat ? "selected" : ""}>${esc(c)}</option>`).join("")}</select></label>
+    <div class="field"><span>Simge</span><div class="emojiPick">${EMOJIS.map((e) => `<button data-emoji="${e}" aria-pressed="${st.emoji === e}" aria-label="Simge ${e}">${e}</button>`).join("")}</div></div>
+    ${publishBlock()}
+  </div>`;
+}
+const BULK_EXAMPLE = `Türkiye'nin başkenti neresidir?
+*Ankara
+İstanbul
+İzmir
+Bursa
+
+Ay, Dünya'nın uydusudur.
+*Doğru
+Yanlış`;
+function triviaMain() {
+  const n = filled();
+  return `<section class="crMain">
+    <div class="tvHead"><h2>Sorular <small>${n}/${T_MAX}</small></h2><span><button class="btn soft sm" data-do="tvBulk">${ic("list-plus")}Toplu ekle</button><button class="btn primary sm" data-do="tvAdd">${ic("plus")}Soru ekle</button></span></div>
+    ${st.bulk ? `<div class="tvBulk"><b>Toplu ekle</b><small class="muted">Her soruyu boş bir satırla ayır. İlk satır soru, altındakiler şıklar. Doğru şıkkın başına * koy (koymazsan ilk şık doğru sayılır). 2 ile 4 şık olabilir.</small><pre>${esc(BULK_EXAMPLE)}</pre><textarea id="tvBulkText" placeholder="Sorularını buraya yapıştır…"></textarea><span><button class="btn ghost sm" data-do="tvBulkClose">Vazgeç</button><button class="btn primary sm" data-do="tvBulkAdd">${ic("check")}Soruları ekle</button></span></div>` : ""}
+    <p class="tvHelp">Yeşil noktalı kutu doğru cevap, diğerleri yanlış şıklar. Oyunda şıklar karıştırılır. En az ${T_MIN} soru gerekir; boş bıraktığın kartlar kaydedilmez.</p>
+    <div class="tvList">${st.items.map((e, i) => tvCard(e, i)).join("")}</div>
+    ${st.items.length < T_MAX ? `<button class="tvAddBig" data-do="tvAdd">${ic("plus")}Soru ekle</button>` : ""}
+  </section>`;
+}
+function tvCard(e, i) {
+  const last = st.items.length - 1;
+  return `<div class="tvCard" id="tv-${i}">
+    <div class="tvTop"><span class="tvNo">${i + 1}</span>
+      <div class="seg"><button data-tvtype="${i}:4" aria-pressed="${e.type === "4"}">Çoktan seçmeli</button><button data-tvtype="${i}:tf" aria-pressed="${e.type === "tf"}">Doğru / Yanlış</button></div>
+      <span class="tvBtns"><button class="icon sm" data-tvmove="${i}:-1" ${i ? "" : "disabled"} aria-label="Yukarı taşı"><span class="up">${ic("chevron-down")}</span></button><button class="icon sm" data-tvmove="${i}:1" ${i < last ? "" : "disabled"} aria-label="Aşağı taşı">${ic("chevron-down")}</button><button class="icon sm" data-tvdel="${i}" aria-label="Soruyu sil">${ic("trash-2")}</button></span>
+    </div>
+    <textarea class="tvQ" id="tvq-${i}" data-tvq="${i}" maxlength="200" rows="2" placeholder="${e.type === "tf" ? "Bir ifade yaz… (ör. Ay, Dünya'nın uydusudur.)" : "Soruyu yaz… (ör. Türkiye'nin başkenti neresidir?)"}">${esc(e.q)}</textarea>
+    ${e.type === "tf"
+      ? `<div class="tvTF">Bu ifade: <button data-tvtf="${i}:1" aria-pressed="${e.tf}">Doğru</button><button data-tvtf="${i}:0" aria-pressed="${!e.tf}">Yanlış</button></div>`
+      : `<div class="tvOpts">${[0, 1, 2, 3].map((j) => `<label class="tvOpt ${j ? "" : "ok"}"><i class="dot"></i><input id="tva-${i}-${j}" data-tva="${i}:${j}" maxlength="80" value="${esc(e.a[j])}" placeholder="${j === 0 ? "Doğru cevap" : `Yanlış şık${j > 1 ? " (isteğe bağlı)" : ""}`}" aria-label="${j === 0 ? "Doğru cevap" : "Yanlış şık " + j}"></label>`).join("")}</div>`}
+  </div>`;
+}
+function parseBulk(text) {
+  const out = [];
+  for (const block of String(text).replace(/\r/g, "").split(/\n\s*\n/)) {
+    const lines = block.split("\n").map((l) => l.trim()).filter(Boolean);
+    if (lines.length < 3) continue;
+    const q = lines[0].replace(/^(soru\s*)?\d{1,3}\s*[.)\-:]\s*/i, "");
+    let correct = 0;
+    const opts = lines.slice(1, 5).map((l, k) => {
+      l = l.replace(/^[-•]\s*/, "");
+      if (l.startsWith("*")) { correct = k; l = l.slice(1).trim(); }
+      return l.replace(/^[a-dA-D]\s*[).:-]\s*/, "");
+    }).filter(Boolean);
+    if (opts.length < 2) continue;
+    const a = [opts[correct] ?? opts[0], ...opts.filter((_, k) => k !== correct)];
+    out.push(toEditor({ q, a }));
+  }
+  return out;
 }
 
 function mainHtml() {
@@ -148,8 +235,9 @@ function artistHtml() {
 }
 
 function drawAll() {
-  app.innerHTML = `<div class="crGrid"><aside class="crSide">${sideHtml()}</aside>${mainHtml()}</div>`;
-  $("#crTitle").textContent = st.d || st.localId ? "Quizi düzenle" : "Quiz oluştur";
+  const trivia = st.kind === "trivia";
+  app.innerHTML = `<div class="crGrid"><aside class="crSide">${trivia ? triviaSide() : sideHtml()}</aside>${trivia ? triviaMain() : mainHtml()}</div>`;
+  $("#crTitle").textContent = trivia ? (editing() ? "Triviayı düzenle" : "Trivia oluştur") : editing() ? "Quizi düzenle" : "Quiz oluştur";
 }
 // Arama kutusundaki yazıyı ve odağı kaybetmeden yalnızca listeleri yenile
 function drawLists() {
@@ -198,6 +286,7 @@ async function save() {
   st.desc = $("#qDesc").value.trim();
   if ($("#qAuthor")) st.author = $("#qAuthor").value.trim();
   if (!st.name) return $("#qName").focus(), toast("Quize bir ad ver.", "bad");
+  if (st.kind === "trivia") return saveTrivia();
   if (new Set(st.tracks.map((t) => fold(t.title))).size < Math.max(4, MIN_TRACKS)) return toast(`En az ${MIN_TRACKS} farklı şarkı ekle.`, "bad");
   st.saving = true; drawLists();
   try {
@@ -218,12 +307,61 @@ async function save() {
   }
 }
 
+async function saveTrivia() {
+  const keep = [];
+  for (let i = 0; i < st.items.length; i++) {
+    const e = st.items[i];
+    if (isBlank(e)) continue;
+    const it = fromEditor(e);
+    const bad = !it.q ? "soru metni boş" : !it.a[0] ? "doğru cevap boş" : it.a.length < 2 ? "en az bir yanlış şık yaz" : new Set(it.a.map((x) => x.toLocaleLowerCase("tr"))).size !== it.a.length ? "aynı şık iki kez yazılmış" : "";
+    if (bad) {
+      const card = $("#tv-" + i);
+      card?.classList.add("bad");
+      card?.scrollIntoView({ behavior: "smooth", block: "center" });
+      return toast(`${i + 1}. soru: ${bad}.`, "bad");
+    }
+    keep.push(it);
+  }
+  const items = cleanItems(keep);
+  if (items.length < T_MIN) return toast(`En az ${T_MIN} soru yaz (şu an ${items.length}).`, "bad");
+  st.saving = true; drawLists();
+  try {
+    if (st.public) {
+      const q = await publishQuiz({ kind: "trivia", d: st.d, name: st.name, desc: st.desc, author: st.author || "Anonim", cat: st.cat, emoji: st.emoji, items, prevAt: st.prevAt });
+      if (st.localId) removeCustom(st.localId);
+      try { sessionStorage.setItem("jqJustPublished", JSON.stringify(q)); } catch {}
+      location.href = "../?tab=topluluk";
+    } else {
+      if (st.d) await removeQuiz({ d: st.d, pubkey: myPubkey(), at: st.prevAt }).catch(() => {});
+      saveCustom({ id: st.localId || "my" + Math.random().toString(36).slice(2, 10), kind: "trivia", name: st.name, desc: st.desc, cat: st.cat, emoji: st.emoji, items, genre: "Senin" });
+      location.href = "../?tab=senin";
+    }
+  } catch (e) {
+    st.saving = false; drawLists(); fail(e);
+  }
+}
+function setKind(kind) {
+  if (kind === st.kind) return;
+  if (hasContent() && !confirm("Quiz türünü değiştirirsen eklediklerin silinir. Devam edilsin mi?")) return;
+  st.kind = kind; st.tracks = []; st.items = kind === "trivia" ? [blank()] : [];
+  history.replaceState(null, "", kind === "trivia" ? "?tur=trivia" : location.pathname);
+  drawAll();
+  (kind === "trivia" ? $("#qName") : $("#crq"))?.focus();
+}
+const pair = (v) => v.split(":").map(Number);
+
 // ---- olaylar ----
 document.addEventListener("click", async (e) => {
   const b = e.target.closest("button");
   if (!b || b.disabled) return;
   const d = b.dataset;
   try {
+    if (d.kind) return setKind(d.kind);
+    if (d.emoji) { st.emoji = cleanEmoji(d.emoji); return drawLists(); }
+    if (d.tvtype) { const [i, t] = d.tvtype.split(":"); st.items[Number(i)].type = t === "tf" ? "tf" : "4"; return drawLists(); }
+    if (d.tvtf) { const [i, v] = pair(d.tvtf); st.items[i].tf = !!v; return drawLists(); }
+    if (d.tvdel) { const i = Number(d.tvdel); if (!isBlank(st.items[i]) && !confirm(`${i + 1}. soru silinsin mi?`)) return; st.items.splice(i, 1); if (!st.items.length) st.items.push(blank()); return drawLists(); }
+    if (d.tvmove) { const [i, dir] = pair(d.tvmove); const j = i + dir; if (j < 0 || j >= st.items.length) return; [st.items[i], st.items[j]] = [st.items[j], st.items[i]]; return drawLists(); }
     if (d.tab) { st.tab = d.tab; st.results = null; st.artist = null; drawLists(); return $("#crq").focus(); }
     if (d.artist !== undefined) return openArtist(st.results[Number(d.artist)]);
     if (d.tog !== undefined) return toggle(rowSource[Number(d.tog)]);
@@ -258,6 +396,25 @@ document.addEventListener("click", async (e) => {
       }
       case "clear": if (confirm("Quizdeki tüm şarkılar çıkarılsın mı?")) (st.tracks = []), drawLists(); return;
       case "save": return save();
+      case "tvAdd": {
+        if (st.items.length >= T_MAX) return toast(`En fazla ${T_MAX} soru.`, "bad");
+        st.items.push(blank()); drawLists();
+        const el = $("#tvq-" + (st.items.length - 1));
+        el?.scrollIntoView({ behavior: "smooth", block: "center" }); el?.focus({ preventScroll: true });
+        return;
+      }
+      case "tvBulk": st.bulk = true; drawLists(); return $("#tvBulkText")?.focus();
+      case "tvBulkClose": st.bulk = false; return drawLists();
+      case "tvBulkAdd": {
+        const got = parseBulk($("#tvBulkText").value);
+        if (!got.length) return toast("Soru bulunamadı. Örnekteki biçimi kullan: soru, altında şıklar, sorular arasında boş satır.", "bad");
+        st.items = st.items.filter((e) => !isBlank(e));
+        const room = T_MAX - st.items.length;
+        st.items.push(...got.slice(0, room));
+        if (!st.items.length) st.items.push(blank());
+        st.bulk = false; drawLists();
+        return toast(`${Math.min(got.length, room)} soru eklendi.`);
+      }
       case "unpublish":
         if (!confirm(`"${st.name}" yayından kaldırılsın mı? Başkaları artık göremez.`)) return;
         await removeQuiz({ d: st.d, at: st.prevAt, pubkey: myPubkey() });
@@ -271,36 +428,48 @@ document.addEventListener("input", (e) => {
   if (t.id === "qName") st.name = t.value;
   if (t.id === "qDesc") st.desc = t.value;
   if (t.id === "qAuthor") st.author = t.value;
+  if (t.dataset.tvq) { st.items[Number(t.dataset.tvq)].q = t.value; t.closest(".tvCard")?.classList.remove("bad"); }
+  if (t.dataset.tva) { const [i, j] = pair(t.dataset.tva); st.items[i].a[j] = t.value; t.closest(".tvCard")?.classList.remove("bad"); }
 });
 document.addEventListener("change", (e) => {
   const t = e.target;
   if (t.id === "qPublic") { st.public = t.checked; drawLists(); }
   if (t.id === "hideAlt") { st.hideAlt = t.checked; drawLists(); }
+  if (t.id === "qCat") st.cat = cleanCat(t.value);
 });
 document.addEventListener("submit", (e) => {
   e.preventDefault();
   if (e.target.id === "crSearch") runSearch();
 });
 addEventListener("beforeunload", (e) => {
-  if (st.tracks.length && !st.saving) { e.preventDefault(); e.returnValue = ""; }
+  if (hasContent() && !st.saving) { e.preventDefault(); e.returnValue = ""; }
 });
 
 // ---- açılış: ?duzenle=<id> ----
 (async function boot() {
-  const id = new URLSearchParams(location.search).get("duzenle") || "";
+  const params = new URLSearchParams(location.search);
+  const id = params.get("duzenle") || "";
+  if (params.get("tur") === "trivia" && !id) { st.kind = "trivia"; st.items = [blank()]; }
   drawAll();
-  if (!id) return $("#crq").focus();
+  if (!id) return (st.kind === "trivia" ? $("#qName") : $("#crq")).focus();
+  const localT = customLists().find((l) => l.id === id && l.kind === "trivia" && l.items?.length);
+  if (localT) {
+    Object.assign(st, { kind: "trivia", name: localT.name, desc: localT.desc || "", cat: localT.cat, emoji: localT.emoji, items: localT.items.map(toEditor), public: false, localId: localT.id });
+    return drawAll();
+  }
   const local = customLists().find((l) => l.id === id && l.tracks?.length);
   if (local) {
     Object.assign(st, { name: local.name, desc: local.desc || "", tracks: [...local.tracks], public: false, localId: local.id });
     return drawAll();
   }
   if (id.startsWith("nq-")) {
-    app.querySelector("#crSel").innerHTML = `<p class="muted">${spinner()} Quiz yükleniyor…</p>`;
+    const sel = app.querySelector("#crSel");
+    if (sel) sel.innerHTML = `<p class="muted">${spinner()} Quiz yükleniyor…</p>`;
     try {
       const q = (await fetchCommunity()).find((x) => x.id === id && x.mine);
       if (!q) throw Error("Bu quiz bulunamadı ya da senin değil.");
-      Object.assign(st, { name: q.name, desc: q.desc, author: q.author, tracks: [...q.tracks], public: true, d: q.d, prevAt: q.at, pubkey: q.pubkey });
+      if (q.kind === "trivia") Object.assign(st, { kind: "trivia", name: q.name, desc: q.desc, author: q.author, cat: q.cat, emoji: q.emoji, items: q.items.map(toEditor), public: true, d: q.d, prevAt: q.at, pubkey: q.pubkey });
+      else Object.assign(st, { name: q.name, desc: q.desc, author: q.author, tracks: [...q.tracks], public: true, d: q.d, prevAt: q.at, pubkey: q.pubkey });
     } catch (e) { fail(e); }
     drawAll();
   }

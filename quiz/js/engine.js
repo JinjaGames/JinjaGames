@@ -1,6 +1,7 @@
 // Oyun motoru. Kurucunun tarayıcısında çalışır ve tek doğruluk kaynağıdır.
 // Diğer oyuncular yalnızca kendilerine özel durum özetini (view) alır.
 import { fold, preview } from "./music.js";
+import { cleanItems, cleanEmoji } from "./trivia.js";
 
 export const MAX_PLAYERS = 12;
 const PLAYS = 3;
@@ -117,8 +118,26 @@ export class Game {
   }
 
   // ---- kuyruk ----
-  addSet({ list, tracks, ids, count, mode, clip }) {
+  addSet({ list, tracks, ids, count, mode, clip, kind, items }) {
     if (this.queue.length >= 12) throw Error("Kuyrukta en fazla 12 quiz olabilir.");
+    if (kind === "trivia") {
+      const pool = cleanItems(items);
+      if (pool.length < 2) throw Error("Bu triviada yeterli soru yok.");
+      const n = Math.max(1, Math.min(pool.length, Number(count) || 10, 100));
+      this.queue.push({
+        id: uid(),
+        kind: "trivia",
+        name: list.name,
+        art: "",
+        picture: "",
+        emoji: list.emoji ? cleanEmoji(list.emoji) : "",
+        tracks: pool,
+        questions: shuffle(pool).slice(0, n),
+        mode: "choice",
+        clip: 0,
+      });
+      return;
+    }
     const pool = ids?.length ? tracks.filter((t) => ids.includes(t.id)) : tracks;
     if (!pool.length) throw Error("En az bir şarkı seç.");
     const n = Math.max(1, Math.min(pool.length, Number(count) || 10, 50));
@@ -157,12 +176,23 @@ export class Game {
         picture: set.picture,
         count: set.questions.length,
         top: [...this.players].sort((a, b) => b.round - a.round).map((p) => ({ pid: p.pid, name: p.name, pts: p.round })),
-        set: { name: set.name, art: set.art, picture: set.picture, tracks: set.tracks, pool: set.questions.length, mode: set.mode, clip: set.clip },
+        emoji: set.emoji || "",
+        set: { kind: set.kind, emoji: set.emoji, name: set.name, art: set.art, picture: set.picture, tracks: set.tracks, pool: set.questions.length, mode: set.mode, clip: set.clip },
       });
       if (this.history.length > 10) this.history.shift();
       this.rankAt = this.phase === "ranking" && !this.solo ? Date.now() + NEXT_QUIZ : null;
       this.schedule();
       this.question = null;
+      this.emit();
+      return;
+    }
+    if (set.kind === "trivia") {
+      // Trivia: ses yok, soru hemen açılır. Geri sayım boyunca soru okunur, şıklar sonra açılır.
+      const item = set.questions[this.index];
+      const start = Date.now() + COUNTDOWN;
+      this.question = { id: uid(), item, options: shuffle(item.a), answers: {}, start, end: start + this.seconds * 1000 };
+      this.phase = "question";
+      this.schedule();
       this.emit();
       return;
     }
@@ -245,7 +275,7 @@ export class Game {
     const answer = String(text ?? "").trim().slice(0, 120);
     if (!answer) throw Error("Bir cevap yaz.");
     if (set.mode === "choice" && !q.options.includes(answer)) throw Error("Geçerli bir şık seç.");
-    const correct = set.mode === "choice" ? answer === q.track.title : matches(answer, q.track);
+    const correct = set.kind === "trivia" ? answer === q.item.a[0] : set.mode === "choice" ? answer === q.track.title : matches(answer, q.track);
     const left = 1 - (now - q.start) / (q.end - q.start);
     const points = correct ? Math.max(10, Math.min(100, Math.round(10 + 90 * left))) : 0;
     q.answers[pid] = { answer, correct, points, ms: now - q.start };
@@ -362,6 +392,8 @@ export class Game {
         const pool = h.set.tracks;
         this.queue.push({
           id: uid(),
+          kind: h.set.kind,
+          emoji: h.set.emoji,
           name: h.set.name,
           art: h.set.art,
           picture: h.set.picture,
@@ -414,6 +446,8 @@ export class Game {
         name: s.name,
         art: s.art,
         picture: s.picture,
+        emoji: s.emoji || "",
+        kind: s.kind || "song",
         count: s.questions.length,
         mode: s.mode,
         clip: s.clip,
@@ -421,11 +455,13 @@ export class Game {
       set: this.set,
       index: this.index,
       rankAt: this.phase === "ranking" ? this.rankAt || null : null,
-      history: this.history.map(({ id, name, art, picture, count, top }) => ({ id, name, art, picture, count, top })),
+      history: this.history.map(({ id, name, art, picture, emoji, count, top }) => ({ id, name, art, picture, emoji: emoji || "", count, top })),
       question:
         q && ["preparing", "question", "reveal"].includes(this.phase)
           ? {
               id: q.id,
+              kind: set.kind || "song",
+              text: set.kind === "trivia" ? q.item.q : null,
               url: this.phase === "preparing" ? null : q.url,
               offset: q.offset,
               clip: set.clip,
@@ -442,8 +478,8 @@ export class Game {
                   : {},
               reveal: reveal
                 ? {
-                    title: q.track.title,
-                    artist: q.track.artist,
+                    title: set.kind === "trivia" ? q.item.a[0] : q.track.title,
+                    artist: set.kind === "trivia" ? "" : q.track.artist,
                     cover: q.cover,
                     album: q.album,
                     results: Object.fromEntries(

@@ -4,6 +4,7 @@
 // Gelen her kayıt imzası doğrulandıktan ve alan alan süzüldükten sonra kullanılır.
 import { schnorr, sha256, bytesToHex, hexToBytes } from "../vendor/nostr-sign.js";
 import { cdn } from "./music.js";
+import { cleanItems, cleanCat, cleanEmoji, T_MIN, T_MAX } from "./trivia.js";
 
 export const RELAYS = globalThis.__JQ_TEST_RELAYS || ["wss://nos.lol", "wss://relay.primal.net", "wss://relay.damus.io", "wss://nostr.mom", "wss://relay.nostr.band", "wss://offchain.pub"];
 const KIND = 30078;
@@ -55,6 +56,18 @@ function parse(e) {
   let c;
   try { c = JSON.parse(e.content); } catch { return null; }
   if (!c || c.v !== 1 || c.deleted) return null;
+  const id = "nq-" + e.pubkey.slice(0, 16) + "-" + d.slice(10);
+  if (c.kind === "trivia") {
+    const items = cleanItems(c.items);
+    const name = str(c.name, 60);
+    if (!name || items.length < T_MIN) return null;
+    return {
+      id, d, pubkey: e.pubkey, at: e.created_at, kind: "trivia",
+      name, desc: str(c.desc, 160), author: str(c.author, 24) || "Anonim",
+      cat: cleanCat(c.cat), emoji: cleanEmoji(c.emoji), picture: "",
+      genre: "Topluluk", items, mine: e.pubkey === myPubkey(),
+    };
+  }
   const seen = new Set();
   const tracks = (Array.isArray(c.tracks) ? c.tracks : []).slice(0, MAX_TRACKS).map((t) => ({
     id: int(t?.id), title: str(t?.t, 120), artist: str(t?.a, 80), cover: cdn(t?.c),
@@ -112,9 +125,12 @@ export async function fetchCommunity({ limit = 300, ms = 6000 } = {}) {
 }
 
 /** Quizi yayınlar (aynı d ile tekrar çağırmak günceller). En az bir röle kabul ederse başarılıdır. */
-export async function publishQuiz({ d, name, desc, author, tracks, prevAt = 0 }) {
+export async function publishQuiz({ d, name, desc, author, tracks, kind, items, cat, emoji, prevAt = 0 }) {
   d ||= "jinjaquiz:" + bytesToHex(crypto.getRandomValues(new Uint8Array(8)));
-  const content = JSON.stringify({
+  const content = kind === "trivia" ? JSON.stringify({
+    v: 1, kind: "trivia", name: str(name, 60), desc: str(desc, 160), author: str(author, 24), cat: cleanCat(cat), emoji: cleanEmoji(emoji),
+    items: cleanItems(items).slice(0, T_MAX),
+  }) : JSON.stringify({
     v: 1, name: str(name, 60), desc: str(desc, 160), author: str(author, 24), cover: tracks.find((t) => t.cover)?.cover || "",
     tracks: tracks.slice(0, MAX_TRACKS).map((t) => ({ id: t.id, t: str(t.title, 120), a: str(t.artist, 80), ...(t.cover ? { c: t.cover } : {}) })),
   });

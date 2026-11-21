@@ -200,7 +200,9 @@ export async function preview(trackId) {
   };
 }
 
-// Kullanıcının bulduğu sanatçılar tarayıcıda saklanır.
+import { cleanItems, cleanCat, cleanEmoji } from "./trivia.js";
+
+// Kullanıcının bulduğu sanatçılar ve kendi (yalnızca bende) quizleri tarayıcıda saklanır.
 const KEY = "jqCustomLists";
 export function customLists() {
   try {
@@ -208,7 +210,16 @@ export function customLists() {
     if (!Array.isArray(all)) return [];
     return all
       .filter((l) => l && typeof l === "object")
-      .map((l) => ({
+      .map((l) => l.kind === "trivia" ? {
+        id: str(l.id, 40).replace(/[^A-Za-z0-9_-]/g, ""),
+        kind: "trivia",
+        name: str(l.name, 80),
+        desc: str(l.desc, 160),
+        cat: cleanCat(l.cat),
+        emoji: cleanEmoji(l.emoji),
+        items: cleanItems(l.items),
+        genre: "Senin",
+      } : ({
         id: str(l.id, 40).replace(/[^A-Za-z0-9_-]/g, ""),
         name: str(l.name, 80),
         desc: str(l.desc, 160),
@@ -217,7 +228,7 @@ export function customLists() {
         tracks: Array.isArray(l.tracks) ? cleanTracks(l.tracks) : undefined,
         genre: "Senin",
       }))
-      .filter((l) => l.id && (l.artists.length || l.tracks?.length));
+      .filter((l) => l.id && (l.items?.length || l.artists?.length || l.tracks?.length));
   } catch {
     return [];
   }
