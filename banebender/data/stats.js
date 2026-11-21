@@ -1,17 +1,17 @@
 /* Otomatik: tools/update_stats.py (6 saatte bir, GitHub Actions). Elle düzenleme. */
 window.BB_STATS={
- "total": 7141,
+ "total": 7206,
  "projects": 24,
  "mods": {
   "all-irons": {
    "name": "All irons",
-   "dl": 193,
+   "dl": 194,
    "created": "2026-09-16T08:34Z",
    "updated": "2026-10-24T10:11Z"
   },
   "board-games": {
    "name": "Board Games",
-   "dl": 854,
+   "dl": 861,
    "created": "2026-10-16T07:48Z",
    "updated": "2026-10-16T07:48Z"
   },
@@ -53,31 +53,31 @@ window.BB_STATS={
   },
   "frontier-structures": {
    "name": "Frontier Structures",
-   "dl": 536,
+   "dl": 539,
    "created": "2026-10-05T10:25Z",
    "updated": "2026-10-07T15:52Z"
   },
   "gilded-gambit": {
    "name": "Gilded Gambit",
-   "dl": 75,
+   "dl": 76,
    "created": "2026-10-11T12:41Z",
    "updated": "2026-10-11T12:41Z"
   },
   "hard-mobs-and-bosses": {
    "name": "Hard Mobs and bosses",
-   "dl": 593,
+   "dl": 595,
    "created": "2026-09-18T05:55Z",
    "updated": "2026-10-24T10:10Z"
   },
   "hearthly": {
    "name": "Hearthly",
-   "dl": 761,
+   "dl": 767,
    "created": "2026-10-12T12:44Z",
    "updated": "2026-10-24T21:07Z"
   },
   "lodepulse": {
    "name": "Lodepulse",
-   "dl": 47,
+   "dl": 49,
    "created": "2026-10-23T08:51Z",
    "updated": "2026-10-23T08:51Z"
   },
@@ -89,25 +89,25 @@ window.BB_STATS={
   },
   "pale-contagion": {
    "name": "Pale Contagion",
-   "dl": 144,
+   "dl": 145,
    "created": "2026-10-11T12:42Z",
    "updated": "2026-10-11T12:42Z"
   },
   "pantheon-of-legends": {
    "name": "Pantheon of Legends",
-   "dl": 236,
+   "dl": 241,
    "created": "2026-10-05T11:54Z",
    "updated": "2026-10-05T11:54Z"
   },
   "power-generators": {
    "name": "Power generators",
-   "dl": 262,
+   "dl": 268,
    "created": "2026-09-18T06:42Z",
    "updated": "2026-10-24T10:10Z"
   },
   "real-animals": {
    "name": "Real Animals",
-   "dl": 761,
+   "dl": 774,
    "created": "2026-10-09T10:52Z",
    "updated": "2026-11-07T18:12Z"
   },
@@ -119,19 +119,19 @@ window.BB_STATS={
   },
   "towers": {
    "name": "Towers",
-   "dl": 185,
+   "dl": 186,
    "created": "2026-10-05T11:47Z",
    "updated": "2026-10-05T11:47Z"
   },
   "uncraft-and-unfurnace": {
    "name": "Uncraft and Unfurnace",
-   "dl": 233,
+   "dl": 234,
    "created": "2026-09-17T08:53Z",
    "updated": "2026-10-03T21:50Z"
   },
   "variantide": {
    "name": "Variantide",
-   "dl": 48,
+   "dl": 49,
    "created": "2026-10-11T12:32Z",
    "updated": "2026-10-11T12:32Z"
   },
@@ -143,7 +143,7 @@ window.BB_STATS={
   },
   "vivacity": {
    "name": "Vivacity",
-   "dl": 186,
+   "dl": 192,
    "created": "2026-10-25T12:13Z",
    "updated": "2026-10-25T12:13Z"
   }
@@ -151,7 +151,7 @@ window.BB_STATS={
  "unlisted": [
   "vivacity"
  ],
- "updated": "2026-11-20T22:11Z",
+ "updated": "2026-11-21T10:51Z",
  "source": "profile",
- "datesAt": "2026-11-20T11:15Z"
+ "datesAt": "2026-11-21T10:51Z"
 };
