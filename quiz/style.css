@@ -2612,3 +2612,6 @@ footer a:hover { color: var(--accent-2); border-color: var(--accent-2); }
 .qInfo b, .gq b, .pickItem b, .cardInfo b { overflow-wrap: break-word; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; line-height: 1.05; }
 .gq b { -webkit-line-clamp: 1; }
 @media (max-width: 640px) { .gq b { font-size: 17px; } .qInfo b { font-size: 18px; } }
+/* Türkçe harflerin çengel ve noktaları (Ş, İ) satırlar arasında çakışmasın */
+.hm-copy h1 { line-height: 1.02; }
+.hm-copy h1 em { padding-top: 0.04em; }
