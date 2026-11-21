@@ -4,7 +4,7 @@
 export const T_MIN = 5;
 export const T_MAX = 100;
 export const TCATS = ["Genel Kültür", "Tarih", "Coğrafya", "Bilim", "Spor", "Film & Dizi", "Müzik", "Oyun", "Edebiyat & Sanat", "Yemek", "Teknoloji", "Eğlence"];
-export const EMOJIS = ["🧠", "🔥", "🌍", "🏛️", "🚀", "🧪", "🦁", "⚽", "🏆", "🎬", "🍿", "📺", "🎸", "🎮", "📚", "🎨", "🍕", "💻", "⚡", "✅", "🔢", "🗺️", "🎯", "💡", "🌟", "❤️", "😂", "🐉"];
+export const EMOJIS = ["🧠", "🔥", "🌍", "🏛️", "🎖️", "📜", "🏅", "🚀", "🧪", "🦁", "⚽", "🏆", "🎬", "🍿", "📺", "🎸", "🎮", "📚", "🎨", "🍕", "💻", "⚡", "✅", "🔢", "🗺️", "🎯", "💡", "🌟", "❤️", "😂", "🐉"];
 
 const s = (v, n) => (typeof v === "string" ? v.replace(/[\u0000-\u001f\u007f]/g, " ").replace(/\s+/g, " ").trim().slice(0, n) : "");
 const key = (v) => v.toLocaleLowerCase("tr").replace(/\s+/g, "");
