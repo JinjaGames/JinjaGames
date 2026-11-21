@@ -2618,15 +2618,15 @@ footer a:hover { color: var(--accent-2); border-color: var(--accent-2); }
 
 /* Logo: degrade konuşma balonu + ekolayzer, degrade yazı */
 .brand { gap: 2px; letter-spacing: 0.02em; }
-.brand .mark { width: 38px; height: 38px; background: none; border-radius: 0; margin-right: 8px; filter: drop-shadow(0 6px 14px #ff5b3a55); transition: transform 0.4s var(--ease); }
+.brand .mark { width: 40px; height: 40px; background: none; border-radius: 0; margin-right: 8px; filter: drop-shadow(0 4px 12px #e3171f66); transition: transform 0.4s var(--ease); }
 .brand .mark .logo { width: 100%; height: 100%; display: block; overflow: visible; }
-.brand .mark .logo g path { transform-box: fill-box; transform-origin: center; }
-.brand:hover .mark { transform: rotate(-6deg) scale(1.06); }
-.brand:hover .mark .logo g path { animation: logoEq 0.9s var(--ease) infinite alternate; }
-.brand:hover .mark .logo g path:nth-child(2n) { animation-delay: -0.45s; }
+.brand .mark .logo .eq path { transform-box: fill-box; transform-origin: center; }
+.brand:hover .mark { transform: rotate(-8deg) scale(1.06); }
+.brand:hover .mark .logo .eq path { animation: logoEq 0.9s var(--ease) infinite alternate; }
+.brand:hover .mark .logo .eq path:nth-child(2n) { animation-delay: -0.45s; }
 .brand span:last-child { background: linear-gradient(100deg, #ff5b3a, #ff8a5c 50%, #ffc23d); -webkit-background-clip: text; background-clip: text; color: transparent; }
 @keyframes logoEq { to { transform: scaleY(0.45); } }
-@media (prefers-reduced-motion: reduce) { .brand:hover .mark .logo g path { animation: none; } }
+@media (prefers-reduced-motion: reduce) { .brand:hover .mark .logo .eq path { animation: none; } }
 
 /* Trivia kapakları: katmanlı, kategoriye göre renklenen afiş */
 .noart.art { position: relative; display: block; width: 100%; height: 100%; overflow: hidden; isolation: isolate;
