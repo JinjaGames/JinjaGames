@@ -6,6 +6,7 @@ export const MAX_PLAYERS = 12;
 const PLAYS = 3;
 const COUNTDOWN = 3000;
 const AUTO_NEXT = 8000;
+const NEXT_QUIZ = 30000; // çok oyunculu: quiz arası sıralama ekranı bu kadar sonra kendiliğinden geçer
 
 const shuffle = (a) => {
   a = [...a];
@@ -136,6 +137,8 @@ export class Game {
   // ---- akış ----
   begin() {
     if (!this.queue.length) throw Error("Önce kuyruğa bir quiz ekle.");
+    clearTimeout(this.timer);
+    this.rankAt = null;
     this.set++;
     this.index = -1;
     for (const p of this.players) p.round = 0;
@@ -157,6 +160,8 @@ export class Game {
         set: { name: set.name, art: set.art, picture: set.picture, tracks: set.tracks, pool: set.questions.length, mode: set.mode, clip: set.clip },
       });
       if (this.history.length > 10) this.history.shift();
+      this.rankAt = this.phase === "ranking" && !this.solo ? Date.now() + NEXT_QUIZ : null;
+      this.schedule();
       this.question = null;
       this.emit();
       return;
@@ -228,6 +233,8 @@ export class Game {
       this.timer = setTimeout(() => this.reveal(), Math.max(0, q.end - Date.now()) + 150);
     else if (this.phase === "reveal" && this.autoNext && !this.solo)
       this.timer = setTimeout(() => this.next(), Math.max(0, q.autoAt - Date.now()));
+    else if (this.phase === "ranking" && this.rankAt)
+      this.timer = setTimeout(() => this.phase === "ranking" && this.next(), Math.max(0, this.rankAt - Date.now()));
   }
   answer(pid, text) {
     const q = this.question;
@@ -272,7 +279,8 @@ export class Game {
     else if (this.phase === "ranking") this.begin();
   }
   skip() {
-    if (this.phase === "question") this.reveal();
+    // Süreyi bitirmek yalnızca tek başına oynarken var; lobide herkes süresini kullanır.
+    if (this.phase === "question" && this.solo) this.reveal();
   }
 
   // ---- komutlar (yerel kurucu veya ağdan gelen oyuncu) ----
@@ -412,6 +420,7 @@ export class Game {
       })),
       set: this.set,
       index: this.index,
+      rankAt: this.phase === "ranking" ? this.rankAt || null : null,
       history: this.history.map(({ id, name, art, picture, count, top }) => ({ id, name, art, picture, count, top })),
       question:
         q && ["preparing", "question", "reveal"].includes(this.phase)

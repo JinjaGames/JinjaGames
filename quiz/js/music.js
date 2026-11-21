@@ -53,6 +53,8 @@ export async function jsonp(path, params = {}) {
 // Deezer'dan ya da başka bir oyuncudan gelen adresler yalnızca Deezer'ın CDN'ine izin verilir.
 const CDN = /^https:\/\/[a-z0-9-]+\.dzcdn\.net\/[^\s"'<>()\\]+$/i;
 export const cdn = (u) => (typeof u === "string" && CDN.test(u) ? u : "");
+// Deezer'ın "görsel yok" yer tutucusu (boş karma) gerçek görsel sayılmaz.
+export const realPic = (u) => (cdn(u) && !/\/images\/(artist|cover)\/\/|d41d8cd98f00b204e9800998ecf8427e|ebcf22e5c3a0eb3178b8a6f6bc1a5a6c/.test(u) ? u : "");
 const str = (v, n = 200) => (typeof v === "string" || typeof v === "number" ? String(v).slice(0, n) : "");
 const int = (v) => (Number.isSafeInteger(Number(v)) ? Number(v) : 0);
 
@@ -81,7 +83,15 @@ export async function loadPresetPictures() {
   await Promise.all(
     PRESETS.filter((p) => !p.picture).map((p) =>
       jsonp(`artist/${p.artists[0]}`)
-        .then((a) => (p.picture = cdn(a?.picture_medium)))
+        .then(async (a) => {
+          p.picture = realPic(a?.picture_big) || realPic(a?.picture_medium);
+          // Sanatçı fotoğrafı yoksa kendi son albümünün kapağı
+          if (!p.picture) {
+            // (ortak şarkıların kapağı başka sanatçıyı gösterebilir; sanatçının kendi albümünü kullan)
+            const al = await jsonp(`artist/${p.artists[0]}/albums`, { limit: 1 });
+            p.picture = realPic(al?.data?.[0]?.cover_big) || realPic(al?.data?.[0]?.cover_medium);
+          }
+        })
         .catch(() => {}),
     ),
   );

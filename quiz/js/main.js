@@ -1,4 +1,4 @@
-import { PRESETS, loadTracks, searchArtists, customLists, saveCustom, removeCustom, fold, cdn, loadPresetPictures } from "./music.js";
+import { PRESETS, loadTracks, searchArtists, customLists, saveCustom, removeCustom, fold, cdn, realPic, loadPresetPictures } from "./music.js";
 import { fetchCommunity, removeQuiz, hideQuiz } from "./community.js";
 import { Game, MAX_PLAYERS } from "./engine.js";
 import { hostRoom, guestRoom, newCode, validCode } from "./net.js";
@@ -38,7 +38,7 @@ const num = (v) => (Number.isFinite(Number(v)) ? Number(v) : 0);
 
 // Kurucudan gelen oyun durumu (başka birinin tarayıcısı) tür tür süzülür: sayılar sayı, kimlikler
 // güvenli karakter, adresler yalnızca Deezer CDN'i, profil parçaları izin listesinden.
-const NUM = new Set(["pts", "count", "clip", "score", "round", "points", "ms", "index", "set", "seconds", "start", "end", "offset", "autoAt", "now"]);
+const NUM = new Set(["rankAt", "pts", "count", "clip", "score", "round", "points", "ms", "index", "set", "seconds", "start", "end", "offset", "autoAt", "now"]);
 const IDK = new Set(["id", "pid", "host", "me", "code"]);
 function cleanView(x, k = "", depth = 0) {
   if (depth > 10) return null;
@@ -95,13 +95,13 @@ function avatar(p, size = "") {
 }
 let barHtml = "";
 function topbar() {
-  const inRoom = mode && screen !== "room";
+  const inRoom = mode && mode.role !== "solo" && screen !== "room"; // solo oyunda "Lobiye dön" yok
   const html = `
     <a class="jg-back" href="/" title="JinjaGames ana sayfasına dön" aria-label="JinjaGames ana sayfasına dön"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14.5 5.5L8 12l6.5 6.5"/></svg><img src="/favicon-j-shuriken-32.png" width="20" height="20" alt=""></a>
     <button class="brand" data-go="home" aria-label="JinjaQuiz ana sayfa"><span class="mark">${ic("audio-lines")}</span><b lang="en">JINJA</b><span lang="en">QUIZ</span></button>
     <div class="barEnd">
       ${inRoom ? `<button class="pill live" data-go="room">${ic("users")}<span>Lobiye dön</span></button>` : ""}
-      <label class="vol" title="Ses düzeyi">${ic("volume-2")}<input type="range" id="vol" min="0" max="100" step="1" value="${Math.round(volume() * 100)}" aria-label="Ses düzeyi"></label>
+      ${screen === "room" && mode ? `<label class="vol" title="Ses düzeyi">${ic("volume-2")}<input type="range" id="vol" min="0" max="100" step="1" value="${Math.round(volume() * 100)}" aria-label="Ses düzeyi"></label>` : ""}
       <button class="meBtn" data-sheet="profile" aria-label="Profili düzenle">${avatar(profile || {})}<span>${esc(profile?.name || "Profil")}</span></button>
     </div>`;
   // Yalnızca değiştiğinde yeniden çiz: ses sürgüsü sürüklenirken ya da düğmeye basılırken kaybolmasın.
@@ -353,71 +353,128 @@ function allLists() {
   return [...PRESETS, ...(ui.community || []), ...customLists().map((l) => ({ ...l, genre: "Senin" }))];
 }
 function cover(l, cls = "") {
-  if (cdn(l?.picture)) return `<img class="${esc(cls)}" src="${esc(cdn(l.picture))}" alt="" loading="lazy" referrerpolicy="no-referrer">`;
-  return `<span class="${esc(cls)} noart">${ic("disc-3")}</span>`;
+  if (realPic(l?.picture)) return `<img class="${esc(cls)}" src="${esc(l.picture)}" alt="" loading="lazy" referrerpolicy="no-referrer">`;
+  // Görsel yoksa addan türeyen renkli harf rozeti
+  const name = String(l?.name || "?");
+  let h = 0;
+  for (const c of name) h = (h * 31 + c.charCodeAt(0)) >>> 0;
+  const initials = name.split(/\s+/).filter(Boolean).slice(0, 2).map((w) => w[0]).join("").toLocaleUpperCase("tr") || "♪";
+  return `<span class="${esc(cls)} noart mono" style="--h:${h % 360}">${esc(initials)}</span>`;
 }
 function renderHome() {
   const q = fold(ui.query);
+  const browsing = ui.genre !== "Tümü" || q;
   const lists = allLists().filter(
-    (l) => (ui.genre === "Tümü" || l.genre === ui.genre) && (!q || fold(l.name).includes(q)),
+    (l) => (ui.genre === "Tümü" || l.genre === ui.genre) && (!q || fold(l.name).includes(q) || fold(l.author || "").includes(q)),
   );
-  const mine = customLists().length;
+  const mine = customLists().map((l) => ({ ...l, genre: "Senin" }));
+  const comm = ui.community || [];
+  const pics = PRESETS.map((p) => realPic(p.picture)).filter(Boolean);
+  const inviteCode = esc(new URLSearchParams(location.search).get("oda") || "");
   app.innerHTML = `
-  <section class="hero">
-    <div class="heroText">
-      <span class="kicker">${ic("zap")} Kurulum yok · Tarayıcıda · ${MAX_PLAYERS} kişiye kadar</span>
+  <section class="hm-hero">
+    <div class="hm-bg" aria-hidden="true"><i class="b1"></i><i class="b2"></i><i class="b3"></i>
+      <span class="hm-eq">${Array.from({ length: 48 }, (_, k) => `<i style="--k:${k}"></i>`).join("")}</span></div>
+    <div class="hm-copy">
+      <span class="hm-live"><i></i>Canlı lobi · ${MAX_PLAYERS} kişiye kadar · Ücretsiz</span>
       <h1>Şarkıyı<br><em>ilk sen</em> bil.</h1>
-      <p>Bir saniyelik kesitten şarkıyı tahmin et. Lobi kur, bağlantıyı at, arkadaşların anında katılsın.</p>
-      <div class="heroActions">
+      <p>Bir saniyelik kesiti dinle, dört şıktan doğrusunu herkesten önce bul. Lobi kur, bağlantıyı gönder; arkadaşların tek tıkla katılsın.</p>
+      <div class="hm-actions">
         <button class="btn primary lg" data-do="create">${ic("users")}Lobi kur</button>
+        <button class="btn light lg" data-do="toCatalog">${ic("play")}Solo oyna</button>
         <a class="btn ghost lg" href="olustur/">${ic("plus")}Quiz oluştur</a>
       </div>
+      <form class="hm-join" id="joinForm" autocomplete="off">
+        <span>${ic("log-in")}<b>Kodun mu var?</b></span>
+        <input id="joinCode" maxlength="5" spellcheck="false" placeholder="K7QXM" aria-label="Lobi kodu" value="${inviteCode}">
+        <button class="btn primary" type="submit">Katıl ${ic("chevron-right")}</button>
+      </form>
     </div>
-    <form class="joinCard" id="joinForm" autocomplete="off">
-      <span class="label">${ic("log-in")} Lobiye katıl</span>
-      <input id="joinCode" maxlength="5" spellcheck="false" placeholder="KOD" aria-label="Lobi kodu" value="${esc(new URLSearchParams(location.search).get("oda") || "")}">
-      <button class="btn primary" type="submit">Katıl ${ic("chevron-right")}</button>
-      <small>Arkadaşının paylaştığı 5 haneli kodu yaz.</small>
-    </form>
+    <div class="hm-stage" aria-hidden="true">
+      <div class="hm-ring"><svg viewBox="0 0 100 100"><circle cx="50" cy="50" r="46"/><circle class="arc" cx="50" cy="50" r="46" pathLength="100"/></svg></div>
+      <div class="hm-vinyl"><span class="hm-grooves"></span><span class="hm-label">${pics[0] ? `<img src="${esc(pics[0])}" alt="">` : ic("audio-lines")}</span></div>
+      <div class="hm-arm"><i></i></div>
+      <div class="hm-bubble a"><span class="av mint">${ic("guitar")}</span><span><b>Ali</b><small>Kufi</small></span><em class="good">+96</em></div>
+      <div class="hm-bubble b"><span class="av gold">${ic("drum")}</span><span><b>Zeynep</b><small>Kufi</small></span><em class="good">+88</em></div>
+      <div class="hm-bubble c"><span class="av violet">${ic("mic-vocal")}</span><span><b>Mert</b><small>Bal</small></span><em>+0</em></div>
+      <div class="hm-timer">${ic("timer")}<b>3</b></div>
+      <div class="hm-notes">${["music", "music-2", "music", "audio-lines"].map((n, k) => `<i style="--k:${k}">${ic(n)}</i>`).join("")}</div>
+      ${pics.slice(1, 4).map((u, k) => `<img class="hm-cov c${k}" src="${esc(u)}" alt="">`).join("")}
+    </div>
   </section>
 
+  <section class="hm-steps">
+    ${[
+      ["users", "Lobi kur", "Tek tıkla oda aç, bağlantıyı ya da 5 harfli kodu paylaş."],
+      ["headphones", "Kesiti dinle", "1, 3 ya da 5 saniye. Her soruda üç dinleme hakkın var."],
+      ["trophy", "İlk sen bil", "Hızlı doğru cevap daha çok puan. Kürsüye çık."],
+    ]
+      .map(([icon, t, d], k) => `<div class="hm-step" style="--i:${k}"><span class="hm-stepNo">${k + 1}</span>${ic(icon)}<b>${t}</b><small>${d}</small></div>`)
+      .join("")}
+  </section>
 
-  <section class="catalog">
-    <div class="catHead">
-      <h2>Quiz seç</h2>
-      <a class="btn primary sm createBtn" href="olustur/">${ic("plus")}Quiz oluştur</a>
+  <section class="catalog hm-cat" id="catalog">
+    <div class="hm-catHead">
+      <div><span class="kicker">${ic("disc-3")} Quizler</span><h2>Ne dinlemek istersin?</h2></div>
+      <form class="search hm-search" id="searchForm" role="search">
+        ${ic("search")}
+        <input id="search" type="search" placeholder="Quiz ya da sanatçı ara…" value="${esc(ui.query)}" aria-label="Quiz ya da sanatçı ara">
+        <button class="btn soft" type="submit">Sanatçı bul</button>
+      </form>
       <div class="seg chips" role="tablist">
-        ${["Tümü", "Topluluk", "Rap", "Pop", "Rock", ...(mine ? ["Senin"] : [])]
+        ${["Tümü", "Topluluk", "Rap", "Pop", "Rock", ...(mine.length ? ["Senin"] : [])]
           .map((g) => `<button role="tab" aria-selected="${ui.genre === g}" data-genre="${esc(g)}">${esc(g)}</button>`)
           .join("")}
       </div>
     </div>
-    <form class="search" id="searchForm" role="search">
-      ${ic("search")}
-      <input id="search" type="search" placeholder="Herhangi bir sanatçıyı ara…" value="${esc(ui.query)}" aria-label="Sanatçı ara">
-      <button class="btn soft" type="submit">Ara</button>
-    </form>
     <div id="results">${resultsHtml()}</div>
-    <div class="grid">
-      ${lists
-        .map(
-          (l, i) => `<div class="card ${l.genre === "Topluluk" ? "community" : ""}" style="--i:${Math.min(i, 24)}">
-          <button class="cardBtn" data-list="${esc(l.id)}">
-            ${cover(l, "cardImg")}
-            <span class="cardInfo"><b>${esc(l.name)}</b><small>${cardSub(l)}</small></span>
-            <span class="cardPlay">${ic("play")}</span>
-          </button>
-          ${cardTools(l)}
-        </div>`,
-        )
-        .join("")}
-    </div>
-    ${ui.genre === "Topluluk" && ui.community === null ? `<p class="empty">${spinner()} Topluluk quizleri yükleniyor…</p>` : ""}
-    ${ui.genre === "Topluluk" && ui.communityErr ? `<p class="empty">Topluluk quizlerine şu an ulaşılamadı. Biraz sonra tekrar dene.</p>` : ""}
-    ${ui.genre === "Topluluk" && ui.community?.length === 0 ? `<p class="empty">Henüz topluluk quizi yok. İlkini sen oluştur!</p>` : ""}
-    ${!lists.length && !ui.results && ui.genre !== "Topluluk" ? `<p class="empty">Burada yok. Yukarıdan ara, binlerce sanatçı var.</p>` : ""}
+    ${
+      browsing
+        ? `<div class="hm-grid">${lists.map((l, k) => qcard(l, k)).join("")}</div>
+          ${ui.genre === "Topluluk" ? communityState() : ""}
+          ${!lists.length && !ui.results && ui.genre !== "Topluluk" ? `<p class="empty">Burada yok. "Sanatçı bul" ile ara, binlerce sanatçı var.</p>` : ""}`
+        : `${rail("Popüler sanatçılar", "flame", PRESETS.map((l, k) => acard(l, k)).join(""), "")}
+          ${rail("Topluluk quizleri", "users", comm.slice(0, 12).map((l, k) => qcard(l, k)).join("") || communityState(), comm.length > 12 ? "Topluluk" : "", "wide")}
+          ${mine.length ? rail("Senin quizlerin", "bookmark", mine.map((l, k) => qcard(l, k)).join(""), mine.length > 8 ? "Senin" : "") : ""}`
+    }
+  </section>
+
+  <section class="hm-make">
+    <div class="hm-makeArt" aria-hidden="true">${pics.slice(0, 5).map((u, k) => `<img src="${esc(u)}" alt="" style="--k:${k}">`).join("")}</div>
+    <div><span class="kicker">${ic("sparkles")} Kendi quizin</span><h2>Sanatçını seç, şarkıları ekle, herkes oynasın.</h2>
+      <p>Bir sanatçının tüm albümlerinden ya da karışık şarkılardan quiz yap. Herkese açık yayınlarsan Topluluk'ta herkes görür.</p>
+      <a class="btn primary lg" href="olustur/">${ic("plus")}Quiz oluştur</a></div>
   </section>
   <footer>Şarkı önizlemeleri ve sanatçı görselleri <a href="https://www.deezer.com" target="_blank" rel="noopener noreferrer">Deezer</a> kataloğundan gelir. Oyun verisi oyuncular arasında doğrudan (P2P) akar. · <a href="/">JinjaGames</a> · <a href="/apps/">Diğer web uygulamaları</a> · <a href="/privacy/">Gizlilik</a></footer>`;
+}
+function rail(title, icon, inner, more, cls = "") {
+  return `<div class="hm-rail ${cls}">
+    <div class="hm-railHead"><h3>${ic(icon)}${esc(title)}</h3>${more ? `<button class="hm-more" data-genre="${esc(more)}">Tümünü gör ${ic("chevron-right")}</button>` : ""}</div>
+    <div class="hm-track">${inner}</div>
+  </div>`;
+}
+function communityState() {
+  if (ui.community === null) return `<p class="hm-empty">${spinner()} Topluluk quizleri yükleniyor…</p>`;
+  if (ui.communityErr) return `<p class="hm-empty">Topluluk quizlerine şu an ulaşılamadı. Biraz sonra tekrar dene.</p>`;
+  if (!ui.community.length) return `<a class="hm-empty cta" href="olustur/">${ic("plus")}<span><b>Henüz topluluk quizi yok.</b> İlkini sen oluştur!</span></a>`;
+  return "";
+}
+function qcard(l, k = 0) {
+  return `<div class="qcard ${l.genre === "Topluluk" ? "community" : ""}" style="--i:${Math.min(k, 20)}">
+    <button class="qcardBtn" data-list="${esc(l.id)}" aria-label="${esc(l.name)} quizini aç">
+      <span class="qcardArt">${cover(l, "qcardImg")}</span>
+      <span class="qcardTag">${esc(l.genre)}</span>
+      <span class="qcardInfo"><b>${esc(l.name)}</b><small>${cardSub(l)}</small></span>
+      <span class="qcardPlay">${ic("play")}</span>
+    </button>
+    ${cardTools(l)}
+  </div>`;
+}
+function acard(l, k = 0) {
+  return `<button class="acard" data-list="${esc(l.id)}" style="--i:${k}" aria-label="${esc(l.name)} quizini aç">
+    <span class="acardArt">${cover(l, "acardImg")}<span class="acardPlay">${ic("play")}</span></span>
+    <b>${esc(l.name)}</b><small>${esc(l.genre)}</small>
+  </button>`;
 }
 function cardSub(l) {
   if (l.genre === "Topluluk") return `${ic("user")}${esc(l.author)} · ${l.tracks.length} şarkı`;
@@ -712,7 +769,7 @@ function gameHtml(v) {
       ? `<button class="btn primary lg wide" data-do="next" id="nextBtn">${v.index + 1 >= set.count ? "Sonuçları gör" : "Sonraki soru"} ${ic("chevron-right")}</button>`
       : `<p class="waiting" id="autoInfo">${spinner()} Sıradaki soru birazdan</p>`
     : `<p class="waiting">${mine ? `${ic("check")} Cevabın kilitlendi · ` : ""}<span id="ansCount">${v.solo ? "" : ansCountText(v)}</span></p>${
-        host ? `<button class="btn ghost sm" data-do="skip">${ic("skip-forward")}${v.solo ? "Pas" : "Süreyi bitir"}</button>` : ""
+        host && v.solo ? `<button class="btn ghost sm" data-do="skip">${ic("skip-forward")}Pas</button>` : ""
       }`;
   return `${mode.lost ? `<div class="banner">${spinner()} Kurucunun bağlantısı koptu, bekleniyor…</div>` : ""}
     <section class="game ${reveal ? "isReveal" : ""}">${head}${stage}${answers}${foot}</section>
@@ -769,10 +826,10 @@ function rankingHtml(v) {
       host
         ? final
           ? `<button class="btn primary lg" data-do="tolobby">${ic("users")}Lobiye dön</button><button class="btn ghost lg" data-do="leaveask">${ic("door-open")}Lobiyi kapat</button>`
-          : `<button class="btn primary lg wide" data-do="next">Sıradaki quiz: ${esc(v.queue[v.set + 1]?.name || "")} ${ic("chevron-right")}</button>`
+          : `<button class="btn primary lg wide nextQuiz" data-do="next"><span>Sıradaki quiz: ${esc(v.queue[v.set + 1]?.name || "")}</span><span class="rankLeft" id="rankLeft"></span>${ic("chevron-right")}</button>`
         : final
           ? `<p class="waiting">${spinner()} Kurucu lobiye dönünce yeni quizlerle devam edebilirsiniz</p><button class="btn ghost" data-do="leaveask">Ayrıl</button>`
-          : `<p class="waiting">${spinner()} Kurucu sıradaki quizi başlatacak</p>`
+          : `<p class="waiting">${spinner()} Sıradaki quiz: <b>${esc(v.queue[v.set + 1]?.name || "")}</b> <span class="rankLeft" id="rankLeft"></span></p>`
     }
   </div>`;
 }
@@ -805,6 +862,12 @@ function animateCounts(root = app) {
 // ---------- canlı boyama (zamanlayıcılar, dinleme halkası) ----------
 let autoPlayedFor = null;
 function paint() {
+  // Quiz arası: sıradaki quize geri sayım (çok oyunculu)
+  if (screen === "room" && view?.phase === "ranking" && view.rankAt) {
+    const el = $("#rankLeft");
+    if (el) el.textContent = `${Math.max(0, Math.ceil((view.rankAt - hostNow()) / 1000))} sn`;
+    return;
+  }
   if (screen !== "room" || !view?.question) return;
   const q = view.question;
   const now = hostNow();
@@ -1016,6 +1079,8 @@ async function doAction(a, el) {
   switch (a) {
     case "create":
       return startHost();
+    case "toCatalog":
+      return document.getElementById("catalog")?.scrollIntoView({ behavior: "smooth", block: "start" });
     case "leave":
       closeSheet();
       return leaveRoom();
@@ -1119,6 +1184,8 @@ document.addEventListener("click", async (e) => {
   try {
     if ("close" in d) return closeSheet();
     if (d.go) {
+      // Tek başına oynarken ana sayfaya dönmek oyunu bitirir (geri dönülecek bir lobi yok).
+      if (d.go === "home" && mode?.role === "solo") return leaveRoom();
       screen = d.go === "room" && mode ? "room" : "home";
       lastSig = "";
       return render();
