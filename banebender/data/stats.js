@@ -1,6 +1,6 @@
 /* Otomatik: tools/update_stats.py (6 saatte bir, GitHub Actions). Elle düzenleme. */
 window.BB_STATS={
- "total": 7266,
+ "total": 7307,
  "projects": 24,
  "mods": {
   "all-irons": {
@@ -11,7 +11,7 @@ window.BB_STATS={
   },
   "board-games": {
    "name": "Board Games",
-   "dl": 865,
+   "dl": 877,
    "created": "2026-10-16T07:48Z",
    "updated": "2026-10-16T07:48Z"
   },
@@ -35,7 +35,7 @@ window.BB_STATS={
   },
   "elemental-arcana": {
    "name": "Elemental Arcana",
-   "dl": 149,
+   "dl": 150,
    "created": "2026-09-30T08:22Z",
    "updated": "2026-10-03T21:48Z"
   },
@@ -65,7 +65,7 @@ window.BB_STATS={
   },
   "hard-mobs-and-bosses": {
    "name": "Hard Mobs and bosses",
-   "dl": 597,
+   "dl": 599,
    "created": "2026-09-18T05:55Z",
    "updated": "2026-10-24T10:10Z"
   },
@@ -77,7 +77,7 @@ window.BB_STATS={
   },
   "lodepulse": {
    "name": "Lodepulse",
-   "dl": 49,
+   "dl": 50,
    "created": "2026-10-23T08:51Z",
    "updated": "2026-10-23T08:51Z"
   },
@@ -107,13 +107,13 @@ window.BB_STATS={
   },
   "real-animals": {
    "name": "Real Animals",
-   "dl": 782,
+   "dl": 786,
    "created": "2026-10-09T10:52Z",
    "updated": "2026-11-07T18:12Z"
   },
   "seraph": {
    "name": "Seraph",
-   "dl": 236,
+   "dl": 237,
    "created": "2026-10-05T11:03Z",
    "updated": "2026-10-24T10:11Z"
   },
@@ -125,7 +125,7 @@ window.BB_STATS={
   },
   "uncraft-and-unfurnace": {
    "name": "Uncraft and Unfurnace",
-   "dl": 235,
+   "dl": 237,
    "created": "2026-09-17T08:53Z",
    "updated": "2026-10-03T21:50Z"
   },
@@ -137,13 +137,13 @@ window.BB_STATS={
   },
   "veinminer-all-types": {
    "name": "Veinminer All Types",
-   "dl": 146,
+   "dl": 147,
    "created": "2026-09-15T08:51Z",
    "updated": "2026-09-15T08:51Z"
   },
   "vivacity": {
    "name": "Vivacity",
-   "dl": 197,
+   "dl": 210,
    "created": "2026-10-25T12:13Z",
    "updated": "2026-10-25T12:13Z"
   }
@@ -151,7 +151,7 @@ window.BB_STATS={
  "unlisted": [
   "vivacity"
  ],
- "updated": "2026-11-21T20:51Z",
+ "updated": "2026-11-22T01:07Z",
  "source": "profile",
  "datesAt": "2026-11-21T10:51Z"
 };
