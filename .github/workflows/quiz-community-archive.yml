@@ -1,0 +1,41 @@
+# JinjaQuiz topluluk quizlerini 6 saatte bir quiz/data/community.json arşivine işler.
+# Herkese açık Nostr röleleri eski kayıtları silebilir; arşiv sayesinde quizler site güncellense de kaybolmaz.
+name: Topluluk quiz arşivi
+
+on:
+  schedule:
+    - cron: "30 1,7,13,19 * * *"
+  workflow_dispatch: {}
+
+permissions:
+  contents: write
+
+concurrency:
+  group: quiz-community-archive
+  cancel-in-progress: false
+
+jobs:
+  archive:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Rölelerden topla
+        run: node tools/archive_community.mjs
+
+      - name: Değiştiyse siteye işle
+        run: |
+          git config user.name "jinjagames-bot"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add quiz/data/community.json
+          if git diff --cached --quiet; then
+            echo "Değişiklik yok."
+          else
+            git commit -m "JinjaQuiz: topluluk quiz arşivi güncellendi"
+            git pull --rebase --autostash
+            git push
+          fi

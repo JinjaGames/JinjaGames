@@ -283,7 +283,12 @@ function startGuest(code) {
       if (!s || typeof s !== "object") return;
       mode.connecting = false;
       mode.lost = false;
+      const was = view?.phase;
       view = cleanView(s);
+      if (was === "done" && view.phase === "lobby") {
+        screen = "room";
+        toast("Kurucu herkesi lobiye döndürdü.");
+      }
       persist();
       render();
     },
@@ -692,12 +697,6 @@ function lobbyHtml(v) {
             .map((n) => `<button data-secs="${n}" aria-pressed="${v.seconds === n}" ${host ? "" : "disabled"}>${n} sn</button>`)
             .join("")}</div>
         </div>
-        ${
-          solo
-            ? ""
-            : `<label class="setRow toggle"><span>Sonuçtan sonra otomatik devam<small>Herkes cevaplayınca soru erken biter.</small></span>
-          <input type="checkbox" data-auto ${v.autoNext ? "checked" : ""} ${host ? "" : "disabled"}><span class="sw"></span></label>`
-        }
       </div>
     </div>
     ${
@@ -834,7 +833,7 @@ function gameHtml(v) {
   if (reveal && !v.solo) {
     const rows = [...v.players]
       .map((p) => ({ p, r: q.reveal.results[p.pid] }))
-      .sort((a, b) => num(b.r?.points) - num(a.r?.points) || num(b.p.round) - num(a.p.round));
+      .sort((a, b) => num(b.p.round) - num(a.p.round) || num(b.r?.points) - num(a.r?.points));
     foot = `<div class="block board"><div class="blockHead"><h2>Bu soru</h2><small class="muted">Quiz toplamı</small></div>${rows
       .map(
         ({ p, r }, i) => `<div class="row ${p.pid === v.me ? "me" : ""}" style="--i:${i}">${avatar(p, "sm")}<span class="rowName"><b>${esc(p.name)}</b>
@@ -846,7 +845,7 @@ function gameHtml(v) {
   const answeredCount = q.answered.length;
   const online = v.players.filter((p) => p.online).length;
   const dock = reveal
-    ? host
+    ? host && v.solo
       ? `<button class="btn primary lg wide" data-do="next" id="nextBtn">${v.index + 1 >= set.count ? "Sonuçları gör" : "Sonraki soru"} ${ic("chevron-right")}</button>`
       : `<p class="waiting" id="autoInfo">${spinner()} Sıradaki soru birazdan</p>`
     : `<p class="waiting">${mine ? `${ic("check")} Cevabın kilitlendi · ` : ""}<span id="ansCount">${v.solo ? "" : ansCountText(v)}</span></p>${
@@ -882,6 +881,7 @@ function rankingHtml(v) {
   const podium = [ps[1], ps[0], ps[2]];
   const total = [...v.players].sort((a, b) => num(b.score) - num(a.score));
   const showTotal = (v.history?.length || 0) > 1;
+  const next = final ? null : v.queue[v.set + 1];
   return `<section class="ranking">
     ${confetti()}
     <span class="kicker">${esc(set?.name || "Quiz")} bitti</span>
@@ -901,16 +901,17 @@ function rankingHtml(v) {
             .join("")}</ol></div>`
         : ""
     }
+    ${next ? `<div class="nextCard">${cover(next, "qImg")}<span class="qInfo"><small>Sıradaki quiz</small><b>${esc(next.name)}</b><small>${num(next.count)} soru · ${next.kind === "trivia" ? "Trivia" : "Şarkı"}</small></span><span class="rankLeft" id="rankLeft2"></span></div>` : ""}
   </section>
   <div class="dock split">
     ${
       host
         ? final
-          ? `<button class="btn primary lg" data-do="tolobby">${ic("users")}Lobiye dön</button><button class="btn ghost lg" data-do="leaveask">${ic("door-open")}Lobiyi kapat</button>`
+          ? `<button class="btn primary lg" data-do="tolobby">${ic("users")}Herkesi lobiye döndür</button><button class="btn ghost lg" data-do="leaveask">${ic("door-open")}Lobiyi kapat</button>`
           : `<button class="btn primary lg wide nextQuiz" data-do="next"><span>Sıradaki quiz: ${esc(v.queue[v.set + 1]?.name || "")}</span><span class="rankLeft" id="rankLeft"></span>${ic("chevron-right")}</button>`
         : final
           ? `<p class="waiting">${spinner()} Kurucu lobiye dönünce yeni quizlerle devam edebilirsiniz</p><button class="btn ghost" data-do="leaveask">Ayrıl</button>`
-          : `<p class="waiting">${spinner()} Sıradaki quiz: <b>${esc(v.queue[v.set + 1]?.name || "")}</b> <span class="rankLeft" id="rankLeft"></span></p>`
+          : `<p class="waiting">${spinner()} Kurucu başlatınca ya da süre dolunca başlıyor</p>`
     }
   </div>`;
 }
@@ -945,8 +946,11 @@ let autoPlayedFor = null;
 function paint() {
   // Quiz arası: sıradaki quize geri sayım (çok oyunculu)
   if (screen === "room" && view?.phase === "ranking" && view.rankAt) {
-    const el = $("#rankLeft");
-    if (el) el.textContent = `${Math.max(0, Math.ceil((view.rankAt - hostNow()) / 1000))} sn`;
+    const t = `${Math.max(0, Math.ceil((view.rankAt - hostNow()) / 1000))} sn`;
+    for (const id of ["rankLeft", "rankLeft2"]) {
+      const el = document.getElementById(id);
+      if (el) el.textContent = t;
+    }
     return;
   }
   if (screen !== "room" || !view?.question) return;

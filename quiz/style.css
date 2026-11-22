@@ -2699,3 +2699,12 @@ footer a:hover { color: var(--accent-2); border-color: var(--accent-2); }
 .cdRing b { font-size: 50cqh; }
 .cdRing small { font-size: max(9px, 5.5cqh); }
 .tq .cdRing { width: auto; height: min(170px, calc(100% - 16px)); }
+
+/* Quiz arası: sıradaki quiz herkese görünür (yalnızca kurucu başlatır) */
+.nextCard { display: flex; align-items: center; gap: 14px; width: min(460px, 100%); margin: 26px auto 0; padding: 12px 16px 12px 12px; border-radius: 18px; background: linear-gradient(120deg, #ff5b3a1f, #ffffff08 60%); border: 1px solid #ff5b3a44; text-align: left; animation: rise 0.5s var(--ease) both 0.4s; }
+.nextCard .qImg { width: 58px; height: 58px; border-radius: 12px; flex: none; }
+.nextCard .qInfo { display: grid; gap: 2px; min-width: 0; flex: 1; }
+.nextCard .qInfo small:first-child { color: var(--accent, #ff5b3a); font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; font-size: 11px; }
+.nextCard .qInfo b { font-size: 17px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.nextCard .qInfo small { color: var(--muted, #9a96a3); font-size: 12.5px; }
+.nextCard .rankLeft { font-family: var(--display, inherit); font-size: 22px; color: #ffc23d; flex: none; }

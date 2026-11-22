@@ -95,31 +95,55 @@ function relayCall(url, onOpen, onMsg, ms) {
   });
 }
 
-/** Tüm rölelerden topluluk quizlerini toplar (en yeni sürüm kazanır). */
+// Röleler eski kayıtları zamanla silebilir; sitedeki arşiv (tools/archive_community.mjs) quizleri kalıcı tutar.
+const ARCHIVE = new URL("../data/community.json", import.meta.url);
+async function archived() {
+  try {
+    const r = await fetch(ARCHIVE, { cache: "no-cache" });
+    if (!r.ok) return [];
+    const j = await r.json();
+    return Array.isArray(j?.events) ? j.events.slice(0, 3000) : [];
+  } catch {
+    return [];
+  }
+}
+const dOf = (e) => (e.tags.find((t) => t[0] === "d") || [])[1] || "";
+// NIP-01: daha yeni olan, eşitse kimliği küçük olan kazanır.
+const newer = (a, b) => !b || a.created_at > b.created_at || (a.created_at === b.created_at && a.id < b.id);
+
+/** Rölelerden ve arşivden topluluk quizlerini toplar (en yeni sürüm kazanır). */
 export async function fetchCommunity({ limit = 300, ms = 6000 } = {}) {
   const sub = "jq" + Math.random().toString(36).slice(2, 8);
   const found = new Map();
-  const deleted = new Set();
-  await Promise.all(RELAYS.map((url) => relayCall(url,
+  const onRelay = new Map();
+  const arc = archived();
+  const answered = await Promise.all(RELAYS.map((url) => relayCall(url,
     (ws) => ws.send(JSON.stringify(["REQ", sub, { kinds: [KIND], "#t": [TAG], limit }])),
     (x) => {
       if (x[0] === "EOSE" && x[1] === sub) return true;
       if (x[0] !== "EVENT" || x[1] !== sub || !valid(x[2])) return undefined;
       const e = x[2];
-      const d = (e.tags.find((t) => t[0] === "d") || [])[1] || "";
-      const key = e.pubkey + "|" + d;
-      const prev = found.get(key);
-      // NIP-01: daha yeni olan, eşitse kimliği küçük olan kazanır.
-      if (prev && (prev.created_at > e.created_at || (prev.created_at === e.created_at && prev.id <= e.id))) return undefined;
-      found.set(key, e);
+      const key = e.pubkey + "|" + dOf(e);
+      if (newer(e, found.get(key))) found.set(key, e);
+      if (newer(e, onRelay.get(key))) onRelay.set(key, e);
       return undefined;
     }, ms)));
+  // Arşivdeki kayıtları ekle; rölelerde eksik ya da eski olanları rölelere geri gönder (imzalı, değiştirilemez).
+  const heal = [];
+  for (const e of await arc) {
+    if (!e || typeof e !== "object" || !Array.isArray(e.tags)) continue;
+    const key = e.pubkey + "|" + dOf(e);
+    const cur = found.get(key);
+    if (!newer(e, cur) || !valid(e)) continue;
+    found.set(key, e);
+    if (newer(e, onRelay.get(key))) heal.push(e);
+  }
+  if (answered.some(Boolean)) for (const e of heal.slice(0, 20)) sendToRelays(e).catch(() => {});
   const hidden = hiddenSet();
   const out = [];
   for (const e of found.values()) {
     const q = parse(e);
     if (q && !hidden.has(q.id)) out.push(q);
-    else if (!q) deleted.add(e.pubkey + "|" + ((e.tags.find((t) => t[0] === "d") || [])[1] || ""));
   }
   return out.sort((a, b) => b.at - a.at);
 }
@@ -142,8 +166,10 @@ export async function publishQuiz({ d, name, desc, author, tracks, kind, items, 
 
 /** Kendi quizini kaldırır: aynı adreste boş bir sürüm ve bir silme isteği (NIP-09) yayınlar. */
 export async function removeQuiz(q) {
-  const e1 = sign(KIND, [["d", q.d], ["t", TAG]], JSON.stringify({ v: 1, deleted: true }), q.at || 0);
+  // Silme isteği (e2), "silindi" kaydından (e1) önceye tarihlenir: röleler e2'den önceki sürümleri silse de
+  // e1 kalır; böylece site arşivindeki eski sürüm de geri gelmez.
   const e2 = sign(5, [["a", `${KIND}:${q.pubkey}:${q.d}`]], "");
+  const e1 = sign(KIND, [["d", q.d], ["t", TAG]], JSON.stringify({ v: 1, deleted: true }), Math.max(q.at || 0, e2.created_at));
   const ok = await sendToRelays(e1);
   sendToRelays(e2);
   if (!ok) throw Error("Kaldırılamadı. Bağlantını kontrol et.");

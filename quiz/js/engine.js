@@ -6,7 +6,7 @@ import { cleanItems, cleanEmoji } from "./trivia.js";
 export const MAX_PLAYERS = 12;
 const PLAYS = 3;
 const COUNTDOWN = 3000;
-const AUTO_NEXT = 8000;
+const AUTO_NEXT = 3000; // çok oyunculu: sonuç ekranı bu kadar sonra kendiliğinden geçer
 const NEXT_QUIZ = 30000; // çok oyunculu: quiz arası sıralama ekranı bu kadar sonra kendiliğinden geçer
 
 const shuffle = (a) => {
@@ -261,8 +261,8 @@ export class Game {
     const q = this.question;
     if (this.phase === "question")
       this.timer = setTimeout(() => this.reveal(), Math.max(0, q.end - Date.now()) + 150);
-    else if (this.phase === "reveal" && this.autoNext && !this.solo)
-      this.timer = setTimeout(() => this.next(), Math.max(0, q.autoAt - Date.now()));
+    else if (this.phase === "reveal" && !this.solo)
+      this.timer = setTimeout(() => this.phase === "reveal" && this.advance(), Math.max(0, q.autoAt - Date.now()));
     else if (this.phase === "ranking" && this.rankAt)
       this.timer = setTimeout(() => this.phase === "ranking" && this.next(), Math.max(0, this.rankAt - Date.now()));
   }
@@ -305,7 +305,8 @@ export class Game {
     this.emit();
   }
   next() {
-    if (this.phase === "reveal") this.advance();
+    // Lobide sorudan soruya geçiş kendiliğinden olur; kurucu öne alamaz.
+    if (this.phase === "reveal" && this.solo) this.advance();
     else if (this.phase === "ranking") this.begin();
   }
   skip() {
@@ -468,7 +469,7 @@ export class Game {
               mode: set.mode,
               start: q.start,
               end: q.end,
-              autoAt: reveal && this.autoNext && !this.solo ? q.autoAt : null,
+              autoAt: reveal && !this.solo ? q.autoAt : null,
               options: set.mode === "choice" ? q.options : null,
               answered: Object.keys(q.answers),
               mine: mine ? (reveal ? mine : { answer: mine.answer }) : null,
