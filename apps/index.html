@@ -203,6 +203,16 @@ footer{border-top:1px solid var(--line);padding:40px 0}
 /* WEB APPS */
 .hero{padding-bottom:30px}
 .hero h1 .hl{color:var(--brand)}
+.quick{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px;margin-top:34px}
+.qk{--a:var(--brand);display:grid;grid-template-columns:48px 1fr auto;align-items:center;gap:14px;padding:16px 18px;border-radius:18px;background:var(--surface);border:1px solid var(--line);color:var(--ink);text-decoration:none;transition:transform .25s var(--ease),border-color .2s,background .2s,box-shadow .25s}
+.qk:hover,.qk:focus-visible{transform:translateY(-3px);border-color:color-mix(in srgb,var(--a) 50%,transparent);background:color-mix(in srgb,var(--a) 8%,var(--surface));box-shadow:0 16px 36px -18px color-mix(in srgb,var(--a) 70%,transparent);outline:none}
+.qk img{width:48px;height:48px;border-radius:13px}
+.qk b{display:block;font-family:var(--f-display);font-size:17px;letter-spacing:-.01em}
+.qk small{display:block;color:var(--ink-3);font-size:13px;margin-top:2px}
+.qk i{font-style:normal;color:var(--ink-3);font-size:18px;transition:transform .2s,color .2s}
+.qk:hover i{transform:translateX(4px);color:var(--a)}
+.app{scroll-margin-top:90px}
+@media(max-width:820px){.quick{grid-template-columns:1fr}.qk{padding:14px 16px}}
 .apps{display:grid;gap:34px;padding-bottom:110px}
 .app{display:grid;grid-template-columns:minmax(0,1.05fr) minmax(0,1fr);gap:clamp(28px,4vw,56px);align-items:center;padding:34px 0;border-top:1px solid var(--line)}
 .app.flip .app-media{order:2}
@@ -270,7 +280,7 @@ html[data-theme="dark"] .app .btn.p{color:#fff}
 </style>
 <script src="../assets/clean-scroll.js?v=20261012d" defer></script>
 <script src="../assets/local-links.js?v=20261012d"></script>
-<link rel="stylesheet" href="/assets/webapps.css?v=20261107">
+<link rel="stylesheet" href="/assets/webapps.css?v=20261122">
 <script src="/assets/webapps.js?v=20261107" defer></script>
 </head>
 <body>
@@ -286,10 +296,10 @@ html[data-theme="dark"] .app .btn.p{color:#fff}
         <li class="apps-menu">
           <button class="apps-trigger active" type="button" aria-expanded="false" aria-controls="apps-pop" aria-haspopup="true"><span class="dot" aria-hidden="true"></span><span class="en i">Web Apps</span><span class="tr i">Web Uygulamaları</span><svg viewBox="0 0 12 12" aria-hidden="true"><path d="m2 4 4 4 4-4"></path></svg></button>
           <div class="apps-pop" id="apps-pop">
-            <div class="apps-pop-title"><span class="en i">Use in your browser, no install</span><span class="tr i">Tarayıcıda kullan, kurulum yok</span></div>
-            <a class="app-item" href="/football/"><img src="/assets/img/apps/football.svg" alt="" width="44" height="44"><span><b>Jinja Football</b><small class="en i">Change one match, transfer or penalty in real football history</small><small class="tr i">Gerçek futbol tarihinde bir maçı, transferi ya da penaltıyı değiştir</small></span><span class="tag">Live</span></a>
-            <a class="app-item" href="/peer/"><img src="/assets/img/apps/jinjapeer.svg" alt="" width="44" height="44"><span><b>JinjaPeer</b><small class="en i">Send files device to device, end-to-end encrypted</small><small class="tr i">Cihazdan cihaza uçtan uca şifreli dosya gönder</small></span><span class="tag">New</span></a>
-            <a class="app-item" href="/quiz/"><img src="/assets/img/apps/jinjaquiz.svg" alt="" width="44" height="44"><span><b>JinjaQuiz</b><small class="en i">Guess the song from a one second clip, with friends</small><small class="tr i">Bir saniyelik kesitten şarkıyı bil, arkadaşlarınla</small></span><span class="tag">New</span></a>
+            <div class="apps-pop-title"><span class="en i">Open in your browser, nothing to install</span><span class="tr i">Tarayıcıda aç, kurulum yok</span></div>
+            <a class="app-item feat" href="/quiz/" style="--a:#ff5b3a"><img src="/assets/img/apps/jinjaquiz.svg" alt="" width="52" height="52"><span><b>JinjaQuiz <em class="tag"><span class="en i">New</span><span class="tr i">Yeni</span></em></b><small class="en i">Song and trivia quizzes, solo or in a lobby with friends</small><small class="tr i">Şarkı ve trivia quizleri; tek başına ya da arkadaşlarınla lobide</small></span><i class="go" aria-hidden="true">&rarr;</i></a>
+            <a class="app-item" href="/football/" style="--a:#3ddc84"><img src="/assets/img/apps/football.svg" alt="" width="44" height="44"><span><b>Jinja Football <em class="tag live"><span class="en i">Live</span><span class="tr i">Canlı</span></em></b><small class="en i">Change a match, a transfer or a penalty in football history</small><small class="tr i">Futbol tarihinde bir maçı, transferi ya da penaltıyı değiştir</small></span><i class="go" aria-hidden="true">&rarr;</i></a>
+            <a class="app-item" href="/peer/" style="--a:#5aa0ff"><img src="/assets/img/apps/jinjapeer.svg" alt="" width="44" height="44"><span><b>JinjaPeer</b><small class="en i">Send files straight to another device, encrypted</small><small class="tr i">Dosyaları şifreli olarak doğrudan başka cihaza gönder</small></span><i class="go" aria-hidden="true">&rarr;</i></a>
             <a class="apps-all" href="/apps/"><span class="en i">All web apps</span><span class="tr i">Tüm web uygulamaları</span><span aria-hidden="true">&rarr;</span></a>
           </div>
         </li>
@@ -321,13 +331,38 @@ html[data-theme="dark"] .app .btn.p{color:#fff}
       <nav class="crumb" aria-label="Breadcrumb"><a href="../"><span class="en i">Home</span><span class="tr i">Ana Sayfa</span></a><span aria-hidden="true">/</span><span><span class="en i">Web Apps</span><span class="tr i">Web Uygulamaları</span></span></nav>
       <h1 class="en">Web apps. <span class="hl">Nothing to install.</span></h1>
       <h1 class="tr">Web uygulamaları. <span class="hl">Kurulum yok.</span></h1>
-      <p class="lede en">Things we build that run right in your browser, on any device. Free, no account, no ads, no tracking. Open one and start.</p>
-      <p class="lede tr">Tarayıcında, her cihazda çalışan işlerimiz. Ücretsiz; hesap yok, reklam yok, izleme yok. Birini aç ve başla.</p>
+      <p class="lede en">Tools that run right in your browser, on any device. They are free, with no account, ads or tracking. Tap one and start.</p>
+      <p class="lede tr">Tarayıcıda, her cihazda çalışan araçlar. Ücretsizler; hesap, reklam ya da izleme yok. Birine dokun, hemen başla.</p>
+      <div class="quick">
+        <a class="qk" href="/quiz/" style="--a:#ff5b3a"><img src="/assets/img/apps/jinjaquiz.svg" alt="" width="48" height="48"><span><b>JinjaQuiz</b><small class="en i">Song &amp; trivia quizzes</small><small class="tr i">Şarkı ve trivia quizleri</small></span><i aria-hidden="true">&rarr;</i></a>
+        <a class="qk" href="/football/" style="--a:#3ddc84"><img src="/assets/img/apps/football.svg" alt="" width="48" height="48"><span><b>Jinja Football</b><small class="en i">Rewrite football history</small><small class="tr i">Futbol tarihini değiştir</small></span><i aria-hidden="true">&rarr;</i></a>
+        <a class="qk" href="/peer/" style="--a:#5aa0ff"><img src="/assets/img/apps/jinjapeer.svg" alt="" width="48" height="48"><span><b>JinjaPeer</b><small class="en i">Encrypted file transfer</small><small class="tr i">Şifreli dosya gönderimi</small></span><i aria-hidden="true">&rarr;</i></a>
+      </div>
     </div>
   </section>
 
   <section class="apps wrap" aria-label="Web apps">
-    <article class="app rv" style="--accent:#0b8a4a;--glow:200,255,90">
+    <article class="app rv" id="quiz" style="--accent:var(--brand)">
+      <a class="app-media qz" href="/quiz/" tabindex="-1" aria-hidden="true">
+        <div class="qz-top"><span class="en i">Question 3/10</span><span class="tr i">Soru 3/10</span><span class="qz-time">12</span></div>
+        <div class="qz-disc"><i></i><i></i><i></i><i></i></div>
+        <div class="qz-opts"><span>Gece Yarısı</span><span class="ok">Son Durak</span><span>Mavi Sokak</span><span>Yalnız Rüzgâr</span></div>
+        <div class="qz-pl"><b>E</b><b>M</b><b>A</b><b>D</b></div>
+      </a>
+      <div class="app-body">
+        <div class="app-head"><img src="/assets/img/apps/jinjaquiz.svg" alt="" width="52" height="52"><div><span class="kind"><span class="en i">Song &amp; trivia quiz · multiplayer</span><span class="tr i">Şarkı ve trivia quizi · çok oyunculu</span></span><h2>JinjaQuiz</h2></div><span class="badge new">New</span></div>
+        <p class="en">Name the song from a one to five second clip, or take on trivia from geography to football. Open a lobby, send the link, and up to twelve people play together in the browser. The faster you answer right, the more you score.</p>
+        <p class="tr">Bir ile beş saniyelik kesitten şarkıyı bil ya da coğrafyadan futbola trivia sorularını çöz. Lobi kur, bağlantıyı gönder; on iki kişiye kadar tarayıcıdan birlikte oynayın. Doğruyu ne kadar hızlı bulursan o kadar çok puan alırsın.</p>
+        <ul class="feat">
+          <li><span class="en i">Lobby with a five letter code or an invite link, no account</span><span class="tr i">Beş harfli kod ya da davet bağlantısıyla lobi, hesap yok</span></li>
+          <li><span class="en i">Ready lists or any artist you search for, multiple choice or typed answers</span><span class="tr i">Hazır listeler ya da aradığın herhangi bir sanatçı; şıklı ya da yazarak cevap</span></li>
+          <li><span class="en i">60+ trivia quizzes with 50+ questions each, and your own quizzes too</span><span class="tr i">Her birinde 50'den fazla soru olan 60'ı aşkın trivia; kendi quizini de yapabilirsin</span></li>
+        </ul>
+        <div class="acts"><a class="btn p" href="/quiz/"><span class="en i">Open JinjaQuiz</span><span class="tr i">JinjaQuiz'i aç</span> <span class="arw">&rarr;</span></a><span class="note"><span class="en i">Interface in Turkish</span><span class="tr i">Türkçe arayüz</span></span></div>
+      </div>
+    </article>
+
+    <article class="app rv flip" id="football" style="--accent:#0b8a4a;--glow:200,255,90">
       <a class="app-media fb" href="/football/" tabindex="-1" aria-hidden="true">
         <svg class="pitch" viewBox="0 0 400 250" aria-hidden="true">
           <defs><linearGradient id="fbg" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#0d2a1b"/><stop offset="1" stop-color="#174f31"/></linearGradient></defs>
@@ -361,7 +396,7 @@ html[data-theme="dark"] .app .btn.p{color:#fff}
       </div>
     </article>
 
-    <article class="app rv flip" style="--accent:var(--brand)">
+    <article class="app rv" id="peer" style="--accent:var(--brand)">
       <a class="app-media pr" href="/peer/" tabindex="-1" aria-hidden="true">
         <div class="pr-row">
           <div class="dev"><svg viewBox="0 0 32 24"><rect x="1" y="1" width="30" height="18" rx="2.5"/><path d="M11 23h10M16 19v4"/></svg><b>Windows</b><span>photo.heic · 18 MB</span></div>
@@ -380,26 +415,6 @@ html[data-theme="dark"] .app .btn.p{color:#fff}
           <li><span class="en i">Nothing is saved without your approval; every file is hash-checked</span><span class="tr i">Onayın olmadan hiçbir şey kaydedilmez; her dosya özetle doğrulanır</span></li>
         </ul>
         <div class="acts"><a class="btn p" href="/peer/"><span class="en i">Open JinjaPeer</span><span class="tr i">JinjaPeer'i aç</span> <span class="arw">&rarr;</span></a><span class="note">EN · TR</span></div>
-      </div>
-    </article>
-
-    <article class="app rv" style="--accent:var(--brand)">
-      <a class="app-media qz" href="/quiz/" tabindex="-1" aria-hidden="true">
-        <div class="qz-top"><span class="en i">Question 3/10</span><span class="tr i">Soru 3/10</span><span class="qz-time">12</span></div>
-        <div class="qz-disc"><i></i><i></i><i></i><i></i></div>
-        <div class="qz-opts"><span>Gece Yarısı</span><span class="ok">Son Durak</span><span>Mavi Sokak</span><span>Yalnız Rüzgâr</span></div>
-        <div class="qz-pl"><b>E</b><b>M</b><b>A</b><b>D</b></div>
-      </a>
-      <div class="app-body">
-        <div class="app-head"><img src="/assets/img/apps/jinjaquiz.svg" alt="" width="52" height="52"><div><span class="kind"><span class="en i">Music quiz · multiplayer</span><span class="tr i">Müzik quiz · çok oyunculu</span></span><h2>JinjaQuiz</h2></div><span class="badge new">New</span></div>
-        <p class="en">Hear a one to five second clip and name the song before your friends do. Open a lobby, send the link, and up to twelve people play together straight from the browser. Faster right answers score more.</p>
-        <p class="tr">Bir ile beş saniyelik kesiti dinle, şarkıyı arkadaşlarından önce bil. Lobi kur, bağlantıyı gönder; on iki kişiye kadar doğrudan tarayıcıdan birlikte oynayın. Hızlı doğru cevap daha çok puan getirir.</p>
-        <ul class="feat">
-          <li><span class="en i">Lobby with a five letter code or an invite link, no account</span><span class="tr i">Beş harfli kod ya da davet bağlantısıyla lobi, hesap yok</span></li>
-          <li><span class="en i">Ready lists or any artist you search for, multiple choice or typed answers</span><span class="tr i">Hazır listeler ya da aradığın herhangi bir sanatçı; şıklı ya da yazarak cevap</span></li>
-          <li><span class="en i">Solo mode, three listens per question, live scoreboard</span><span class="tr i">Solo mod, soru başına üç dinleme hakkı, canlı puan tablosu</span></li>
-        </ul>
-        <div class="acts"><a class="btn p" href="/quiz/"><span class="en i">Open JinjaQuiz</span><span class="tr i">JinjaQuiz'i aç</span> <span class="arw">&rarr;</span></a><span class="note"><span class="en i">Interface in Turkish</span><span class="tr i">Türkçe arayüz</span></span></div>
       </div>
     </article>
 

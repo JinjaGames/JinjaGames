@@ -5,17 +5,28 @@
 .apps-trigger .dot{width:6px;height:6px;border-radius:50%;background:var(--brand);box-shadow:0 0 0 3px color-mix(in srgb,var(--brand) 22%,transparent)}
 .apps-trigger svg{width:11px;height:11px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;transition:transform .22s}
 .apps-menu.open .apps-trigger svg{transform:rotate(180deg)}
-.apps-pop{position:absolute;left:50%;top:calc(100% + 10px);width:360px;padding:8px;background:var(--surface);border:1px solid var(--line);border-radius:16px;box-shadow:var(--shadow-2,0 18px 44px rgba(0,0,0,.18));opacity:0;visibility:hidden;transform:translate(-50%,-6px);transition:opacity .2s var(--ease),transform .2s var(--ease),visibility .2s;z-index:230}
-.apps-menu.open .apps-pop{opacity:1;visibility:visible;transform:translate(-50%,0)}
-.apps-pop-title{padding:8px 10px 8px;color:var(--ink-3);font-family:var(--f-mono);font-size:10px;letter-spacing:.12em;text-transform:uppercase}
-.app-item{display:grid!important;grid-template-columns:44px 1fr auto;align-items:center;gap:12px;padding:10px!important;border-radius:11px!important;color:var(--ink)!important;text-decoration:none;transition:background .2s}
-.app-item:hover,.app-item:focus-visible{background:var(--bg-soft)}
-.app-item img{width:44px;height:44px;border-radius:11px;display:block}
-.app-item b{display:block;font-family:var(--f-display);font-size:15.5px;font-weight:700;letter-spacing:-.01em}
-.app-item small{display:block;color:var(--ink-3);font-size:12.5px;line-height:1.4;margin-top:1px}
-.app-item .tag{font-family:var(--f-mono);font-size:9.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--brand);border:1px solid color-mix(in srgb,var(--brand) 40%,transparent);border-radius:999px;padding:3px 7px}
-.apps-all{display:flex!important;align-items:center;justify-content:space-between;margin-top:6px;padding:12px 10px!important;border-top:1px solid var(--line);border-radius:0 0 10px 10px!important;color:var(--ink-2)!important;font-size:13.5px;font-weight:600}
+.apps-pop{position:absolute;left:50%;top:calc(100% + 12px);width:410px;padding:10px;background:var(--surface);border:1px solid var(--line);border-radius:20px;box-shadow:var(--shadow-2,0 24px 60px rgba(0,0,0,.28));opacity:0;visibility:hidden;transform:translate(-50%,-8px) scale(.98);transform-origin:50% 0;transition:opacity .2s var(--ease),transform .25s var(--ease),visibility .2s;z-index:230}
+.apps-pop::before{content:"";position:absolute;left:0;right:0;top:-14px;height:14px}
+.apps-menu.open .apps-pop{opacity:1;visibility:visible;transform:translate(-50%,0) scale(1)}
+.apps-pop-title{padding:6px 10px 10px;color:var(--ink-3);font-family:var(--f-mono);font-size:10px;letter-spacing:.12em;text-transform:uppercase}
+.app-item{--a:var(--brand);position:relative;display:grid!important;grid-template-columns:44px 1fr 18px;align-items:center;gap:14px;padding:12px 14px 12px 12px!important;margin-top:4px;border-radius:14px!important;color:var(--ink)!important;text-decoration:none;border:1px solid transparent;transition:background .2s,border-color .2s,transform .2s var(--ease)}
+.app-item:hover,.app-item:focus-visible{background:color-mix(in srgb,var(--a) 9%,var(--bg-soft));border-color:color-mix(in srgb,var(--a) 35%,transparent);outline:none}
+.app-item:active{transform:scale(.985)}
+.app-item img{width:44px;height:44px;border-radius:12px;display:block;transition:transform .3s var(--ease)}
+.app-item:hover img{transform:rotate(-6deg) scale(1.06)}
+.app-item b{display:flex;align-items:center;gap:8px;font-family:var(--f-display);font-size:15.5px;font-weight:700;letter-spacing:-.01em}
+.app-item small{display:block;color:var(--ink-3);font-size:12.5px;line-height:1.4;margin-top:2px}
+.app-item .go{font-style:normal;color:var(--ink-3);font-size:15px;transition:transform .2s var(--ease),color .2s}
+.app-item:hover .go{transform:translateX(3px);color:var(--a)}
+.app-item .tag{font-style:normal;font-family:var(--f-mono);font-size:9px;letter-spacing:.1em;text-transform:uppercase;color:var(--a);background:color-mix(in srgb,var(--a) 14%,transparent);border-radius:999px;padding:3px 7px;font-weight:600}
+.app-item .tag.live::before{content:"";display:inline-block;width:5px;height:5px;border-radius:50%;background:currentColor;margin-right:5px;vertical-align:1px;animation:appsPulse 1.6s ease-in-out infinite}
+@keyframes appsPulse{50%{opacity:.25}}
+.app-item.feat{grid-template-columns:52px 1fr 18px;padding:14px!important;margin-top:0;background:linear-gradient(135deg,color-mix(in srgb,var(--a) 16%,var(--bg-soft)),var(--bg-soft) 70%);border-color:color-mix(in srgb,var(--a) 25%,transparent)}
+.app-item.feat img{width:52px;height:52px}
+.app-item.feat b{font-size:17px}
+.apps-all{display:flex!important;align-items:center;justify-content:space-between;margin-top:8px;padding:12px 12px 6px!important;border-top:1px solid var(--line);border-radius:0!important;color:var(--ink-2)!important;font-size:13.5px;font-weight:600}
 .apps-all:hover{color:var(--brand)!important;background:transparent!important}
+@media (prefers-reduced-motion:reduce){.app-item .tag.live::before{animation:none}}
 @media(max-width:1060px){.apps-menu{display:none}}
 /* telefon alt çubuğu: Apps */
 .dock a.apps-dock svg{stroke:currentColor}

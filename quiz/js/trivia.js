@@ -1,4 +1,5 @@
 import { MORE } from "./trivia-more.js";
+import { EXTRA, FLAG_QUIZZES, flagFor } from "./trivia-extra.js";
 
 // Trivia quizleri: müzik dışı bilgi soruları. Her soru { q: soru, a: [doğru, yanlış, yanlış, yanlış] }
 // biçimindedir; ilk cevap her zaman doğrudur, oyunda şıklar karıştırılır. Doğru/Yanlış soruları iki şıklıdır.
@@ -27,6 +28,14 @@ export const TART = {
 const s = (v, n) => (typeof v === "string" ? v.replace(/[\u0000-\u001f\u007f]/g, " ").replace(/\s+/g, " ").trim().slice(0, n) : "");
 const key = (v) => v.toLocaleLowerCase("tr").replace(/\s+/g, "");
 
+// Soru görselleri: f = bayrak (ülke kodu, flagcdn.com), e = emoji çizimi, img = yüklenen küçük görsel
+// (data: adresi), iw = görsel ne zaman görünsün ("q" soruyla, "a" cevap açılınca).
+export const FLAG = /^[a-z]{2}(-[a-z]{2,3})?$/;
+export const IMG = /^data:image\/(jpeg|png|webp);base64,[A-Za-z0-9+/=]{1,24000}$/;
+const EMO = /^[\p{Extended_Pictographic}\p{Regional_Indicator}‍️⃣\p{Emoji_Modifier}#*0-9]{1,16}$/u;
+export const flagUrl = (f) => (FLAG.test(f || "") ? `https://flagcdn.com/w320/${f}.png` : "");
+export const cleanEmo = (e) => (typeof e === "string" && EMO.test(e) ? e : "");
+
 /** Başka bir yerden (kullanıcı, röle, oyuncu) gelen soru listesini süzer. Bozuk sorular atılır. */
 export function cleanItems(arr) {
   const out = [];
@@ -34,7 +43,14 @@ export function cleanItems(arr) {
     const q = s(it?.q, 200);
     const a = (Array.isArray(it?.a) ? it.a : []).slice(0, 4).map((x) => s(x, 80)).filter(Boolean);
     if (!q || a.length < 2 || new Set(a.map(key)).size !== a.length) continue;
-    out.push({ q, a });
+    const o = { q, a };
+    if (FLAG.test(it?.f || "")) o.f = it.f;
+    if (cleanEmo(it?.e)) o.e = it.e;
+    if (typeof it?.img === "string" && IMG.test(it.img)) {
+      o.img = it.img;
+      o.iw = it.iw === "q" ? "q" : "a";
+    }
+    out.push(o);
     if (out.length >= T_MAX) break;
   }
   return out;
@@ -43,8 +59,10 @@ export const cleanCat = (c) => (TCATS.includes(c) ? c : "Genel Kültür");
 export const cleanEmoji = (e) => (EMOJIS.includes(e) ? e : "🧠");
 export const isTF = (a) => a.length === 2 && a.includes("Doğru") && a.includes("Yanlış");
 
-const Q = (q, ...a) => ({ q, a });
-const TF = (q, yes) => ({ q, a: yes ? ["Doğru", "Yanlış"] : ["Yanlış", "Doğru"] });
+// Son argüman nesneyse görseldir: Q("soru", "doğru", "yanlış"…, { f: "tr" }) ya da { e: "🦁" }
+const vis = (args) => (args.length && typeof args[args.length - 1] === "object" ? args.pop() : {});
+const Q = (q, ...a) => ({ q, ...vis(a), a });
+const TF = (q, yes, v = {}) => ({ q, ...v, a: yes ? ["Doğru", "Yanlış"] : ["Yanlış", "Doğru"] });
 const quiz = (id, cat, emoji, name, desc, items) => ({ id: "t-" + id, kind: "trivia", cat, genre: cat, emoji, name, desc, items });
 
 export const TRIVIA = [
@@ -520,3 +538,9 @@ export const TRIVIA = [
     Q("Logosunda kırmızı bir 'play' düğmesi bulunan platform hangisidir?", "YouTube", "Netflix", "Twitch", "Vimeo"),
   ]),  ...MORE,
 ];
+// Ek soruları birleştir (aynı soru iki kez girmez) ve ülke cevaplarına bayrak ekle.
+for (const t of TRIVIA) {
+  const seen = new Set(t.items.map((it) => key(it.q)));
+  for (const it of EXTRA[t.id] || []) if (!seen.has(key(it.q))) seen.add(key(it.q)), t.items.push(it);
+  if (FLAG_QUIZZES.has(t.id)) for (const it of t.items) if (!it.f && !it.e && flagFor(it.a[0])) it.f = flagFor(it.a[0]);
+}

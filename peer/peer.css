@@ -191,3 +191,43 @@ dialog::backdrop{background:rgba(0,0,0,.45)}
 .toast.err{background:var(--err);color:var(--bg)}
 @keyframes tin{from{opacity:0;transform:translateY(8px)}}
 @media(prefers-reduced-motion:reduce){*,*::before,*::after{animation:none!important;transition:none!important;scroll-behavior:auto!important}}
+
+/* ---- 2026-11 yenileme: logo, görsel kahraman alanı, büyük seçim kartları ---- */
+.product img{margin-right:9px}
+.product img{width:28px;height:28px;border-radius:8px;box-shadow:0 4px 12px rgba(var(--brand-rgb),.35)}
+.hero{display:grid;grid-template-columns:minmax(0,1.2fr) minmax(0,.8fr);gap:28px;align-items:center;padding:40px 0 26px}
+.pv{position:relative;display:grid;grid-template-columns:auto 1fr auto;align-items:center;gap:10px;padding:26px 20px 52px;border-radius:24px;background:radial-gradient(120% 90% at 50% 0%,rgba(var(--brand-rgb),.16),transparent 65%),var(--surface);border:1px solid var(--line);box-shadow:var(--shadow-1);overflow:hidden}
+.pv-dev{position:relative;display:grid;place-items:center;width:78px;height:78px;border-radius:20px;background:var(--bg-soft);border:1px solid var(--line-2)}
+.pv-dev svg{width:44px;height:36px;fill:none;stroke:var(--ink);stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round}
+.pv-dev.b svg{width:24px;height:38px}
+.pv-file{position:absolute;right:-6px;top:-8px;display:flex;gap:3px}
+.pv-file i{width:14px;height:18px;border-radius:3px;background:linear-gradient(160deg,var(--brand-2),var(--brand));box-shadow:0 4px 10px rgba(var(--brand-rgb),.4);animation:pvFile 2.4s var(--ease) infinite}
+.pv-file i:nth-child(2){animation-delay:.3s;opacity:.7}
+.pv-ok{position:absolute;right:-8px;top:-8px;width:24px;height:24px;border-radius:50%;display:grid;place-items:center;background:var(--ok);box-shadow:0 0 0 3px var(--surface);animation:pvOk 2.4s var(--ease) infinite}
+.pv-ok svg{width:14px;height:14px;fill:none;stroke:#fff;stroke-width:3;stroke-linecap:round;stroke-linejoin:round}
+.pv-beam{position:relative;height:6px;display:flex;justify-content:space-between;align-items:center}
+.pv-beam::before{content:"";position:absolute;inset:2px 0;border-top:2px dashed var(--line-2)}
+.pv-beam i{position:relative;width:8px;height:8px;border-radius:50%;background:var(--brand);opacity:0;animation:pvBeam 2.4s linear infinite}
+.pv-beam i:nth-child(2){animation-delay:.15s}.pv-beam i:nth-child(3){animation-delay:.3s}.pv-beam i:nth-child(4){animation-delay:.45s}.pv-beam i:nth-child(5){animation-delay:.6s}
+.pv-lock{position:absolute;left:50%;top:50%;translate:-50% -50%;width:30px;height:30px;border-radius:50%;display:grid;place-items:center;background:var(--surface);border:1px solid var(--line-2);box-shadow:var(--shadow-1)}
+.pv-lock svg{width:15px;height:15px;fill:none;stroke:var(--brand);stroke-width:2.2;stroke-linecap:round}
+.pv-code{position:absolute;left:50%;bottom:14px;translate:-50% 0;font-family:var(--f-mono);font-size:12.5px;letter-spacing:.06em;color:var(--ink-2);background:var(--bg-soft);border:1px solid var(--line);padding:5px 12px;border-radius:999px;white-space:nowrap}
+@keyframes pvBeam{0%{opacity:0;transform:scale(.4)}20%{opacity:1;transform:scale(1)}60%{opacity:1}100%{opacity:0;transform:scale(.4)}}
+@keyframes pvFile{0%,10%{transform:translateY(0)}45%{transform:translate(60px,-10px) scale(.6);opacity:0}46%,100%{transform:translate(0) scale(1);opacity:1}}
+@keyframes pvOk{0%,55%{transform:scale(0)}68%{transform:scale(1.2)}75%,100%{transform:scale(1)}}
+.paths{gap:16px}
+.path{position:relative;padding:26px 24px 24px;gap:6px;min-height:170px}
+.path-ic{display:grid;place-items:center;width:48px;height:48px;border-radius:14px;background:var(--brand-soft);margin-bottom:8px;transition:transform .25s var(--ease)}
+.path.primary .path-ic{background:var(--brand)}
+.path .path-ic svg{width:24px;height:24px;margin:0;stroke:var(--brand)}
+.path.primary .path-ic svg{stroke:var(--on-brand)}
+.path:hover .path-ic{transform:rotate(-8deg) scale(1.06)}
+.path-go{position:absolute;right:22px;top:24px;font-style:normal;font-size:20px;color:var(--ink-3);transition:transform .2s var(--ease),color .2s}
+.path:hover .path-go{transform:translateX(4px);color:var(--brand)}
+.path b{font-size:20px}
+.how{list-style:none;padding:0;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;counter-reset:how;margin-top:12px}
+.how li{counter-increment:how;margin:0;padding:18px 16px;border-radius:16px;background:var(--surface);border:1px solid var(--line);font-size:14.5px;line-height:1.5}
+.how li::before{content:counter(how);display:grid;place-items:center;width:28px;height:28px;border-radius:50%;background:var(--brand-soft);color:var(--brand);font:700 14px var(--f-display);margin-bottom:10px}
+@media(max-width:760px){.hero{grid-template-columns:1fr;padding-top:26px}.pv{max-width:420px}.how{grid-template-columns:1fr}.path{min-height:0}}
+@media(max-width:520px){.paths{grid-template-columns:1fr}}
+@media(prefers-reduced-motion:reduce){.pv-file i,.pv-ok,.pv-beam i{animation:none;opacity:1}}

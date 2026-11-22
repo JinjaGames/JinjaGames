@@ -8,6 +8,9 @@ import { cleanItems, cleanCat, cleanEmoji, T_MIN, T_MAX } from "./trivia.js";
 
 export const RELAYS = globalThis.__JQ_TEST_RELAYS || ["wss://nos.lol", "wss://relay.primal.net", "wss://relay.damus.io", "wss://nostr.mom", "wss://relay.nostr.band", "wss://offchain.pub"];
 const KIND = 30078;
+// Bu tarihten önce yayınlanan şarkı listeleri gösterilmez: eski oluşturucu, sanatçının konuk olduğu
+// başka sanatçı şarkılarını da ekliyordu. Trivialar etkilenmez.
+export const SONG_CUTOFF = 1795317508;
 const TAG = "jinjaquiz";
 const KEY = "jqNostrKey";
 const HIDE = "jqHidden";
@@ -57,6 +60,7 @@ function parse(e) {
   try { c = JSON.parse(e.content); } catch { return null; }
   if (!c || c.v !== 1 || c.deleted) return null;
   const id = "nq-" + e.pubkey.slice(0, 16) + "-" + d.slice(10);
+  if (c.kind !== "trivia" && e.created_at < SONG_CUTOFF) return null;
   if (c.kind === "trivia") {
     const items = cleanItems(c.items);
     const name = str(c.name, 60);
@@ -182,6 +186,16 @@ async function sendToRelays(e) {
   return results.some(Boolean);
 }
 
-// Başkasının quizini bu tarayıcıda gizleme (uygunsuz içerik için)
-function hiddenSet() { try { return new Set(JSON.parse(localStorage.getItem(HIDE)) || []); } catch { return new Set(); } }
-export function hideQuiz(id) { const s = hiddenSet(); s.add(id); try { localStorage.setItem(HIDE, JSON.stringify([...s].slice(-500))); } catch {} }
+// Başkasının quizini bu tarayıcıda gizleme (uygunsuz içerik için). Ad da saklanır ki "Gizlenen quizler"den geri açılabilsin.
+export function hiddenList() {
+  try {
+    const raw = JSON.parse(localStorage.getItem(HIDE)) || [];
+    return (Array.isArray(raw) ? raw : []).map((x) => (typeof x === "string" ? { id: x, name: "" } : { id: str(x?.id, 80), name: str(x?.name, 60), author: str(x?.author, 24) })).filter((x) => x.id);
+  } catch {
+    return [];
+  }
+}
+function hiddenSet() { return new Set(hiddenList().map((x) => x.id)); }
+function saveHidden(list) { try { localStorage.setItem(HIDE, JSON.stringify(list.slice(-500))); } catch {} }
+export function hideQuiz(q) { const id = typeof q === "string" ? q : q.id; saveHidden([...hiddenList().filter((x) => x.id !== id), { id, name: q.name || "", author: q.author || "" }]); }
+export function unhideQuiz(id) { saveHidden(hiddenList().filter((x) => x.id !== id)); }

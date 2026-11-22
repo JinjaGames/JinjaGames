@@ -1,7 +1,8 @@
 import { PRESETS, loadTracks, searchArtists, customLists, saveCustom, removeCustom, fold, cdn, realPic, loadPresetPictures } from "./music.js";
-import { fetchCommunity, removeQuiz, hideQuiz } from "./community.js";
+import { fetchCommunity, removeQuiz, hideQuiz, unhideQuiz, hiddenList } from "./community.js";
 import { Game, MAX_PLAYERS } from "./engine.js";
-import { TRIVIA, TCATS, TART, EMOJIS, cleanItems } from "./trivia.js";
+import { TRIVIA, TCATS, TART, EMOJIS, cleanItems, IMG, FLAG, flagUrl, cleanEmo } from "./trivia.js";
+import { NUMCATS, fmtNum, farEnough } from "./numdata.js";
 import { hostRoom, guestRoom, newCode, validCode } from "./net.js";
 
 // ---------- yardımcılar ----------
@@ -39,7 +40,7 @@ const num = (v) => (Number.isFinite(Number(v)) ? Number(v) : 0);
 
 // Kurucudan gelen oyun durumu (başka birinin tarayıcısı) tür tür süzülür: sayılar sayı, kimlikler
 // güvenli karakter, adresler yalnızca Deezer CDN'i, profil parçaları izin listesinden.
-const NUM = new Set(["rankAt", "pts", "count", "clip", "score", "round", "points", "ms", "index", "set", "seconds", "start", "end", "offset", "autoAt", "now"]);
+const NUM = new Set(["rankAt", "pts", "count", "clip", "score", "round", "points", "ms", "index", "set", "seconds", "start", "end", "offset", "autoAt", "now", "streak"]);
 const IDK = new Set(["id", "pid", "host", "me", "code"]);
 function cleanView(x, k = "", depth = 0) {
   if (depth > 10) return null;
@@ -56,6 +57,9 @@ function cleanView(x, k = "", depth = 0) {
   if (IDK.has(k)) return String(x ?? "").replace(/[^A-Za-z0-9_-]/g, "").slice(0, 40);
   if (k === "url" || k === "cover" || k === "picture") return cdn(x);
   if (k === "photo") return PHOTO.test(x || "") ? x : "";
+  if (k === "pic") return IMG.test(x || "") ? x : null;
+  if (k === "flag") return FLAG.test(x || "") ? x : null;
+  if (k === "emo") return cleanEmo(x) || null;
   if (k === "avatar") return AVATARS.includes(x) ? x : "headphones";
   if (k === "color") return COLORS.includes(x) ? x : "coral";
   if (k === "art") return x === "hero" ? "hero" : "";
@@ -105,6 +109,7 @@ function topbar() {
     <div class="barEnd">
       ${inRoom ? `<button class="pill live" data-go="room">${ic("users")}<span>Lobiye dön</span></button>` : ""}
       ${screen === "room" && mode ? `<label class="vol" title="Ses düzeyi">${ic("volume-2")}<input type="range" id="vol" min="0" max="100" step="1" value="${Math.round(volume() * 100)}" aria-label="Ses düzeyi"></label>` : ""}
+      ${screen !== "room" && hiddenList().length ? `<button class="icon hidBtn" data-sheet="hidden" title="Gizlenen quizler (${hiddenList().length})" aria-label="Gizlenen quizler">${ic("eye-off")}<small>${hiddenList().length}</small></button>` : ""}
       <button class="meBtn" data-sheet="profile" aria-label="Profili düzenle">${avatar(profile || {})}<span>${esc(profile?.name || "Profil")}</span></button>
     </div>`;
   // Yalnızca değiştiğinde yeniden çiz: ses sürgüsü sürüklenirken ya da düğmeye basılırken kaybolmasın.
@@ -171,19 +176,39 @@ async function listen(auto = false) {
   if (player.loading) return;
   prime(q.url);
   player.loading = true;
+  player.needTap = false;
   paint();
-  try {
-    try {
-      await startAt(q.offset);
-    } catch (e) {
-      if (e.name === "NotAllowedError") throw e;
-      // Takılan ya da yarım kalan yükleme: kaynağı baştan yükleyip bir kez daha dene.
-      audio.src = player.url;
-      audio.load();
-      await startAt(q.offset);
+  // Ses gerçekten ilerliyor mu? Bazen play() başarılı döner ama ağ takıldığı için ses gelmez.
+  const flowing = async () => {
+    const t0 = audio.currentTime;
+    for (let i = 0; i < 16; i++) {
+      await new Promise((r) => setTimeout(r, 100));
+      if (audio.currentTime - t0 > 0.12) return true;
     }
+    return false;
+  };
+  const reload = () => {
+    audio.src = player.url;
+    audio.load();
+  };
+  try {
+    let ok = false;
+    for (let attempt = 0; attempt < 3 && !ok; attempt++) {
+      if (attempt) reload(); // takılan ya da yarım kalan yükleme: kaynağı baştan yükle
+      try {
+        await startAt(q.offset);
+        ok = await flowing();
+        if (!ok) audio.pause();
+      } catch (e) {
+        if (e.name === "NotAllowedError") throw e;
+      }
+      if (view?.question?.id !== q.id) break;
+    }
+    if (!ok) throw Error("stall");
   } catch (e) {
     player.loading = false;
+    // Tarayıcı otomatik çalmaya izin vermediyse diski parlat; dokununca çalar.
+    if (e.name === "NotAllowedError") player.needTap = true;
     if (!auto) fail(e.name === "NotAllowedError" ? Error("Dinlemek için butona dokun.") : Error("Kesit yüklenemedi. Tekrar dinle'ye bas."));
     paint();
     return;
@@ -194,13 +219,15 @@ async function listen(auto = false) {
   store.set(playsKey(q.id), playsUsed(q.id) + 1, sessionStorage);
   player.playing = true;
   player.qid = q.id;
-  player.startedAt = performance.now();
+  // Ses akışı kontrol edilirken çalan kısım da klipten sayılır (1 sn'lik kesit uzamasın).
+  const played = Math.max(0, Math.min(0.5, audio.currentTime - q.offset)) * 1000;
+  player.startedAt = performance.now() - played;
   player.clip = q.clip * 1000;
   document.body.classList.add("playing");
   player.stopT = setTimeout(() => {
     stopClip();
     paint();
-  }, q.clip * 1000);
+  }, q.clip * 1000 - played);
   paint();
 }
 
@@ -358,6 +385,8 @@ let screen = "home";
 function render() {
   topbar();
   if (screen === "room" && mode) return renderRoom();
+  if (screen === "detail" && sheetCtx?.list) return renderDetail();
+  if (screen === "number") return renderNumber();
   screen = "home";
   lastSig = "";
   renderHome();
@@ -417,14 +446,23 @@ function renderHome() {
         <button class="btn primary" type="submit">Katıl ${ic("chevron-right")}</button>
       </form>
     </div>
-    <div class="hm-stage" aria-hidden="true">
-      <div class="hm-ring"><svg viewBox="0 0 100 100"><circle cx="50" cy="50" r="46"/><circle class="arc" cx="50" cy="50" r="46" pathLength="100"/></svg></div>
-      <div class="hm-vinyl"><span class="hm-grooves"></span><span class="hm-label">${pics[0] ? `<img src="${esc(pics[0])}" alt="">` : ic("audio-lines")}</span></div>
-      <div class="hm-arm"><i></i></div>
-      <div class="hm-timer">${ic("timer")}<b>3</b></div>
-      <div class="hm-notes">${["music", "music-2", "music", "audio-lines"].map((n, k) => `<i style="--k:${k}">${ic(n)}</i>`).join("")}</div>
-      ${pics.slice(1, 4).map((u, k) => `<img class="hm-cov c${k}" src="${esc(u)}" alt="">`).join("")}
+    <div class="hm-stage" id="hmStage">
+      <div class="hm-ring" aria-hidden="true"><svg viewBox="0 0 100 100"><circle cx="50" cy="50" r="46"/><circle class="arc" cx="50" cy="50" r="46" pathLength="100"/></svg></div>
+      <div class="hm-vinyl" id="hmVinyl" aria-hidden="true"><span class="hm-grooves"></span><span class="hm-shine"></span></div>
+      <button class="hm-label" id="hmLabel" data-do="randomQuiz" title="Rastgele bir quiz aç" aria-label="Rastgele bir quiz aç">${pics[0] ? `<img src="${esc(pics[0])}" alt="">` : ic("audio-lines")}<span class="hm-dice">${ic("dices")}</span></button>
+      <div class="hm-arm" aria-hidden="true"><i></i></div>
+      <div class="hm-timer" aria-hidden="true">${ic("timer")}<b>3</b></div>
+      <div class="hm-notes" aria-hidden="true">${["music", "music-2", "music", "audio-lines"].map((n, k) => `<i style="--k:${k}">${ic(n)}</i>`).join("")}</div>
+      ${PRESETS.filter((p) => realPic(p.picture)).slice(1, 4).map((p, k) => `<button class="hm-cov c${k}" data-list="${esc(p.id)}" title="${esc(p.name)}" aria-label="${esc(p.name)} quizini aç"><img src="${esc(p.picture)}" alt=""></button>`).join("")}
+      <span class="hm-hint">${ic("rotate-ccw")}Plağı çevir · ortasına dokun, rastgele quiz</span>
     </div>
+  </section>
+
+  <section class="hm-modes" aria-label="Oyun modları">
+    <button class="mode m-song" data-tab="Müzik" data-scroll="1"><span class="modeIc">${ic("music")}</span><b>Şarkı Quizi</b><small>Bir saniyelik kesitten şarkıyı bil</small><i class="modeGo">${ic("chevron-right")}</i></button>
+    <button class="mode m-trivia" data-tab="Trivia" data-scroll="1"><span class="modeIc">${ic("circle-help")}</span><b>Trivia</b><small>${TRIVIA.length} quiz, binlerce soru</small><i class="modeGo">${ic("chevron-right")}</i></button>
+    <button class="mode m-num" data-do="numHome"><span class="modeIc">${ic("hash")}</span><b>Sayı Quizi <em>Yeni</em></b><small>Hangisi daha büyük? Seriyi bozma</small><i class="modeGo">${ic("chevron-right")}</i></button>
+    <button class="mode m-party" data-do="create"><span class="modeIc">${ic("users")}</span><b>Arkadaşlarla</b><small>Lobi kur, 12 kişiye kadar oynayın</small><i class="modeGo">${ic("chevron-right")}</i></button>
   </section>
 
   <section class="catalog hm-cat" id="catalog">
@@ -444,12 +482,15 @@ function renderHome() {
     ${SUBS[ui.genre] ? `<div class="seg chips subChips">${["", ...SUBS[ui.genre]].map((c) => `<button data-sub="${esc(c)}" aria-pressed="${ui.cat === c}">${esc(c || "Hepsi")}</button>`).join("")}</div>` : ""}
     <div id="results">${resultsHtml()}</div>
     ${
-      browsing
+      ui.genre === "Sayı"
+        ? `<div class="numGrid">${NUMCATS.map((c, k) => numCard(c, k)).join("")}</div>`
+        : browsing
         ? `${lists.length ? `<div class="hm-grid">${lists.map((l, k) => qcard(l, k)).join("")}</div>` : ""}
           ${ui.genre === "Topluluk" ? communityState() : ""}
           ${!lists.length && !ui.results && (ui.genre !== "Topluluk" || ui.community?.length) ? `<p class="hm-empty">${ic("search")}<span>Burada bir şey yok.${ui.genre === "Keşfet" || ui.genre === "Müzik" ? ' "Sanatçı bul" ile Deezer\'da ara; binlerce sanatçı var.' : ""}</span></p>` : ""}`
         : `${rail("Popüler sanatçılar", "flame", PRESETS.map((l, k) => acard(l, k)).join(""), "Müzik")}
           ${triviaRail(commTrivia)}
+          ${numRail()}
           ${rail("Topluluk quizleri", "users", comm.slice(0, 12).map((l, k) => qcard(l, k)).join("") || communityState(), comm.length ? "Topluluk" : "")}
           ${mine.length ? rail("Senin quizlerin", "bookmark", mine.map((l, k) => qcard(l, k)).join(""), "Senin") : ""}`
     }
@@ -461,9 +502,81 @@ function renderHome() {
       <p>Bir sanatçının albümlerinden şarkı quizi ya da kendi sorularınla trivia yap. Herkese açık yayınlarsan Topluluk'ta herkes görür.</p>
       <div class="hm-actions"><a class="btn primary lg" href="olustur/">${ic("music")}Şarkı quizi oluştur</a><a class="btn light lg" href="olustur/?tur=trivia">${ic("circle-help")}Trivia oluştur</a></div></div>
   </section>
-  <footer>Şarkı önizlemeleri ve sanatçı görselleri <a href="https://www.deezer.com" target="_blank" rel="noopener noreferrer">Deezer</a> kataloğundan gelir. Oyun verisi oyuncular arasında doğrudan (P2P) akar. · <a href="/">JinjaGames</a> · <a href="/apps/">Diğer web uygulamaları</a> · <a href="/privacy/">Gizlilik</a></footer>`;
+  <footer><a href="/">JinjaGames</a> · <a href="/apps/">Diğer web uygulamaları</a> · <a href="/privacy/">Gizlilik</a></footer>`;
   keepVisible('.subChips [aria-pressed="true"]');
   keepVisible('.hm-tabs [aria-selected="true"]');
+  initVinyl();
+}
+
+// ---------- ana sayfa plağı: sürükleyip çevir, bırakınca ivmeyle döner ----------
+let vinylRAF = 0;
+function initVinyl() {
+  cancelAnimationFrame(vinylRAF);
+  const stage = $("#hmStage"), disc = $("#hmVinyl"), label = $("#hmLabel");
+  if (!stage || !disc) return;
+  const still = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  let angle = 0, speed = still ? 0 : 0.9, base = still ? 0 : 0.9, drag = null, moved = 0;
+  const center = () => { const r = disc.getBoundingClientRect(); return [r.left + r.width / 2, r.top + r.height / 2]; };
+  const at = (e) => { const [cx, cy] = center(); return (Math.atan2(e.clientY - cy, e.clientX - cx) * 180) / Math.PI; };
+  const onDown = (e) => {
+    if (e.button !== 0) return;
+    drag = { a: at(e), t: performance.now() };
+    moved = 0;
+    stage.classList.add("grab");
+    stage.setPointerCapture?.(e.pointerId);
+  };
+  const onMove = (e) => {
+    const r = stage.getBoundingClientRect();
+    stage.style.setProperty("--tx", ((e.clientX - r.left) / r.width - 0.5).toFixed(3));
+    stage.style.setProperty("--ty", ((e.clientY - r.top) / r.height - 0.5).toFixed(3));
+    if (!drag) return;
+    const a = at(e);
+    let d = a - drag.a;
+    if (d > 180) d -= 360;
+    if (d < -180) d += 360;
+    const now = performance.now();
+    angle += d;
+    moved += Math.abs(d);
+    speed = Math.max(-30, Math.min(30, (d / Math.max(8, now - drag.t)) * 16));
+    drag = { a, t: now };
+  };
+  const onUp = () => {
+    if (!drag) return;
+    drag = null;
+    stage.classList.remove("grab");
+    stage.classList.toggle("scratched", moved > 8);
+  };
+  stage.addEventListener("pointerdown", (e) => { if (!e.target.closest("button")) onDown(e); });
+  stage.addEventListener("pointermove", onMove);
+  stage.addEventListener("pointerup", onUp);
+  stage.addEventListener("pointercancel", onUp);
+  stage.addEventListener("pointerleave", () => { stage.style.setProperty("--tx", 0); stage.style.setProperty("--ty", 0); });
+  const tick = () => {
+    if (!disc.isConnected) return;
+    if (!drag) speed += (base - speed) * 0.02;
+    angle += speed;
+    disc.style.transform = `rotate(${angle}deg)`;
+    if (label) label.style.setProperty("--r", `${angle}deg`);
+    vinylRAF = requestAnimationFrame(tick);
+  };
+  vinylRAF = requestAnimationFrame(tick);
+}
+
+// ---------- Sayı Quizi kartları ----------
+const numBest = (id) => num(store.get("jqNumBest", {})[id]);
+function numCard(c, k = 0) {
+  const sample = c.items.filter((x) => x.f).slice(0, 3);
+  return `<button class="numCard" data-numcat="${esc(c.id)}" style="--h:${c.hue};--i:${k}">
+    <span class="numArt">${sample.length ? sample.map((x, i) => `<img src="${esc(flagUrl(x.f))}" alt="" style="--j:${i}">`).join("") : `<i>${c.emoji}</i>`}</span>
+    <span class="numInfo"><b>${c.emoji} ${esc(c.name)}</b><small>${c.items.length} öğe${numBest(c.id) ? ` · rekorun ${numBest(c.id)}` : ""}</small></span>
+    <span class="numPlay">${ic("play")}</span>
+  </button>`;
+}
+function numRail() {
+  return `<div class="hm-rail num">
+    <div class="hm-railHead"><h3>${ic("hash")}Sayı Quizi <em class="newTag">Yeni</em></h3><button class="hm-more" data-tab="Sayı">Tümünü gör ${ic("chevron-right")}</button></div>
+    <div class="hm-track">${NUMCATS.map((c, k) => numCard(c, k)).join("")}</div>
+  </div>`;
 }
 // Seçili sekme/alt kategori yatay kaydırmalı şeritte görünür kalsın
 function keepVisible(sel) {
@@ -478,6 +591,7 @@ const TABS = [
   ["Keşfet", "compass", "Ne oynamak istersin?"],
   ["Müzik", "music", "Ne dinlemek istersin?"],
   ["Trivia", "circle-help", "Ne kadar biliyorsun?"],
+  ["Sayı", "hash", "Hangisi daha büyük?"],
   ["Topluluk", "users", "Topluluğun quizleri"],
   ["Senin", "bookmark", "Senin quizlerin"],
 ];
@@ -495,6 +609,7 @@ function inTab(l) {
 }
 function tabCount(name, mine) {
   if (name === "Trivia") return TRIVIA.length + (ui.community || []).filter((l) => l.kind === "trivia").length;
+  if (name === "Sayı") return NUMCATS.length;
   if (name === "Topluluk") return ui.community?.length || 0;
   if (name === "Senin") return mine.length;
   return 0;
@@ -610,10 +725,14 @@ function renderRoom() {
   const focused = document.activeElement?.id === "guess";
   lastSig = sig;
   const prevQ = app.dataset.q;
+  // Oyun ekranı yeniden çizilirken sayfa kaymasın (soru → sonuç geçişi).
+  const keepY = GAME.has(v.phase) && GAME.has(app.dataset.phase || "") ? scrollY : null;
+  app.dataset.phase = v.phase;
   if (v.phase === "lobby") app.innerHTML = lobbyHtml(v);
   else if (["preparing", "question", "reveal"].includes(v.phase)) app.innerHTML = gameHtml(v);
   else app.innerHTML = rankingHtml(v);
   app.dataset.q = v.question?.id || "";
+  if (keepY != null && Math.abs(scrollY - keepY) > 1) scrollTo(0, keepY);
   animateCounts();
   if (v.question?.url) prime(v.question.url);
   if (v.phase !== "question" || v.question?.mine) stopClip();
@@ -624,6 +743,7 @@ function renderRoom() {
   paint();
 }
 
+const GAME = new Set(["preparing", "question", "reveal"]);
 const isHost = () => view && view.host === view.me;
 const playerMap = () => new Map(view.players.map((p) => [p.pid, p]));
 
@@ -742,6 +862,15 @@ function historyHtml(v, host) {
   </div>`;
 }
 
+// Trivia cevabını destekleyen görsel: bayrak, yüklenen görsel ya da büyük emoji
+function tqVisual(r) {
+  if (r.flag) return `<span class="tqVis flag"><img src="${esc(flagUrl(r.flag))}" alt=""></span>`;
+  if (r.pic) return `<span class="tqVis pic"><img src="${esc(r.pic)}" alt=""></span>`;
+  if (r.emo) return `<span class="tqVis emo">${esc(r.emo)}</span>`;
+  return "";
+}
+// Yüklenemeyen cevap görseli (ör. bayrak servisi erişilemezse) boş kutu bırakmasın.
+document.addEventListener("error", (e) => e.target?.closest?.(".tqVis")?.remove(), true);
 function gameHtml(v) {
   const q = v.question;
   const set = v.queue[v.set];
@@ -756,7 +885,7 @@ function gameHtml(v) {
       <span class="gEnd">
         <span class="myScore ${myRes?.correct ? "up" : ""}" title="Bu quizdeki puanın"><b>${myPts}</b><small>puan</small>${myRes ? `<i class="plus ${myRes.correct ? "" : "zero"}">+${num(myRes.points)}</i>` : ""}</span>
         <span class="mini">${miniHtml(v)}</span>
-        ${reveal ? "" : `<span class="timer" id="timer"><svg viewBox="0 0 36 36"><circle cx="18" cy="18" r="16"/><circle id="timerArc" cx="18" cy="18" r="16" pathLength="100"/></svg><b id="timerNum"></b></span>`}
+        <span class="timer ${reveal ? "gone" : ""}" ${reveal ? 'aria-hidden="true"' : 'id="timer"'}><svg viewBox="0 0 36 36"><circle cx="18" cy="18" r="16"/><circle ${reveal ? "" : 'id="timerArc"'} cx="18" cy="18" r="16" pathLength="100"/></svg><b ${reveal ? "" : 'id="timerNum"'}></b></span>
       </span>
     </div>
     <div class="progress"><span style="width:${Math.min(100, ((num(v.index) + (reveal ? 1 : 0)) / Math.max(1, num(set.count))) * 100)}%"></span></div>`;
@@ -765,15 +894,19 @@ function gameHtml(v) {
 
   const mine = q.mine;
   const trivia = q.kind === "trivia";
+  // Geri sayım ilk çizimden itibaren açık olsun: şıklar bir an bile okunmasın.
+  const pre0 = !reveal && q.start && hostNow() < q.start;
+  const intro = num(v.index) === 0 && !reveal ? `<div class="introCard" aria-hidden="true"><div class="inArt">${cover(set, "inImg", true)}</div><span class="kicker">${set.kind === "trivia" ? "Trivia" : "Şarkı quizi"}${set.survival ? " · Hayatta Kalma" : ""}</span><h2>${esc(set.name)}</h2><p>${num(set.count)} ${set.kind === "trivia" ? "soru" : "şarkı"} · ${set.survival ? "ilk yanlışta oyun biter" : "hızlı olan kazanır"}</p><b class="inNum" id="inNum"></b></div>` : "";
   let stage;
   if (trivia) {
     const r = reveal ? q.reveal.results[v.me] : null;
     const verdict = !reveal ? "" : r?.correct ? `<span class="verdict good">${ic("check")} +${num(r.points)}</span>` : r ? `<span class="verdict bad">${ic("x")} Yanlış</span>` : `<span class="verdict">${ic("timer")} Süre doldu</span>`;
     stage = `<div class="tq ${reveal ? "done" : ""}">
-      <div class="countdown" id="countdown" aria-hidden="true"><div class="cdRing"><svg viewBox="0 0 100 100"><circle cx="50" cy="50" r="46" pathLength="100"/><circle class="cdArc" id="cdArc" cx="50" cy="50" r="46" pathLength="100"/></svg><b id="cdNum"></b><small>Başlıyor</small></div></div>
+      <div class="countdown ${pre0 ? "on" : ""}" id="countdown" aria-hidden="true"><div class="cdRing"><svg viewBox="0 0 100 100"><circle cx="50" cy="50" r="46" pathLength="100"/><circle class="cdArc" id="cdArc" cx="50" cy="50" r="46" pathLength="100"/></svg><b id="cdNum"></b><small>Başlıyor</small></div></div>
       <span class="tqNo">${ic("circle-help")} Soru ${num(v.index) + 1}</span>
+      ${q.pic ? `<img class="tqPic" src="${esc(q.pic)}" alt="">` : ""}
       <h2 class="tqText">${esc(q.text)}</h2>
-      ${reveal ? `<div class="tqAns"><small>Doğru cevap</small><b>${esc(q.reveal.title)}</b>${verdict}</div>` : ""}
+      ${reveal ? `<div class="tqAns ${tqVisual(q.reveal) ? "hasVis" : ""}">${tqVisual(q.reveal)}<span class="tqAnsText"><small>Doğru cevap</small><b>${esc(q.reveal.title)}</b>${verdict}</span></div>` : `<div class="tqAns slot" aria-hidden="true"></div>`}
     </div>`;
   } else if (reveal) {
     const r = q.reveal.results[v.me];
@@ -789,7 +922,7 @@ function gameHtml(v) {
     </div>`;
   } else {
     stage = `<div class="stage">
-      <div class="countdown" id="countdown" aria-hidden="true"><div class="cdRing"><svg viewBox="0 0 100 100"><circle cx="50" cy="50" r="46" pathLength="100"/><circle class="cdArc" id="cdArc" cx="50" cy="50" r="46" pathLength="100"/></svg><b id="cdNum"></b><small>Başlıyor</small></div></div>
+      <div class="countdown ${pre0 ? "on" : ""}" id="countdown" aria-hidden="true"><div class="cdRing"><svg viewBox="0 0 100 100"><circle cx="50" cy="50" r="46" pathLength="100"/><circle class="cdArc" id="cdArc" cx="50" cy="50" r="46" pathLength="100"/></svg><b id="cdNum"></b><small>Başlıyor</small></div></div>
       <button class="disc" data-do="listen" id="disc" aria-label="Kesiti dinle">
         <svg class="ring" viewBox="0 0 100 100"><circle cx="50" cy="50" r="47" pathLength="100"/><circle id="clipArc" cx="50" cy="50" r="47" pathLength="100"/></svg>
         <span class="eq"><i></i><i></i><i></i><i></i><i></i></span>
@@ -801,7 +934,7 @@ function gameHtml(v) {
 
   let answers = "";
   if (q.mode === "choice") {
-    answers = `<div class="answers">${q.options
+    answers = `<div class="answers ${v.solo ? "" : "multi"}">${q.options
       .map((o, i) => {
         const right = reveal && o === q.reveal.title;
         const picked = mine?.answer === o;
@@ -834,10 +967,12 @@ function gameHtml(v) {
     const rows = [...v.players]
       .map((p) => ({ p, r: q.reveal.results[p.pid] }))
       .sort((a, b) => num(b.p.round) - num(a.p.round) || num(b.r?.points) - num(a.r?.points));
-    foot = `<div class="block board"><div class="blockHead"><h2>Bu soru</h2><small class="muted">Quiz toplamı</small></div>${rows
+    // Çubuk quiz toplamını gösterir; bu sorudan gelen kısım parlak uçta.
+    const top = Math.max(1, ...v.players.map((p) => num(p.round)));
+    foot = `<div class="block board"><div class="blockHead"><h2>Quiz sıralaması</h2><small class="muted">Bu soru · Toplam</small></div>${rows
       .map(
         ({ p, r }, i) => `<div class="row ${p.pid === v.me ? "me" : ""}" style="--i:${i}">${avatar(p, "sm")}<span class="rowName"><b>${esc(p.name)}</b>
-        <span class="meter"><span style="width:${Math.min(100, num(r?.points))}%"></span></span></span>
+        <span class="meter"><span style="width:${top ? Math.max(2, (num(p.round) / top) * 100) : 0}%"></span>${r?.correct ? `<span class="gain" style="left:${((num(p.round) - num(r.points)) / top) * 100}%;width:${(num(r.points) / top) * 100}%"></span>` : ""}</span></span>
         <span class="pts ${r?.correct ? "good" : ""}">${r?.correct ? "+" + num(r.points) : r ? "0" : "—"}${r?.correct ? `<small>${(num(r.ms) / 1000).toFixed(1)} sn</small>` : ""}</span><b class="tot" data-count="${num(p.round)}">${num(p.round)}</b></div>`,
       )
       .join("")}</div>`;
@@ -852,7 +987,7 @@ function gameHtml(v) {
         host && v.solo ? `<button class="btn ghost sm" data-do="skip">${ic("skip-forward")}Pas</button>` : ""
       }`;
   return `${mode.lost ? `<div class="banner">${spinner()} Kurucunun bağlantısı koptu, bekleniyor…</div>` : ""}
-    <section class="game ${reveal ? "isReveal" : ""}">${head}${stage}${answers}${foot}</section>
+    <section class="game ${reveal ? "isReveal" : ""}">${head}${stage}${answers}${foot}${intro}</section>
     <div class="dock split">${dock}</div>`;
 }
 
@@ -864,9 +999,21 @@ function rankingHtml(v) {
     const ps = v.players;
     const maxQ = v.queue.slice(0, v.set + 1).reduce((s, x) => s + num(x.count), 0) * 100;
     const sc = num(ps[0]?.score);
+    const rec = final ? saveBest(set, sc) : {};
+    if (set?.survival) {
+      const st = num(set.streak);
+      return `<section class="ranking">
+      <span class="kicker">${esc(set.name)} · Hayatta Kalma</span>
+      <h1><span data-count="${st}">${st}</span> <small>soruluk seri</small></h1>
+      <p class="muted">${rec.newStreak ? "Yeni rekor!" : rec.streak ? `Rekorun: ${num(rec.streak)}` : ""} ${st >= num(set.count) ? "Hepsini bildin, inanılmaz!" : st >= 10 ? "Çok iyi gidiyordun!" : "Bir daha dene, seriyi uzat."}</p>
+      ${rec.newStreak && st > 2 ? confetti() : ""}
+    </section>
+    <div class="dock split"><button class="btn primary lg" data-do="again">${ic("rotate-ccw")}Tekrar dene</button><button class="btn ghost lg" data-do="leave">Ana sayfa</button></div>`;
+    }
     return `<section class="ranking">
       <span class="kicker">${final ? "Oyun bitti" : esc(set?.name || "") + " bitti"}</span>
       <h1><span data-count="${sc}">${sc}</span> <small>/ ${num(maxQ)} puan</small></h1>
+      ${rec.newScore ? `<p class="recNew">${ic("trophy")} Yeni rekor!</p>` : ""}
       <p class="muted">${sc >= maxQ * 0.7 ? (set?.kind === "trivia" ? "Bilgin sağlam!" : "Kulağın keskin!") : sc >= maxQ * 0.4 ? "Fena değil, bir tur daha?" : "Isınma turuydu sayalım."}</p>
       ${sc >= maxQ * 0.7 ? confetti() : ""}
     </section>
@@ -914,6 +1061,25 @@ function rankingHtml(v) {
           : `<p class="waiting">${spinner()} Kurucu başlatınca ya da süre dolunca başlıyor</p>`
     }
   </div>`;
+}
+
+// Solo rekorlar (bu tarayıcıda): quiz adına göre en iyi puan ve en uzun hayatta kalma serisi
+let savedFor = "";
+function saveBest(set, score) {
+  const l = allLists().find((x) => x.name === set?.name && (x.kind === "trivia") === (set?.kind === "trivia"));
+  if (!l) return {};
+  const all = bests();
+  const b = { ...(all[l.id] || {}) };
+  const key = mode?.code + ":" + set.id + ":" + (set.survival ? set.streak : score);
+  if (savedFor === key) return { ...b, newScore: b.lastNew === "s", newStreak: b.lastNew === "k" };
+  savedFor = key;
+  b.lastNew = "";
+  if (set.survival) {
+    if (num(set.streak) > num(b.streak)) (b.streak = num(set.streak)), (b.lastNew = "k");
+  } else if (score > num(b.score)) (b.score = score), (b.lastNew = "s");
+  all[l.id] = b;
+  store.set("jqBest", all);
+  return { ...b, newScore: b.lastNew === "s", newStreak: b.lastNew === "k" };
 }
 
 function confetti() {
@@ -970,6 +1136,8 @@ function paint() {
       const s = pre ? String(Math.ceil((q.start - now) / 1000)) : "";
       cd.classList.toggle("on", pre);
       const n = $("#cdNum");
+      const inN = $("#inNum");
+      if (inN && inN.textContent !== s) inN.textContent = s;
       if (n && n.textContent !== s) {
         n.textContent = s;
         cd.dataset.s = s;
@@ -987,6 +1155,7 @@ function paint() {
       const can = !pre && left > 0 && used < 3 && !q.mine && !player.playing && !player.loading;
       disc.disabled = !can && !player.playing;
       disc.classList.toggle("on", player.playing && player.qid === q.id);
+      disc.classList.toggle("tap", !!player.needTap && can && !used);
       $("#listenLabel").textContent = player.loading
         ? "Yükleniyor…"
         : player.playing
@@ -995,6 +1164,8 @@ function paint() {
           ? "Cevap verildi"
           : pre
             ? "Hazırlan"
+            : player.needTap && !used
+            ? "Dinlemek için dokun"
             : used >= 3
               ? "Dinleme hakkın bitti"
               : used
@@ -1039,6 +1210,12 @@ function openSheet(kind, ctx = {}) {
   if (kind === "profile") profileSheet();
   if (kind === "picker") pickerSheet();
   if (kind === "setup") setupSheet();
+  if (kind === "hidden") {
+    const list = hiddenList();
+    sheetBody.innerHTML = `<div class="sheetHead"><h2>Gizlenen quizler</h2><button class="icon" data-close aria-label="Kapat">${ic("x")}</button></div>
+      <p class="muted">Bunlar yalnızca sana gösterilmiyor. Yanlışlıkla gizlediysen geri açabilirsin.</p>
+      ${list.length ? `<ol class="hidList">${list.map((x) => `<li>${ic("eye-off")}<span><b>${esc(x.name || "Adsız quiz")}</b>${x.author ? `<small>${esc(x.author)}</small>` : ""}</span><button class="btn soft sm" data-unhide="${esc(x.id)}">${ic("eye")}Geri göster</button></li>`).join("")}</ol>` : `<p class="muted">Gizlenen quiz yok.</p>`}`;
+  }
   if (kind === "leave") {
     sheetBody.innerHTML = `<div class="sheetHead"><h2>Lobiden ayrılsın mı?</h2></div>
       <p class="muted">${isHost() && !view?.solo ? "Kurucu sensin; ayrılırsan oyun herkes için biter." : "Puanın bu lobide kalır, kodla geri dönebilirsin."}</p>
@@ -1119,42 +1296,101 @@ function setupFoot(enqueue, disabled = "") {
     ? `<button class="btn primary wide" data-do="enqueue" ${disabled}>${ic("list-plus")}Sıraya ekle</button>`
     : `<button class="btn ghost" data-do="soloGo" ${disabled}>${ic("play")}Solo oyna</button><button class="btn primary" data-do="hostGo" ${disabled}>${ic("users")}Arkadaşlarla oyna</button>`;
 }
+// Quiz ayarları (soru sayısı, cevap türü, kesit, şarkı seçimi): hem lobideki pencerede hem detay sayfasında
+function optsHtml(l) {
+  if (l.kind === "trivia") {
+    const n = num(l.items?.length);
+    const counts = [5, 10, 15, 20, 30].filter((c) => c < n);
+    if (!counts.includes(sheetCtx.count) && sheetCtx.count !== n) sheetCtx.count = Math.min(10, n);
+    return `<div class="opts">
+        <div class="opt optCount"><span>Soru sayısı</span><div class="seg" data-opt="count">${[...counts, n].map((c) => `<button data-v="${c}" aria-pressed="${sheetCtx.count === c}">${c === n ? `Hepsi (${c})` : c}</button>`).join("")}</div></div>
+      </div>`;
+  }
+  return `<div class="opts">
+      <div class="opt"><span>Soru sayısı</span><div class="seg" data-opt="count">${[5, 10, 15, 20, 30].map((n) => `<button data-v="${n}" aria-pressed="${sheetCtx.count === n}">${n}</button>`).join("")}</div></div>
+      <div class="opt"><span>Cevap</span><div class="seg" data-opt="mode"><button data-v="choice" aria-pressed="${sheetCtx.mode === "choice"}">Şıklı</button><button data-v="text" aria-pressed="${sheetCtx.mode === "text"}">Yazarak</button></div></div>
+      <div class="opt"><span>Kesit uzunluğu</span><div class="seg" data-opt="clip">${[5, 3, 1].map((n) => `<button data-v="${n}" aria-pressed="${sheetCtx.clip === n}">${LEVELS[n]} · ${n} sn</button>`).join("")}</div></div>
+    </div>
+    <details class="tracks" id="tracksBox"><summary>${ic("list-music")} Şarkıları seç <span id="selCount"></span></summary><div id="trackList"><p class="muted">${spinner()}</p></div></details>`;
+}
+async function fillTracks(l, ok) {
+  try {
+    const tracks = await loadTracks(l);
+    if (sheetCtx.list !== l || !ok()) return;
+    sheetCtx.tracks = tracks;
+    sheetCtx.ids ??= new Set(tracks.map((t) => t.id));
+    if ($("#trackCount")) $("#trackCount").textContent = `${tracks.length} şarkı`;
+    drawTracks();
+    $$("[data-needtracks]").forEach((b) => (b.disabled = false));
+  } catch (e) {
+    if ($("#trackCount")) $("#trackCount").textContent = e.message;
+    if ($("#trackList")) $("#trackList").innerHTML = `<p class="muted">${esc(e.message)}</p>`;
+  }
+}
 async function setupSheet() {
   const l = sheetCtx.list;
   const enqueue = mode && mode.role !== "solo" && isHost();
   if (l.kind === "trivia") {
     const n = num(l.items?.length);
-    const counts = [5, 10, 15, 20, 30].filter((c) => c < n);
-    if (!counts.includes(sheetCtx.count) && sheetCtx.count !== n) sheetCtx.count = Math.min(10, n);
     sheetBody.innerHTML = `<div class="sheetHead setupHead">${cover(l, "sImg")}<div><small class="kicker">Trivia · ${esc(l.cat || "")}</small><h2>${esc(l.name)}</h2><small class="muted">${n} soru${l.author ? ` · ${esc(l.author)}` : ""}</small></div><button class="icon" data-close aria-label="Kapat">${ic("x")}</button></div>
       ${l.desc ? `<p class="muted">${esc(l.desc)}</p>` : ""}
-      <div class="opts">
-        <div class="opt"><span>Soru sayısı</span><div class="seg" data-opt="count">${[...counts, n].map((c) => `<button data-v="${c}" aria-pressed="${sheetCtx.count === c}">${c === n ? `Hepsi (${c})` : c}</button>`).join("")}</div></div>
-      </div>
+      ${optsHtml(l)}
       <p class="hint">Süre bitmeden doğru şıkkı seç; ne kadar hızlıysan o kadar puan. Cevap süresini lobiden değiştirebilirsin.</p>
       <div class="sheetFoot">${setupFoot(enqueue)}</div>`;
     return;
   }
   sheetBody.innerHTML = `<div class="sheetHead setupHead">${cover(l, "sImg")}<div><small class="kicker">${esc(l.genre || "Quiz")}</small><h2>${esc(l.name)}</h2><small class="muted" id="trackCount">${spinner()} Şarkılar yükleniyor…</small></div><button class="icon" data-close aria-label="Kapat">${ic("x")}</button></div>
-    <div class="opts">
-      <div class="opt"><span>Soru sayısı</span><div class="seg" data-opt="count">${[5, 10, 15, 20, 30].map((n) => `<button data-v="${n}" aria-pressed="${sheetCtx.count === n}">${n}</button>`).join("")}</div></div>
-      <div class="opt"><span>Cevap</span><div class="seg" data-opt="mode"><button data-v="choice" aria-pressed="${sheetCtx.mode === "choice"}">Şıklı</button><button data-v="text" aria-pressed="${sheetCtx.mode === "text"}">Yazarak</button></div></div>
-      <div class="opt"><span>Kesit uzunluğu</span><div class="seg" data-opt="clip">${[5, 3, 1].map((n) => `<button data-v="${n}" aria-pressed="${sheetCtx.clip === n}">${LEVELS[n]} · ${n} sn</button>`).join("")}</div></div>
-    </div>
-    <details class="tracks" id="tracksBox"><summary>${ic("list-music")} Şarkıları seç <span id="selCount"></span></summary><div id="trackList"><p class="muted">${spinner()}</p></div></details>
+    ${optsHtml(l)}
     <div class="sheetFoot">${setupFoot(enqueue, "disabled")}</div>`;
-  try {
-    const tracks = await loadTracks(l);
-    if (sheetCtx.list !== l || !sheet.open) return;
-    sheetCtx.tracks = tracks;
-    sheetCtx.ids ??= new Set(tracks.map((t) => t.id));
-    $("#trackCount").textContent = `${tracks.length} şarkı`;
-    drawTracks();
-    $$(".sheetFoot .btn").forEach((b) => (b.disabled = false));
-  } catch (e) {
-    $("#trackCount").textContent = e.message;
-    $("#trackList").innerHTML = `<p class="muted">${esc(e.message)}</p>`;
-  }
+  $$(".sheetFoot .btn").forEach((b) => (b.dataset.needtracks = "1"));
+  fillTracks(l, () => sheet.open);
+}
+
+// ---------- quiz detay sayfası: kapak, bilgiler, oyun türü ve modu, BAŞLA ----------
+const bests = () => store.get("jqBest", {});
+function renderDetail() {
+  const l = sheetCtx.list;
+  const trivia = l.kind === "trivia";
+  const b = bests()[l.id] || {};
+  const n = trivia ? num(l.items?.length) : num(l.tracks?.length);
+  const surv = trivia && sheetCtx.gmode === "survival";
+  app.innerHTML = `<section class="dt" data-g="${surv ? "survival" : "normal"}" data-play="${esc(sheetCtx.play)}">
+    <button class="dtBack" data-go="home">${ic("arrow-left")}Tüm quizler</button>
+    <div class="dtGrid">
+      <aside class="dtCard">
+        <div class="dtArt">${cover(l, "dtImg", true)}</div>
+        <div class="dtShade"></div>
+        <div class="dtCardInfo">
+          <h1>${esc(l.name)}</h1>
+          <div class="dtStats">
+            <span>${ic(trivia ? "circle-help" : "list-music")}<b id="trackCount">${trivia ? `${n} soru` : n ? `${n} şarkı` : `${spinner()} şarkılar`}</b></span>
+            <span>${ic("layers")}${esc(trivia ? l.cat || "Trivia" : l.genre || "Müzik")}</span>
+            ${b.score ? `<span>${ic("trophy")}${num(b.score)}</span>` : ""}
+          </div>
+          ${l.author ? `<div class="dtBy">${ic("user")}<span><small>Oluşturan</small><b>${esc(l.author)}</b></span></div>` : ""}
+        </div>
+      </aside>
+      <div class="dtPanel">
+        <span class="kicker">${trivia ? "Trivia" : "Şarkı quizi"}</span>
+        <h2>${esc(l.name)}</h2>
+        ${l.desc ? `<p class="dtDesc">${esc(l.desc)}</p>` : `<p class="dtDesc">${trivia ? "Dört şıktan doğrusunu süre bitmeden bul; ne kadar hızlıysan o kadar puan." : "Kesiti dinle, şarkının adını herkesten önce bul."}</p>`}
+        <div class="dtLabel">Nasıl oynamak istersin?</div>
+        <div class="dtChoice" data-opt="play">
+          <button data-v="solo" aria-pressed="${sheetCtx.play === "solo"}">${ic("user")}<span><b>Solo</b><small>Tek başına oyna</small></span></button>
+          <button data-v="party" aria-pressed="${sheetCtx.play === "party"}">${ic("users")}<span><b>Arkadaşlarla</b><small>Lobi kur, bağlantıyı gönder</small></span></button>
+        </div>
+        ${trivia ? `<div class="dtLabel">Oyun modu</div>
+        <div class="dtChoice modes" data-opt="gmode">
+          <button data-v="normal" aria-pressed="${!surv}">${ic("shuffle")}<span><b>Rastgele</b><small>Seçtiğin sayıda karışık soru</small></span></button>
+          <button data-v="survival" aria-pressed="${surv}" class="onlySolo">${ic("heart")}<span><b>Hayatta Kalma</b><small>İlk yanlışta oyun biter${b.streak ? ` · rekorun ${num(b.streak)}` : ""}</small></span></button>
+        </div>` : ""}
+        <div class="dtOpts">${optsHtml(l)}</div>
+        <button class="btn primary xl wide dtStart" data-do="detailGo" ${trivia ? "" : "disabled data-needtracks=1"}>${ic("sparkles")}Başla</button>
+        ${b.score || b.streak ? `<div class="dtRec">${ic("trophy")}<span>Rekorların: ${b.score ? `<b>${num(b.score)}</b> puan` : ""}${b.score && b.streak ? " · " : ""}${b.streak ? `<b>${num(b.streak)}</b> soruluk seri` : ""}</span></div>` : ""}
+      </div>
+    </div>
+  </section>`;
+  if (!trivia) fillTracks(l, () => screen === "detail");
 }
 function drawTracks() {
   const { tracks, ids } = sheetCtx;
@@ -1166,8 +1402,10 @@ function drawTracks() {
 }
 function setupPayload() {
   const { list, tracks, ids, count, mode: m, clip } = sheetCtx;
-  if (list.kind === "trivia")
-    return { type: "add", kind: "trivia", list: { name: list.name, emoji: list.emoji || "" }, items: list.items, count, mode: "choice", clip: 0 };
+  if (list.kind === "trivia") {
+    const survival = sheetCtx.gmode === "survival" && sheetCtx.play !== "party";
+    return { type: "add", kind: "trivia", list: { name: list.name, emoji: list.emoji || "" }, items: list.items, count: survival ? list.items.length : count, mode: "choice", clip: 0, survival };
+  }
   if (!tracks) throw Error("Şarkılar henüz yüklenmedi.");
   if (!ids.size) throw Error("En az bir şarkı seç.");
   return {
@@ -1184,7 +1422,102 @@ function openList(id) {
   const l = allLists().find((x) => String(x.id) === String(id));
   if (!l) return;
   const last = store.get("jqSetup", {});
-  openSheet("setup", { list: l, count: last.count || 10, mode: last.mode || "choice", clip: last.clip || 3 });
+  const ctx = { list: l, count: last.count || 10, mode: last.mode || "choice", clip: last.clip || 3, play: "solo", gmode: "normal" };
+  // Lobide kurucu quiz eklerken pencere; ana sayfada tam detay sayfası
+  if (mode && mode.role !== "solo" && isHost()) return openSheet("setup", ctx);
+  sheetCtx = ctx;
+  screen = "detail";
+  render();
+  scrollTo({ top: 0 });
+}
+
+// ---------- Sayı Quizi: "hangisi daha büyük?" (solo, seri) ----------
+let nq = null;
+function pickPair(cat, keep) {
+  const items = cat.items;
+  for (let t = 0; t < 400; t++) {
+    const a = keep || items[Math.floor(Math.random() * items.length)];
+    const b = items[Math.floor(Math.random() * items.length)];
+    if (a === b || !farEnough(cat, a, b)) continue;
+    if (nq?.recent?.includes(b.n) && t < 300) continue;
+    return Math.random() < 0.5 ? [a, b] : [b, a];
+  }
+  return [items[0], items[items.length - 1]];
+}
+function startNumber(id) {
+  const cat = NUMCATS.find((c) => c.id === id);
+  if (!cat) return;
+  if (mode) leaveRoom(true);
+  nq = { cat, streak: 0, phase: "pick", recent: [], pair: null, pick: -1 };
+  nq.pair = pickPair(cat);
+  screen = "number";
+  render();
+  scrollTo({ top: 0 });
+}
+function numSide(x, i) {
+  const shown = nq.phase !== "pick" && (nq.phase !== "half" || i === nq.pick);
+  const win = nq.phase === "done" || nq.phase === "over" ? (nq.pair[i].v >= nq.pair[1 - i].v ? "win" : "lose") : "";
+  return `<button class="nqSide s${i} ${win} ${nq.pick === i ? "picked" : ""}" data-npick="${i}" ${nq.phase === "pick" ? "" : "disabled"} style="--h:${(nq.cat.hue + i * 40) % 360}">
+    ${x.f ? `<img class="nqBg" src="${esc(flagUrl(x.f))}" alt="">` : `<span class="nqEmo">${x.e || nq.cat.emoji}</span>`}
+    <span class="nqName">${esc(x.n)}</span>
+    <span class="nqVal ${shown ? "on" : ""}" ${shown ? `data-val="${x.v}"` : ""}>${shown ? esc(fmtNum(x.v, nq.cat.fmt)) : "?"}</span>
+    ${nq.phase === "pick" ? `<span class="nqTap">Seçmek için dokun</span>` : ""}
+  </button>`;
+}
+function renderNumber() {
+  if (!nq) return (screen = "home"), render();
+  const best = numBest(nq.cat.id);
+  const mid = nq.phase === "done" ? `<span class="nqVs ok">${nq.streak}</span>` : nq.phase === "over" ? `<span class="nqVs bad">${ic("x")}</span>` : `<span class="nqVs">VS</span>`;
+  app.innerHTML = `<section class="nq">
+    <div class="nqTop"><button class="icon" data-do="numExit" aria-label="Çık">${ic("x")}</button><span class="nqAsk"><small>${nq.cat.emoji} ${esc(nq.cat.name)}</small><b>${esc(nq.cat.ask)}</b></span><span class="nqStreak">Seri <b>${nq.streak}</b>${best ? `<small>Rekor ${best}</small>` : ""}</span></div>
+    <div class="nqBoard">${numSide(nq.pair[0], 0)}${mid}${numSide(nq.pair[1], 1)}</div>
+    ${nq.phase === "over" ? `<div class="nqOver"><div><span class="kicker">Oyun bitti</span><h2>Seri: ${nq.streak}</h2><p>${nq.newBest ? "Yeni rekor!" : best ? `Rekorun ${best}` : ""}</p><div class="nqBtns"><button class="btn primary lg" data-do="numAgain">${ic("rotate-ccw")}Tekrar oyna</button><button class="btn ghost lg" data-do="numExit">Kategoriler</button></div></div></div>` : ""}
+  </section>`;
+  animateCounts();
+  $$(".nqVal.on").forEach((el) => countUp(el));
+}
+// Açılan değeri sıfırdan sayarak göster
+function countUp(el) {
+  if (el.dataset.done) return;
+  el.dataset.done = 1;
+  const v = Number(el.dataset.val), fmt = nq.cat.fmt, t0 = performance.now(), dur = fmt === "year" ? 500 : 700;
+  if (fmt === "year") return;
+  const step = (t) => {
+    const k = Math.min(1, (t - t0) / dur);
+    el.textContent = fmtNum(v * (1 - Math.pow(1 - k, 3)), fmt);
+    if (k < 1 && el.isConnected) requestAnimationFrame(step);
+    else el.textContent = fmtNum(v, fmt);
+  };
+  requestAnimationFrame(step);
+}
+function numPick(i) {
+  if (!nq || nq.phase !== "pick") return;
+  nq.pick = i;
+  nq.phase = "half";
+  renderNumber();
+  setTimeout(() => {
+    if (!nq || nq.phase !== "half") return;
+    const ok = nq.pair[i].v >= nq.pair[1 - i].v;
+    if (ok) nq.streak++;
+    nq.phase = ok ? "done" : "over";
+    if (!ok) {
+      const all = store.get("jqNumBest", {});
+      nq.newBest = nq.streak > num(all[nq.cat.id]);
+      if (nq.newBest) (all[nq.cat.id] = nq.streak), store.set("jqNumBest", all);
+    }
+    renderNumber();
+    if (ok)
+      setTimeout(() => {
+        if (!nq || nq.phase !== "done") return;
+        // Kazanan tarafta kalır; yanına yeni bir rakip gelir
+        const keep = nq.pair[0].v >= nq.pair[1].v ? nq.pair[0] : nq.pair[1];
+        nq.recent = [...nq.recent, ...nq.pair.map((x) => x.n)].slice(-8);
+        nq.pair = pickPair(nq.cat, keep);
+        nq.pick = -1;
+        nq.phase = "pick";
+        renderNumber();
+      }, 1500);
+  }, 850);
 }
 
 // ---------- olaylar ----------
@@ -1192,6 +1525,27 @@ async function doAction(a, el) {
   switch (a) {
     case "create":
       return startHost();
+    case "detailGo":
+      if (sheetCtx.list?.kind === "trivia") sheetCtx.survival = sheetCtx.gmode === "survival";
+      return doAction(sheetCtx.play === "party" ? "hostGo" : "soloGo");
+    case "randomQuiz": {
+      const pool = [...PRESETS, ...TRIVIA];
+      return openList(pool[Math.floor(Math.random() * pool.length)].id);
+    }
+    case "numHome":
+      ui.genre = "Sayı";
+      ui.cat = "";
+      screen = "home";
+      render();
+      return document.getElementById("catalog")?.scrollIntoView({ behavior: "smooth", block: "start" });
+    case "numAgain":
+      return startNumber(nq.cat.id);
+    case "numExit":
+      nq = null;
+      screen = "home";
+      ui.genre = "Sayı";
+      render();
+      return document.getElementById("catalog")?.scrollIntoView({ block: "start" });
     case "toCatalog":
       return document.getElementById("catalog")?.scrollIntoView({ behavior: "smooth", block: "start" });
     case "toTrivia":
@@ -1311,6 +1665,14 @@ document.addEventListener("click", async (e) => {
     if (d.sheet) return openSheet(d.sheet);
     if (d.do) return await doAction(d.do, b);
     if (d.list) return openList(d.list);
+    if (d.numcat) return startNumber(d.numcat);
+    if (d.npick !== undefined) return numPick(Number(d.npick));
+    if (d.tab && d.scroll) {
+      ui.genre = d.tab;
+      ui.cat = "";
+      renderHome();
+      return document.getElementById("catalog")?.scrollIntoView({ behavior: "smooth", block: "start" });
+    }
     if (d.sub !== undefined) {
       ui.cat = d.sub;
       return renderHome();
@@ -1346,10 +1708,21 @@ document.addEventListener("click", async (e) => {
       return renderHome();
     }
     if (d.hidequiz) {
-      hideQuiz(d.hidequiz);
+      const q = (ui.community || []).find((x) => x.id === d.hidequiz);
+      hideQuiz(q || d.hidequiz);
       ui.community = (ui.community || []).filter((x) => x.id !== d.hidequiz);
-      toast("Bu quiz artık sana gösterilmeyecek.");
+      topbar();
+      toast("Gizlendi. Profilinin yanındaki göz simgesinden geri açabilirsin.");
       return renderHome();
+    }
+    if (d.unhide) {
+      unhideQuiz(d.unhide);
+      ui.community = null;
+      loadCommunity();
+      topbar();
+      if (hiddenList().length) openSheet("hidden");
+      else closeSheet();
+      return toast("Quiz yeniden gösteriliyor.");
     }
     if (d.unsave) {
       removeCustom(d.unsave);
@@ -1378,8 +1751,11 @@ document.addEventListener("click", async (e) => {
     }
     if (d.v && b.parentElement.dataset.opt) {
       const k = b.parentElement.dataset.opt;
-      sheetCtx[k] = k === "mode" ? d.v : Number(d.v);
+      sheetCtx[k] = Number.isNaN(Number(d.v)) ? d.v : Number(d.v);
       $$("button", b.parentElement).forEach((x) => x.setAttribute("aria-pressed", x === b));
+      const dt = $(".dt");
+      if (dt && k === "gmode") dt.dataset.g = d.v;
+      if (dt && k === "play") dt.dataset.play = d.v;
       return;
     }
     if (d.tracks) {

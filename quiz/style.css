@@ -2708,3 +2708,225 @@ footer a:hover { color: var(--accent-2); border-color: var(--accent-2); }
 .nextCard .qInfo b { font-size: 17px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .nextCard .qInfo small { color: var(--muted, #9a96a3); font-size: 12.5px; }
 .nextCard .rankLeft { font-family: var(--display, inherit); font-size: 22px; color: #ffc23d; flex: none; }
+
+/* Quiz oluştur: panel ekrana sığar, yayınla düğmesi hep altta görünür */
+.crSide { top: 84px; }
+.crCard { display: flex; flex-direction: column; gap: 0; padding: 0; max-height: calc(100dvh - 104px); overflow: hidden; }
+.crScroll { display: grid; gap: 14px; padding: 18px 18px 14px; overflow: auto; min-height: 0; flex: 1 1 auto; scrollbar-width: thin; }
+.crScroll .crCover { aspect-ratio: 16 / 7; }
+.crScroll .crSel { max-height: none; overflow: visible; }
+.crFoot { display: grid; gap: 10px; padding: 14px 18px 18px; border-top: 1px solid var(--line); background: linear-gradient(180deg, var(--s1), color-mix(in srgb, var(--s1) 85%, #000)); flex: none; }
+.crFootBtns { display: flex; gap: 8px; }
+.crFootBtns .btn.ghost { flex: none; width: 52px; padding: 0; justify-content: center; }
+.crProg { display: grid; gap: 6px; font-size: 13px; color: var(--muted); }
+.crProg b { color: var(--text, #f6f1ef); font-size: 15px; }
+.crProg i { display: block; height: 5px; border-radius: 99px; background: var(--s3); position: relative; overflow: hidden; }
+.crProg i::after { content: ""; position: absolute; inset: 0 auto 0 0; width: var(--p); border-radius: inherit; background: linear-gradient(90deg, #ff5b3a, #ffc23d); transition: width 0.4s var(--ease); }
+.crProg.ok i::after { background: linear-gradient(90deg, #22c06b, #34d67f); }
+.crProg.ok span::after { content: " · hazır"; color: #34d67f; font-weight: 700; }
+#crBody.busy > :not(.crPad) { opacity: 0.55; transition: opacity 0.2s; pointer-events: none; }
+#crSearch .spin { margin-right: 4px; }
+@media (max-width: 900px) {
+  .crCard { max-height: none; overflow: visible; }
+  .crScroll { overflow: visible; }
+  /* Telefonda panel sonuçların altında kalır; yayınla çubuğu ekranın altına sabitlenir. */
+  .crFoot { position: fixed; left: 0; right: 0; bottom: 0; z-index: 30; padding: 10px 16px calc(12px + env(safe-area-inset-bottom)); grid-template-columns: minmax(0, 1fr) auto; align-items: center; box-shadow: 0 -12px 24px #0009; }
+  .crFoot .crFootBtns .btn.primary { width: auto; padding-inline: 20px; }
+  .crGrid { padding-bottom: 96px; }
+}
+
+/* Soru → sonuç geçişinde hiçbir şey kaymasın: sahne ve şıklar sabit yükseklikte */
+.game > .stage, .game > .reveal { box-sizing: border-box; min-height: calc(min(200px, 52vw) + 116px); }
+.game > .reveal { justify-content: center; }
+.tq { min-height: clamp(220px, 32vh, 290px); align-content: center; }
+/* Çok oyunculuda kimin hangi şıkkı seçtiği için yer baştan ayrılır; sonuçta kart büyümez */
+.answers.multi .ans { min-height: 108px; align-items: flex-start; padding-bottom: 44px; flex-wrap: nowrap; }
+.answers.multi .ans .voters { position: absolute; left: 14px; right: 14px; bottom: 9px; padding-left: 40px; flex-wrap: nowrap; overflow: hidden; mask-image: linear-gradient(90deg, #000 85%, transparent); }
+.answers .ans.right, .answers .ans.wrong { animation-name: none; }
+.answers .ans.right { box-shadow: 0 0 0 2px var(--good), 0 10px 30px -12px var(--good); }
+
+/* Geri sayımda soru da şıklar da okunamaz */
+.tq .countdown { backdrop-filter: blur(18px) saturate(0.6); -webkit-backdrop-filter: blur(18px) saturate(0.6); background: color-mix(in srgb, var(--s1) 70%, transparent); }
+.tq:has(.countdown.on) .tqText { filter: blur(14px); }
+.game:has(.countdown.on) .answers .ans > * { filter: blur(10px); opacity: 0.6; }
+.game:has(.countdown.on) .answers .ans { transition: none; }
+.game .answers .ans > * { transition: filter 0.35s var(--ease), opacity 0.35s; }
+@media (max-width: 560px) { .answers.multi .ans { min-height: 96px; } .answers.multi .ans .voters { padding-left: 0; } }
+.board .meter { position: relative; height: 8px; border-radius: 4px; }
+.board .meter span { background: linear-gradient(90deg, #ff5b3a, #ff8a5c); border-radius: 4px; }
+.board .meter .gain { position: absolute; top: 0; bottom: 0; background: var(--good); box-shadow: 0 0 10px var(--good); border-radius: 0 4px 4px 0; animation: grow 0.7s 0.2s var(--ease) backwards; }
+.board .row.me .meter span:first-child { background: linear-gradient(90deg, #ffc23d, #ff8a5c); }
+.disc.tap { animation: tapPulse 1.2s ease-in-out infinite; }
+@keyframes tapPulse { 50% { box-shadow: 0 0 0 10px #ff5b3a33, 0 20px 60px -20px #000; transform: scale(1.03); } }
+.hidBtn { position: relative; width: 42px; height: 42px; border-radius: 50%; background: var(--s2); border: 1px solid var(--line); }
+.hidBtn small { position: absolute; top: -4px; right: -4px; min-width: 18px; height: 18px; padding: 0 5px; border-radius: 9px; background: var(--accent); color: #fff; font: 800 11px/18px var(--body); }
+.hidList { display: grid; gap: 8px; list-style: none; padding: 0; margin: 0; }
+.hidList li { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: 12px; padding: 10px 12px; border-radius: var(--r); background: var(--s2); }
+.hidList li > span { display: grid; min-width: 0; }
+.hidList b { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.hidList small { color: var(--muted); font-size: 12px; }
+
+/* Trivia görselleri: soruyla gelen görsel ve cevapla açılan bayrak / görsel / emoji */
+.tqPic { max-height: 150px; max-width: min(100%, 320px); border-radius: 12px; object-fit: cover; box-shadow: 0 14px 30px -14px #000; }
+.tq:has(.countdown.on) .tqPic { filter: blur(16px); }
+.tqAns.hasVis { grid-template-columns: auto minmax(0, 1fr); align-items: center; gap: 18px; text-align: left; justify-items: start; }
+.tqAnsText { display: grid; gap: 6px; justify-items: inherit; min-width: 0; }
+.tqVis { display: grid; place-items: center; flex: none; animation: pop 0.5s var(--ease); }
+.tqVis.flag img { height: 84px; width: auto; max-width: 140px; border-radius: 8px; box-shadow: 0 0 0 1px #ffffff1f, 0 14px 30px -12px #000; }
+.tqVis.pic img { height: 96px; width: auto; max-width: 150px; border-radius: 12px; object-fit: cover; box-shadow: 0 14px 30px -12px #000; }
+.tqVis.emo { width: 92px; height: 92px; border-radius: 22px; font-size: 54px; background: radial-gradient(circle at 50% 40%, #ffffff1a, #ffffff05); box-shadow: inset 0 0 0 1px #ffffff14; }
+@media (max-width: 560px) {
+  .tqVis.flag img { height: 60px; } .tqVis.pic img { height: 70px; } .tqVis.emo { width: 66px; height: 66px; font-size: 38px; border-radius: 16px; }
+  .tqAns.hasVis { gap: 12px; }
+}
+.tvImgBtn { cursor: pointer; display: inline-grid; place-items: center; }
+.tvImg { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: 12px; padding: 8px; border-radius: 12px; background: var(--s2); }
+.tvImg img { width: 76px; height: 76px; object-fit: cover; border-radius: 10px; }
+.tvImg > span { display: grid; gap: 6px; min-width: 0; }
+.tvImg .seg button { font-size: 12.5px; padding: 6px 10px; }
+.crBudget { display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 10px; font-size: 12.5px; color: var(--muted); }
+.crBudget span { display: inline-flex; align-items: center; gap: 6px; }
+.crBudget i { height: 5px; border-radius: 99px; background: var(--s3); position: relative; overflow: hidden; }
+.crBudget i::after { content: ""; position: absolute; inset: 0 auto 0 0; width: var(--p); background: #5aa0ff; border-radius: inherit; }
+.crBudget.over { color: #ff6b6b; }
+.crBudget.over i::after { background: #ff4d4d; }
+
+/* Trivia: cevap kutusunun yeri soru sorulurken de ayrılır; açılınca hiçbir şey aşağı kaymaz */
+.tq .tqAns { min-height: 120px; align-content: center; }
+.tq .tqAns.slot { visibility: hidden; }
+.tq.done .tqText { font-size: clamp(22px, 3.6vw, 34px); color: var(--muted); }
+@media (max-width: 560px) { .tq .tqAns { min-height: 92px; } }
+.timer.gone { visibility: hidden; }
+#app { overflow-anchor: none; }
+.game:has(.countdown.on) .answers .ans > *, .tq:has(.countdown.on) .tqText, .tq:has(.countdown.on) .tqPic { transition: none; }
+
+/* ======================= 2026-11 yeniden düzen ======================= */
+/* --- etkileşimli plak --- */
+.hm-stage { --tx: 0; --ty: 0; cursor: grab; touch-action: pan-y; transform: perspective(900px) rotateY(calc(var(--tx) * 10deg)) rotateX(calc(var(--ty) * -10deg)); transition: transform 0.4s var(--ease); }
+.hm-stage.grab { cursor: grabbing; }
+.hm-stage .hm-vinyl { animation: none; will-change: transform; }
+.hm-shine { position: absolute; inset: 0; border-radius: 50%; background: conic-gradient(from 20deg, transparent 0 8%, #ffffff14 12%, transparent 18% 50%, #ffffff10 56%, transparent 62%); pointer-events: none; }
+.hm-stage .hm-label { position: absolute; left: 50%; top: 50%; width: 27%; translate: -50% -50%; rotate: var(--r, 0deg); cursor: pointer; border: 0; padding: 0; z-index: 2; transition: scale 0.25s var(--ease), box-shadow 0.25s; }
+.hm-stage .hm-label:hover, .hm-stage .hm-label:focus-visible { scale: 1.07; box-shadow: 0 0 0 6px #0b0b0d, 0 0 0 8px var(--accent), 0 0 40px #ff5b3a88; outline: none; }
+.hm-dice { position: absolute; inset: 0; display: grid; place-items: center; background: #000a; color: #fff; opacity: 0; transition: opacity 0.2s; rotate: calc(var(--r, 0deg) * -1); }
+.hm-dice .ic { width: 34%; height: 34%; }
+.hm-label:hover .hm-dice, .hm-label:focus-visible .hm-dice { opacity: 1; }
+.hm-stage .hm-arm { transition: rotate 0.6s var(--ease); }
+.hm-stage:hover .hm-arm, .hm-stage.grab .hm-arm { rotate: 8deg; }
+.hm-stage.grab .hm-ring .arc { animation-duration: 1.2s; }
+button.hm-cov { padding: 0; cursor: pointer; overflow: hidden; background: #000; transition: scale 0.25s var(--ease), box-shadow 0.25s, rotate 0.25s; z-index: 3; }
+button.hm-cov img { width: 100%; height: 100%; object-fit: cover; display: block; }
+button.hm-cov:hover, button.hm-cov:focus-visible { scale: 1.12; rotate: 0deg; box-shadow: 0 0 0 3px var(--accent), 0 24px 50px #000c; outline: none; }
+.hm-hint { position: absolute; left: 50%; bottom: -4%; translate: -50% 0; display: inline-flex; align-items: center; gap: 6px; padding: 6px 12px; border-radius: 999px; background: #0008; border: 1px solid #ffffff14; color: var(--muted); font-size: 12px; white-space: nowrap; backdrop-filter: blur(6px); pointer-events: none; transition: opacity 0.3s; }
+.hm-hint .ic { width: 13px; height: 13px; }
+.hm-stage.scratched .hm-hint { opacity: 0; }
+
+/* --- mod kartları --- */
+.hm-modes { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 14px; margin: 8px 0 34px; }
+.mode { --c: var(--accent); position: relative; display: grid; grid-template-columns: auto 1fr; grid-template-rows: auto auto; column-gap: 14px; row-gap: 2px; align-items: center; text-align: left; padding: 18px 44px 18px 18px; border-radius: 20px; background: linear-gradient(140deg, color-mix(in srgb, var(--c) 16%, var(--s1)), var(--s1) 70%); border: 1px solid color-mix(in srgb, var(--c) 22%, #ffffff14); transition: transform 0.25s var(--ease), border-color 0.2s, box-shadow 0.25s; }
+.mode:hover, .mode:focus-visible { transform: translateY(-4px); border-color: color-mix(in srgb, var(--c) 60%, transparent); box-shadow: 0 18px 40px -20px var(--c); outline: none; }
+.mode.m-song { --c: #ff5b3a; } .mode.m-trivia { --c: #5aa0ff; } .mode.m-num { --c: #2fd3a6; } .mode.m-party { --c: #ffc23d; }
+.modeIc { grid-row: 1 / 3; width: 48px; height: 48px; border-radius: 14px; display: grid; place-items: center; background: color-mix(in srgb, var(--c) 22%, transparent); color: var(--c); transition: rotate 0.3s var(--ease); }
+.modeIc .ic { width: 24px; height: 24px; }
+.mode:hover .modeIc { rotate: -8deg; }
+.mode b { font: 800 21px var(--display); text-transform: uppercase; letter-spacing: 0.02em; display: flex; align-items: center; gap: 8px; }
+.mode b em, .newTag { font-size: 10px; font-weight: 700; font-family: inherit; font-style: normal; letter-spacing: 0.08em; text-transform: uppercase; padding: 3px 7px; border-radius: 999px; background: var(--c, #2fd3a6); color: #0b0b0d; }
+.newTag { --c: #2fd3a6; margin-left: 6px; vertical-align: 3px; }
+.mode small { color: var(--muted); font-size: 13px; }
+.modeGo { position: absolute; right: 16px; top: 50%; translate: 0 -50%; color: var(--muted); transition: translate 0.2s, color 0.2s; }
+.mode:hover .modeGo { translate: 4px -50%; color: var(--c); }
+@media (max-width: 1100px) { .hm-modes { grid-template-columns: 1fr 1fr; } }
+@media (max-width: 520px) { .hm-modes { grid-template-columns: 1fr; gap: 10px; } .mode { padding: 14px 40px 14px 14px; } .modeIc { width: 42px; height: 42px; } .mode b { font-size: 19px; } }
+
+/* --- Sayı Quizi kartları --- */
+.numGrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 14px; }
+.numCard { position: relative; display: grid; grid-template-rows: 120px auto; text-align: left; border-radius: 18px; overflow: hidden; background: var(--s1); border: 1px solid #ffffff12; transition: transform 0.25s var(--ease), border-color 0.2s; animation: rise 0.4s var(--ease) backwards; animation-delay: calc(var(--i, 0) * 40ms); }
+.hm-track .numCard { width: 240px; flex: none; }
+.numCard:hover, .numCard:focus-visible { transform: translateY(-4px); border-color: hsl(var(--h) 80% 60% / 0.6); outline: none; }
+.numArt { position: relative; display: flex; align-items: center; justify-content: center; background: radial-gradient(120% 120% at 20% 10%, hsl(var(--h) 80% 55% / 0.55), hsl(var(--h) 60% 18%) 70%); overflow: hidden; }
+.numArt i { font-style: normal; font-size: 58px; filter: drop-shadow(0 10px 20px #0008); }
+.numArt img { position: absolute; width: 46%; aspect-ratio: 3 / 2; object-fit: cover; border-radius: 8px; box-shadow: 0 10px 24px #000a; left: calc(8% + var(--j) * 22%); top: calc(14% + var(--j) * 12%); rotate: calc(-8deg + var(--j) * 8deg); }
+.numInfo { display: grid; gap: 3px; padding: 12px 14px 14px; }
+.numInfo b { font-size: 15.5px; }
+.numInfo small { color: var(--muted); font-size: 12.5px; }
+.numPlay { position: absolute; right: 12px; top: 96px; width: 38px; height: 38px; border-radius: 50%; display: grid; place-items: center; background: var(--accent); color: #fff; box-shadow: 0 8px 20px #000a; transition: scale 0.2s var(--ease); }
+.numCard:hover .numPlay { scale: 1.1; }
+
+/* --- quiz detay sayfası --- */
+.dt { padding: 14px 0 60px; animation: rise 0.4s var(--ease); }
+.dtBack { display: inline-flex; align-items: center; gap: 8px; color: var(--muted); font-weight: 600; padding: 8px 12px 8px 6px; border-radius: 10px; margin-bottom: 14px; }
+.dtBack:hover { color: #fff; background: var(--s1); }
+.dtGrid { display: grid; grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.1fr); gap: 26px; align-items: start; }
+.dtCard { position: sticky; top: 84px; aspect-ratio: 4 / 5; border-radius: 26px; overflow: hidden; background: var(--s1); border: 1px solid #ffffff14; box-shadow: 0 30px 70px -30px #000; }
+.dtArt, .dtArt > * { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; border-radius: 0; }
+.dtArt .noart.art .artMain { font-size: 110px; }
+.dtArt .noart.mono { display: grid; place-items: center; font: 800 120px var(--display); }
+.dtShade { position: absolute; inset: 0; background: linear-gradient(180deg, transparent 35%, #000c 100%); }
+.dtCardInfo { position: absolute; left: 0; right: 0; bottom: 0; padding: 22px; display: grid; gap: 10px; }
+.dtCardInfo h1 { font: 800 clamp(26px, 3.4vw, 40px) / 1.02 var(--display); text-transform: uppercase; letter-spacing: 0.01em; text-shadow: 0 4px 20px #000; }
+.dtStats { display: flex; flex-wrap: wrap; gap: 6px; }
+.dtStats > span { display: inline-flex; align-items: center; gap: 6px; padding: 6px 10px; border-radius: 999px; background: #000a; border: 1px solid #ffffff1a; font-size: 13px; backdrop-filter: blur(6px); }
+.dtStats .ic { width: 14px; height: 14px; }
+.dtBy { display: flex; align-items: center; gap: 10px; padding: 10px 12px; border-radius: 14px; background: #000a; border: 1px solid #ffffff14; width: fit-content; }
+.dtBy span { display: grid; line-height: 1.2; } .dtBy small { color: var(--muted); font-size: 11px; }
+.dtPanel { display: grid; gap: 14px; padding: 26px; border-radius: 26px; background: var(--s1); border: 1px solid #ffffff12; }
+.dtPanel h2 { font: 800 clamp(28px, 3.6vw, 44px) / 1.02 var(--display); text-transform: uppercase; color: #8fb8ff; }
+.dtDesc { color: var(--muted); font-size: 15.5px; line-height: 1.55; }
+.dtLabel { margin-top: 6px; font-size: 12px; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; color: var(--muted); }
+.dtChoice { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.dtChoice button { display: flex; align-items: center; gap: 12px; text-align: left; padding: 14px; border-radius: 16px; background: var(--s2); border: 1.5px solid transparent; transition: border-color 0.2s, background 0.2s, transform 0.15s; }
+.dtChoice button .ic { width: 22px; height: 22px; flex: none; padding: 10px; box-sizing: content-box; border-radius: 12px; background: var(--s3); }
+.dtChoice button span { display: grid; gap: 1px; } .dtChoice button b { font-size: 15.5px; } .dtChoice button small { color: var(--muted); font-size: 12.5px; }
+.dtChoice button:hover { background: var(--s3); }
+.dtChoice button[aria-pressed="true"] { border-color: #5aa0ff; background: color-mix(in srgb, #5aa0ff 14%, var(--s2)); }
+.dtChoice button[aria-pressed="true"] .ic { background: #5aa0ff; color: #0b0b0d; }
+.dt[data-play="party"] .onlySolo { opacity: 0.4; pointer-events: none; }
+.dt[data-g="survival"]:not([data-play="party"]) .optCount { opacity: 0.35; pointer-events: none; }
+.dtOpts .opts { margin: 0; }
+.btn.xl { min-height: 62px; font-size: 18px; letter-spacing: 0.06em; text-transform: uppercase; border-radius: 16px; }
+.dtStart { margin-top: 4px; background: linear-gradient(90deg, #ff2d55, #ff5b3a 55%, #ff8a3d); box-shadow: 0 16px 40px -14px #ff3b3b; }
+.dtStart:hover { filter: brightness(1.08); }
+.dtRec { display: flex; align-items: center; gap: 10px; padding: 12px 14px; border-radius: 14px; background: color-mix(in srgb, #ffc23d 10%, var(--s2)); color: #ffd77a; font-size: 14px; }
+@media (max-width: 860px) { .dtGrid { grid-template-columns: 1fr; } .dtCard { position: relative; top: 0; aspect-ratio: 16 / 10; } .dtPanel { padding: 18px; } }
+@media (max-width: 520px) { .dtChoice { grid-template-columns: 1fr; } .dtCard { aspect-ratio: 4 / 3; } }
+.recNew { display: inline-flex; align-items: center; gap: 6px; color: #ffd77a; font-weight: 700; }
+
+/* --- ilk sorudan önce açılış kartı --- */
+.introCard { position: fixed; inset: 0; z-index: 40; display: grid; place-content: center; justify-items: center; gap: 12px; padding: 24px; text-align: center; background: radial-gradient(70% 60% at 50% 45%, #2346d6, #0f1f6e 70%, #0a0f2e); transition: opacity 0.5s var(--ease), visibility 0.5s; animation: rise 0.5s var(--ease); }
+.game:not(:has(.countdown.on)) .introCard { opacity: 0; visibility: hidden; pointer-events: none; }
+.inArt { width: 120px; height: 120px; border-radius: 26px; overflow: hidden; box-shadow: 0 20px 50px #0009; position: relative; }
+.inArt > * { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+.inArt .noart.art .artMain { font-size: 58px; }
+.introCard h2 { font: 800 clamp(34px, 6vw, 64px) / 1 var(--display); text-transform: uppercase; max-width: 16ch; text-shadow: 0 6px 30px #0008; }
+.introCard p { color: #c9d6ff; font-size: 16px; }
+.introCard .kicker { color: #c9d6ff; }
+.inNum { margin-top: 10px; width: 64px; height: 64px; border-radius: 50%; display: grid; place-items: center; font: 800 32px var(--display); background: #ffffff1c; border: 2px solid #ffffff44; }
+
+/* --- Sayı Quizi oyunu --- */
+.nq { position: fixed; inset: 0; z-index: 60; display: grid; grid-template-rows: auto 1fr; background: #08080c; }
+.nqTop { position: relative; z-index: 5; display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 12px; padding: 12px 16px; background: linear-gradient(#000c, transparent); }
+.nqAsk { display: grid; text-align: center; } .nqAsk small { color: var(--muted); font-size: 12.5px; } .nqAsk b { font: 800 clamp(18px, 2.6vw, 26px) var(--display); text-transform: uppercase; }
+.nqStreak { display: grid; justify-items: end; padding: 8px 14px; border-radius: 14px; background: #ffffff10; font-size: 12px; color: var(--muted); }
+.nqStreak b { font: 800 24px var(--display); color: #fff; line-height: 1; } .nqStreak small { font-size: 11px; }
+.nqBoard { position: absolute; inset: 0; display: grid; grid-template-columns: 1fr 1fr; }
+.nqSide { position: relative; overflow: hidden; display: grid; place-content: center; justify-items: center; gap: 10px; padding: 70px 20px 40px; background: radial-gradient(120% 90% at 50% 40%, hsl(var(--h) 60% 30%), hsl(var(--h) 50% 9%)); color: #fff; text-align: center; transition: filter 0.4s; }
+.nqSide:not(:disabled):hover { filter: brightness(1.15); }
+.nqSide:not(:disabled):hover .nqTap { background: var(--accent); }
+.nqBg { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; opacity: 0.32; filter: blur(2px) saturate(1.2); transform: scale(1.1); }
+.nqSide::after { content: ""; position: absolute; inset: 0; background: radial-gradient(70% 60% at 50% 50%, transparent, #000b); pointer-events: none; }
+.nqSide > *:not(.nqBg) { position: relative; z-index: 1; }
+.nqEmo { font-size: clamp(70px, 10vw, 120px); filter: drop-shadow(0 14px 30px #000a); }
+.nqName { font: 800 clamp(26px, 4vw, 52px) / 1.05 var(--display); text-transform: uppercase; text-shadow: 0 6px 24px #000; max-width: 14ch; }
+.nqVal { min-width: 90px; padding: 8px 18px; border-radius: 14px; background: #ffffff14; font: 800 clamp(24px, 3.4vw, 44px) var(--display); color: #fff; }
+.nqVal.on { color: #ffd23d; background: #0007; animation: pop 0.4s var(--ease); }
+.nqTap { padding: 8px 16px; border-radius: 999px; background: #ffffff1a; font-size: 13px; transition: background 0.2s; }
+.nqSide.win .nqVal { color: #4ef08a; } .nqSide.lose { filter: brightness(0.6); }
+.nqVs { position: absolute; left: 50%; top: 50%; translate: -50% -50%; z-index: 4; width: 76px; height: 76px; border-radius: 50%; display: grid; place-items: center; background: #fff; color: #111; font: 800 24px var(--display); box-shadow: 0 0 0 6px #0006, 0 20px 40px #000a; }
+.nqVs.ok { background: #22c55e; color: #fff; font-size: 34px; animation: pop 0.4s var(--ease); }
+.nqVs.bad { background: #ef4444; color: #fff; animation: shake 0.45s var(--ease); }
+.nqVs .ic { width: 34px; height: 34px; }
+.nqOver { position: absolute; inset: 0; z-index: 6; display: grid; place-items: center; background: #000b; backdrop-filter: blur(8px); animation: rise 0.4s var(--ease); text-align: center; }
+.nqOver h2 { font: 800 clamp(44px, 7vw, 80px) / 1 var(--display); text-transform: uppercase; margin: 6px 0; }
+.nqOver p { color: var(--muted); min-height: 1.4em; }
+.nqBtns { display: flex; gap: 10px; justify-content: center; margin-top: 18px; flex-wrap: wrap; }
+@media (max-width: 700px) { .nqBoard { grid-template-columns: 1fr; grid-template-rows: 1fr 1fr; } .nqSide { padding: 64px 16px 18px; gap: 6px; } .nqSide.s1 { padding-top: 26px; } .nqVs { width: 60px; height: 60px; font-size: 20px; } .nqAsk small { display: none; } }

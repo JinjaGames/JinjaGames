@@ -111,6 +111,7 @@ export async function loadTracks(list) {
     const out = [];
     for (const page of pages)
       for (const t of page.data || []) {
+        if (!list.artists.includes(int(t.artist?.id))) continue; // konuk olunan başka sanatçı şarkıları
         const title = (t.title_short || t.title || "").trim();
         const k = fold(title);
         if (
@@ -152,9 +153,11 @@ export async function artistInfo(id) {
   const a = await jsonp(`artist/${int(id)}`);
   return { id: int(a.id), name: str(a.name, 80), picture: cdn(a.picture_big) || cdn(a.picture_medium), fans: int(a.nb_fan), albums: int(a.nb_album) };
 }
+// Yalnızca sanatçının kendi şarkıları: başkasının şarkısında konuk olduğu kayıtlar (ör. "Nahir feat. Uzi") alınmaz.
+export const ownTracks = (arr, id) => arr.filter((t) => t.artistId === int(id));
 export async function artistTop(id) {
   const r = await jsonp(`artist/${int(id)}/top`, { limit: 100 });
-  return mapTracks(r.data || []);
+  return ownTracks(mapTracks(r.data || []), id);
 }
 export async function artistAlbums(id) {
   const r = await jsonp(`artist/${int(id)}/albums`, { limit: 100 });
@@ -179,14 +182,14 @@ export async function searchTracks(q) {
   return mapTracks(r.data || []);
 }
 
+// Sanatçı araması: en çok hayranı olan en başta (aynı adlı küçük hesaplar arkaya düşer).
 export async function searchArtists(q) {
-  const r = await jsonp("search/artist", { q, limit: 8 });
-  return (r.data || []).map((a) => ({
-    id: int(a.id),
-    name: str(a.name, 80),
-    picture: cdn(a.picture_medium),
-    fans: int(a.nb_fan),
-  }));
+  const r = await jsonp("search/artist", { q, limit: 25 });
+  return (r.data || [])
+    .map((a) => ({ id: int(a.id), name: str(a.name, 80), picture: realPic(a.picture_medium), fans: int(a.nb_fan) }))
+    .filter((a) => a.id && a.name)
+    .sort((a, b) => b.fans - a.fans)
+    .slice(0, 12);
 }
 
 // Önizleme bağlantıları ~15 dakikada sona erer; bu yüzden her soru için tazesi alınır.

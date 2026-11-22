@@ -14,6 +14,8 @@ const RELAYS = ["wss://nos.lol", "wss://relay.primal.net", "wss://relay.damus.io
 const KIND = 30078;
 const TAG = "jinjaquiz";
 const MAX_EVENTS = 3000;
+// Sitedeki SONG_CUTOFF ile aynı: bu tarihten önceki şarkı listeleri arşive alınmaz.
+const SONG_CUTOFF = Number((readFileSync(join(ROOT, "quiz/js/community.js"), "utf8").match(/SONG_CUTOFF = (\d+)/) || [])[1] || 0);
 const enc = new TextEncoder();
 
 const dTag = (e) => (e.tags.find((t) => t[0] === "d") || [])[1] || "";
@@ -22,6 +24,7 @@ function valid(e) {
     if (!e || e.kind !== KIND || typeof e.content !== "string" || e.content.length > 60000) return false;
     if (!/^jinjaquiz:[a-z0-9]{6,24}$/.test(dTag(e))) return false;
     if (!e.tags.some((t) => t[0] === "t" && t[1] === TAG)) return false;
+    if (e.created_at < SONG_CUTOFF && !/"kind":"trivia"/.test(e.content)) return false;
     const id = bytesToHex(sha256(enc.encode(JSON.stringify([0, e.pubkey, e.created_at, e.kind, e.tags, e.content]))));
     if (id !== e.id) return false;
     return schnorr.verify(hexToBytes(e.sig), hexToBytes(e.id), hexToBytes(e.pubkey));
@@ -60,7 +63,7 @@ const add = (e) => {
   if (!p || p.created_at < e.created_at || (p.created_at === e.created_at && e.id < p.id)) best.set(k, pick(e));
 };
 old.forEach(add);
-const before = JSON.stringify([...best.values()].map((e) => e.id).sort());
+const before = JSON.stringify(old.map((e) => e.id).sort());
 const results = await Promise.all(RELAYS.map(fetchRelay));
 results.flat().forEach(add);
 const events = [...best.values()].sort((a, b) => b.created_at - a.created_at).slice(0, MAX_EVENTS);

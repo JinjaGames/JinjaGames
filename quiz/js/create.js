@@ -1,8 +1,8 @@
 // JinjaQuiz: quiz oluşturma sayfası (/quiz/olustur/). Sanatçı ve şarkı araması ayrı sekmelerde;
 // sanatçının popüler şarkıları ve tüm albümleri tek tek ya da topluca eklenebilir.
-import { searchArtists, searchTracks, artistInfo, artistTop, artistAlbums, albumTracks, isAlternate, customLists, saveCustom, removeCustom, cleanTracks, fold, cdn } from "./music.js";
+import { searchArtists, searchTracks, artistInfo, artistTop, artistAlbums, albumTracks, ownTracks, isAlternate, customLists, saveCustom, removeCustom, cleanTracks, fold, cdn } from "./music.js";
 import { fetchCommunity, publishQuiz, removeQuiz, myPubkey, MIN_TRACKS, MAX_TRACKS } from "./community.js";
-import { TCATS, TART, EMOJIS, T_MIN, T_MAX, cleanItems, cleanCat, cleanEmoji, isTF } from "./trivia.js";
+import { TCATS, TART, EMOJIS, T_MIN, T_MAX, cleanItems, cleanCat, cleanEmoji, isTF, IMG } from "./trivia.js";
 
 const $ = (s, r = document) => r.querySelector(s);
 const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
@@ -33,8 +33,33 @@ const st = {
 };
 const hue = (name) => { let h = 0; for (const c of String(name || "?")) h = (h * 31 + c.charCodeAt(0)) >>> 0; return h % 360; };
 const blank = () => ({ q: "", type: "4", a: ["", "", "", ""], tf: true });
-const toEditor = (it) => isTF(it.a) ? { q: it.q, type: "tf", a: ["", "", "", ""], tf: it.a[0] === "Doğru" } : { q: it.q, type: "4", a: [...it.a, "", "", ""].slice(0, 4), tf: true };
-const fromEditor = (e) => e.type === "tf" ? { q: e.q.trim(), a: e.tf ? ["Doğru", "Yanlış"] : ["Yanlış", "Doğru"] } : { q: e.q.trim(), a: [e.a[0].trim(), ...e.a.slice(1).map((x) => x.trim()).filter(Boolean)] };
+const visOf = (it) => ({ ...(it.img ? { img: it.img, iw: it.iw === "q" ? "q" : "a" } : {}), ...(it.f ? { f: it.f } : {}), ...(it.e ? { e: it.e } : {}) });
+const toEditor = (it) => ({ ...(isTF(it.a) ? { q: it.q, type: "tf", a: ["", "", "", ""], tf: it.a[0] === "Doğru" } : { q: it.q, type: "4", a: [...it.a, "", "", ""].slice(0, 4), tf: true }), ...visOf(it) });
+const fromEditor = (e) => ({ ...(e.type === "tf" ? { q: e.q.trim(), a: e.tf ? ["Doğru", "Yanlış"] : ["Yanlış", "Doğru"] } : { q: e.q.trim(), a: [e.a[0].trim(), ...e.a.slice(1).map((x) => x.trim()).filter(Boolean)] }), ...visOf(e) });
+// Yayınlanan quiz tek bir Nostr kaydına sığmalı (~60 KB); görseller küçük WebP olarak gömülür.
+const PUBLISH_LIMIT = 58000;
+const sizeOf = () => JSON.stringify(st.items.filter((e) => !isBlank(e)).map(fromEditor)).length;
+async function shrinkImage(file) {
+  const img = new Image();
+  const url = URL.createObjectURL(file);
+  try {
+    img.src = url;
+    await img.decode();
+    for (const [side, q] of [[360, 0.62], [280, 0.5], [200, 0.45]]) {
+      const k = Math.min(1, side / Math.max(img.width, img.height));
+      const c = document.createElement("canvas");
+      c.width = Math.max(1, Math.round(img.width * k));
+      c.height = Math.max(1, Math.round(img.height * k));
+      c.getContext("2d").drawImage(img, 0, 0, c.width, c.height);
+      let out = c.toDataURL("image/webp", q);
+      if (!out.startsWith("data:image/webp")) out = c.toDataURL("image/jpeg", q);
+      if (IMG.test(out) && out.length < 16000) return out;
+    }
+    throw Error("Görsel çok büyük, daha basit bir görsel dene.");
+  } finally {
+    URL.revokeObjectURL(url);
+  }
+}
 const isBlank = (e) => !e.q.trim() && (e.type === "tf" || e.a.every((x) => !x.trim()));
 const editing = () => !!(st.d || st.localId);
 const hasContent = () => st.tracks.length > 0 || st.items.some((e) => !isBlank(e));
@@ -96,18 +121,15 @@ function rows(arr) {
 function sideHtml() {
   const n = st.tracks.length;
   const cover = st.tracks.find((t) => t.cover)?.cover;
-  return `<div class="crCard">
+  return `<div class="crCard"><div class="crScroll">
     ${kindSwitch()}
     <div class="crCover">${cover ? `<img src="${esc(cover)}" alt="">` : `<span class="noart">${ic("list-music")}</span>`}<span class="crCount"><b>${n}</b>/${MAX_TRACKS} şarkı</span></div>
     <label class="field"><span>Quiz adı</span><input id="qName" maxlength="60" value="${esc(st.name)}" placeholder="Örn. 2010'ların Türkçe pop hitleri" autocomplete="off"></label>
     <label class="field"><span>Kısa açıklama <small class="muted">(isteğe bağlı)</small></span><input id="qDesc" maxlength="160" value="${esc(st.desc)}" placeholder="Bu quiz ne hakkında?" autocomplete="off"></label>
-    <label class="setRow toggle"><span>Herkese açık yayınla<small>Topluluk sekmesinde herkes görür ve oynar.</small></span><input type="checkbox" id="qPublic" ${st.public ? "checked" : ""}><span class="sw"></span></label>
-    ${st.public ? `<label class="field"><span>Yazar adı</span><input id="qAuthor" maxlength="24" value="${esc(st.author)}" placeholder="Quizde görünecek adın" autocomplete="nickname"></label>` : ""}
+    ${publishFields()}
     <div class="crSelHead"><b>Quizdeki şarkılar</b>${n ? `<button class="btn ghost sm" data-do="clear">${ic("trash-2")}Temizle</button>` : ""}</div>
     <div class="crSel" id="crSel">${n ? st.tracks.map((t, i) => `<div class="crRow on sel"><span class="crNo">${i + 1}</span>${t.cover ? `<img src="${esc(t.cover)}" alt="" loading="lazy">` : `<span class="noart">${ic("disc-3")}</span>`}<span class="crMeta"><b>${esc(t.title)}</b><small>${esc(t.artist)}</small></span><button class="crAdd" data-del="${i}" aria-label="Çıkar">${ic("x")}</button></div>`).join("") : `<p class="muted">Sağdan bir sanatçı ya da şarkı ara ve ekle. En az ${MIN_TRACKS} şarkı gerekir.</p>`}</div>
-    <button class="btn primary lg wide" data-do="save" ${st.saving ? "disabled" : ""}>${st.saving ? `${spinner()} ${st.public ? "Yayınlanıyor…" : "Kaydediliyor…"}` : `${ic("check")}${st.public ? (st.d ? "Güncelle ve yayınla" : "Yayınla") : "Kaydet (sadece bende)"}`}</button>
-    ${st.d ? `<button class="btn ghost wide" data-do="unpublish">${ic("trash-2")}Yayından kaldır</button>` : ""}
-  </div>`;
+  </div>${saveFoot(n, MIN_TRACKS, "şarkı")}</div>`;
 }
 
 function kindSwitch() {
@@ -117,23 +139,30 @@ function kindSwitch() {
     <button role="tab" aria-selected="${st.kind === "trivia"}" data-kind="trivia">${ic("circle-help")}Trivia</button>
   </div>`;
 }
-function publishBlock() {
+function publishFields() {
   return `<label class="setRow toggle"><span>Herkese açık yayınla<small>Topluluk sekmesinde herkes görür ve oynar.</small></span><input type="checkbox" id="qPublic" ${st.public ? "checked" : ""}><span class="sw"></span></label>
-    ${st.public ? `<label class="field"><span>Yazar adı</span><input id="qAuthor" maxlength="24" value="${esc(st.author)}" placeholder="Quizde görünecek adın" autocomplete="nickname"></label>` : ""}
-    <button class="btn primary lg wide" data-do="save" ${st.saving ? "disabled" : ""}>${st.saving ? `${spinner()} ${st.public ? "Yayınlanıyor…" : "Kaydediliyor…"}` : `${ic("check")}${st.public ? (st.d ? "Güncelle ve yayınla" : "Yayınla") : "Kaydet (sadece bende)"}`}</button>
-    ${st.d ? `<button class="btn ghost wide" data-do="unpublish">${ic("trash-2")}Yayından kaldır</button>` : ""}`;
+    ${st.public ? `<label class="field"><span>Yazar adı</span><input id="qAuthor" maxlength="24" value="${esc(st.author)}" placeholder="Quizde görünecek adın" autocomplete="nickname"></label>` : ""}`;
+}
+// Yayınla düğmesi panelin altında hep görünür (uzun listede aşağı kaydırmaya gerek yok).
+function saveFoot(n, min, unit) {
+  const ready = n >= min;
+  return `<div class="crFoot">
+    <div class="crProg ${ready ? "ok" : ""}"><span><b>${n}</b> ${unit}${ready ? "" : ` · en az ${min}`}</span><i style="--p:${Math.min(100, (n / min) * 100)}%"></i></div>
+    <span class="crFootBtns">${st.d ? `<button class="btn ghost" data-do="unpublish" aria-label="Yayından kaldır" title="Yayından kaldır">${ic("trash-2")}</button>` : ""}<button class="btn primary lg wide" data-do="save" ${st.saving ? "disabled" : ""}>${st.saving ? `${spinner()} ${st.public ? "Yayınlanıyor…" : "Kaydediliyor…"}` : `${ic("check")}${st.public ? (st.d ? "Güncelle ve yayınla" : "Yayınla") : "Kaydet (sadece bende)"}`}</button></span>
+  </div>`;
 }
 const filled = () => st.items.filter((e) => !isBlank(e)).length;
 function triviaSide() {
-  return `<div class="crCard">
+  return `<div class="crCard"><div class="crScroll">
     ${kindSwitch()}
     <div class="crCover emo"><span class="noart art" style="--h:${(TART[st.cat]?.[0] ?? hue(st.cat)) + (hue(st.name || st.cat) % 36) - 18}"><i class="artGhost">${esc(st.emoji)}</i><i class="artDeco d1">${TART[st.cat]?.[1] || "✨"}</i><i class="artDeco d2">${TART[st.cat]?.[2] || "❓"}</i><i class="artMain">${esc(st.emoji)}</i></span><span class="crCount"><b>${filled()}</b>/${T_MAX} soru</span></div>
     <label class="field"><span>Trivia adı</span><input id="qName" maxlength="60" value="${esc(st.name)}" placeholder="Örn. 90'lar Çizgi Filmleri" autocomplete="off"></label>
     <label class="field"><span>Kısa açıklama <small class="muted">(isteğe bağlı)</small></span><input id="qDesc" maxlength="160" value="${esc(st.desc)}" placeholder="Bu trivia ne hakkında?" autocomplete="off"></label>
     <label class="field"><span>Kategori</span><select id="qCat">${TCATS.map((c) => `<option ${c === st.cat ? "selected" : ""}>${esc(c)}</option>`).join("")}</select></label>
     <div class="field"><span>Simge</span><div class="emojiPick">${EMOJIS.map((e) => `<button data-emoji="${e}" aria-pressed="${st.emoji === e}" aria-label="Simge ${e}">${e}</button>`).join("")}</div></div>
-    ${publishBlock()}
-  </div>`;
+    ${publishFields()}
+    ${st.public && st.items.some((e) => e.img) ? `<div class="crBudget ${sizeOf() > PUBLISH_LIMIT ? "over" : ""}"><span>${ic("image")} Görsel alanı</span><i style="--p:${Math.min(100, (sizeOf() / PUBLISH_LIMIT) * 100)}%"></i><small>${Math.round(sizeOf() / 1000)} / ${PUBLISH_LIMIT / 1000} KB</small></div>` : ""}
+  </div>${saveFoot(filled(), T_MIN, "soru")}</div>`;
 }
 const BULK_EXAMPLE = `Türkiye'nin başkenti neresidir?
 *Ankara
@@ -159,9 +188,10 @@ function tvCard(e, i) {
   return `<div class="tvCard" id="tv-${i}">
     <div class="tvTop"><span class="tvNo">${i + 1}</span>
       <div class="seg"><button data-tvtype="${i}:4" aria-pressed="${e.type === "4"}">Çoktan seçmeli</button><button data-tvtype="${i}:tf" aria-pressed="${e.type === "tf"}">Doğru / Yanlış</button></div>
-      <span class="tvBtns"><button class="icon sm" data-tvmove="${i}:-1" ${i ? "" : "disabled"} aria-label="Yukarı taşı"><span class="up">${ic("chevron-down")}</span></button><button class="icon sm" data-tvmove="${i}:1" ${i < last ? "" : "disabled"} aria-label="Aşağı taşı">${ic("chevron-down")}</button><button class="icon sm" data-tvdel="${i}" aria-label="Soruyu sil">${ic("trash-2")}</button></span>
+      <span class="tvBtns"><button class="icon sm" data-tvmove="${i}:-1" ${i ? "" : "disabled"} aria-label="Yukarı taşı"><span class="up">${ic("chevron-down")}</span></button><button class="icon sm" data-tvmove="${i}:1" ${i < last ? "" : "disabled"} aria-label="Aşağı taşı">${ic("chevron-down")}</button><label class="icon sm tvImgBtn" title="Görsel ekle" aria-label="Görsel ekle">${ic("image")}<input type="file" accept="image/*" data-tvimg="${i}" hidden></label><button class="icon sm" data-tvdel="${i}" aria-label="Soruyu sil">${ic("trash-2")}</button></span>
     </div>
-    <textarea class="tvQ" id="tvq-${i}" data-tvq="${i}" maxlength="200" rows="2" placeholder="${e.type === "tf" ? "Bir ifade yaz… (ör. Ay, Dünya'nın uydusudur.)" : "Soruyu yaz… (ör. Türkiye'nin başkenti neresidir?)"}">${esc(e.q)}</textarea>
+    ${e.img ? `<div class="tvImg"><img src="${esc(e.img)}" alt=""><span><div class="seg"><button data-tviw="${i}:q" aria-pressed="${e.iw === "q"}">Soruyla göster</button><button data-tviw="${i}:a" aria-pressed="${e.iw !== "q"}">Cevapla göster</button></div><small class="muted">${e.iw === "q" ? "Soru sorulurken görünür (ör. “Bu kim?”)." : "Doğru cevap açılınca görünür."}</small></span><button class="icon sm" data-tvimgdel="${i}" aria-label="Görseli kaldır">${ic("x")}</button></div>` : ""}
+    <textarea class="tvQ" id="tvq-${i}" data-tvq="${i}" maxlength="200" rows="2" placeholder=""${e.type === "tf" ? "Bir ifade yaz… (ör. Ay, Dünya'nın uydusudur.)" : "Soruyu yaz… (ör. Türkiye'nin başkenti neresidir?)"}">${esc(e.q)}</textarea>
     ${e.type === "tf"
       ? `<div class="tvTF">Bu ifade: <button data-tvtf="${i}:1" aria-pressed="${e.tf}">Doğru</button><button data-tvtf="${i}:0" aria-pressed="${!e.tf}">Yanlış</button></div>`
       : `<div class="tvOpts">${[0, 1, 2, 3].map((j) => `<label class="tvOpt ${j ? "" : "ok"}"><i class="dot"></i><input id="tva-${i}-${j}" data-tva="${i}:${j}" maxlength="80" value="${esc(e.a[j])}" placeholder="${j === 0 ? "Doğru cevap" : `Yanlış şık${j > 1 ? " (isteğe bağlı)" : ""}`}" aria-label="${j === 0 ? "Doğru cevap" : "Yanlış şık " + j}"></label>`).join("")}</div>`}
@@ -192,10 +222,10 @@ function mainHtml() {
       <button role="tab" aria-selected="${st.tab === "artist"}" data-tab="artist">${ic("mic-vocal")}Sanatçı</button>
       <button role="tab" aria-selected="${st.tab === "track"}" data-tab="track">${ic("music")}Şarkı</button>
     </div>
-    <form class="search" id="crSearch" role="search" autocomplete="off">${ic("search")}<input id="crq" type="search" value="${esc(st.q)}" placeholder="${st.tab === "artist" ? "Sanatçı ya da grup adı… (ör. Duman)" : "Şarkı adı ya da şarkı + sanatçı…"}"><button class="btn soft" type="submit">Ara</button></form>
+    <form class="search" id="crSearch" role="search" autocomplete="off">${ic("search")}<input id="crq" type="search" value="${esc(st.q)}" placeholder="${st.tab === "artist" ? "Sanatçı ya da grup adı… (ör. Duman)" : "Şarkı adı ya da şarkı + sanatçı…"}">${st.busy ? spinner() : ""}<button class="btn soft" type="submit">Ara</button></form>
     <label class="crAlt"><input type="checkbox" id="hideAlt" ${st.hideAlt ? "checked" : ""}> Remix, canlı, hızlandırılmış ve benzeri sürümleri gizle</label>`;
   let body = "";
-  if (st.busy) body = `<p class="muted crPad">${spinner()} Aranıyor…</p>`;
+  if (st.busy && !st.results) body = `<p class="muted crPad">${spinner()} Aranıyor…</p>`;
   else if (st.tab === "artist" && st.artist) body = artistHtml();
   else if (st.tab === "artist" && st.results)
     body = st.results.length
@@ -205,7 +235,7 @@ function mainHtml() {
     const list = visible(st.results);
     body = list.length ? `<div class="crList">${rows(list)}</div>` : `<p class="muted crPad">Şarkı bulunamadı.</p>`;
   } else body = `<div class="crHint">${ic(st.tab === "artist" ? "mic-vocal" : "music")}<p>${st.tab === "artist" ? "Bir sanatçı ara; popüler şarkılarını ve tüm albümlerini gör, istediklerini ya da hepsini ekle." : "Tek tek şarkı ara ve ekle. Farklı sanatçılardan karışık bir quiz yapabilirsin."}</p></div>`;
-  return `<section class="crMain">${tabs}<div id="crBody">${body}</div></section>`;
+  return `<section class="crMain">${tabs}<div id="crBody" class="${st.busy ? "busy" : ""}">${body}</div></section>`;
 }
 
 function artistHtml() {
@@ -253,14 +283,20 @@ function drawLists() {
 }
 
 // ---- arama ----
+let searchN = 0;
 async function runSearch() {
+  clearTimeout(liveT);
   const q = $("#crq").value.trim();
   if (q.length < 2) return;
-  st.q = q; st.busy = true; st.results = null; st.artist = null; drawLists();
+  const n = ++searchN;
+  const tab = st.tab;
+  st.q = q; st.busy = true; st.artist = null; drawLists();
+  let res;
   try {
-    st.results = st.tab === "artist" ? await searchArtists(q) : await searchTracks(q);
-  } catch (e) { fail(e); st.results = []; }
-  st.busy = false; drawLists();
+    res = tab === "artist" ? await searchArtists(q) : await searchTracks(q);
+  } catch (e) { if (n === searchN) fail(e); res = []; }
+  if (n !== searchN || st.tab !== tab) return; // daha yeni bir arama başladı
+  st.results = res; st.busy = false; drawLists();
 }
 async function openArtist(a) {
   st.artist = { info: { ...a, albums: 0 }, top: null, albums: null, open: new Set(), albumTracks: new Map() };
@@ -275,7 +311,8 @@ async function openArtist(a) {
 async function loadAlbum(al) {
   const A = st.artist;
   if (A.albumTracks.has(al.id)) return A.albumTracks.get(al.id);
-  const tr = await albumTracks(al);
+  // Derleme albümlerinde başka sanatçıların şarkıları da olur; yalnızca bu sanatçınınkiler.
+  const tr = ownTracks(await albumTracks(al), A.info.id);
   A.albumTracks.set(al.id, tr);
   return tr;
 }
@@ -324,6 +361,7 @@ async function saveTrivia() {
   }
   const items = cleanItems(keep);
   if (items.length < T_MIN) return toast(`En az ${T_MIN} soru yaz (şu an ${items.length}).`, "bad");
+  if (st.public && JSON.stringify(items).length > PUBLISH_LIMIT) return toast("Görseller herkese açık yayın için çok yer kaplıyor. Birkaç görseli kaldır ya da “Herkese açık”ı kapatıp sadece kendine kaydet.", "bad");
   st.saving = true; drawLists();
   try {
     if (st.public) {
@@ -359,10 +397,12 @@ document.addEventListener("click", async (e) => {
     if (d.kind) return setKind(d.kind);
     if (d.emoji) { st.emoji = cleanEmoji(d.emoji); return drawLists(); }
     if (d.tvtype) { const [i, t] = d.tvtype.split(":"); st.items[Number(i)].type = t === "tf" ? "tf" : "4"; return drawLists(); }
+    if (d.tviw) { const [i, w] = d.tviw.split(":"); st.items[Number(i)].iw = w === "q" ? "q" : "a"; return drawLists(); }
+    if (d.tvimgdel) { const e = st.items[Number(d.tvimgdel)]; delete e.img; delete e.iw; return drawLists(); }
     if (d.tvtf) { const [i, v] = pair(d.tvtf); st.items[i].tf = !!v; return drawLists(); }
     if (d.tvdel) { const i = Number(d.tvdel); if (!isBlank(st.items[i]) && !confirm(`${i + 1}. soru silinsin mi?`)) return; st.items.splice(i, 1); if (!st.items.length) st.items.push(blank()); return drawLists(); }
     if (d.tvmove) { const [i, dir] = pair(d.tvmove); const j = i + dir; if (j < 0 || j >= st.items.length) return; [st.items[i], st.items[j]] = [st.items[j], st.items[i]]; return drawLists(); }
-    if (d.tab) { st.tab = d.tab; st.results = null; st.artist = null; drawLists(); return $("#crq").focus(); }
+    if (d.tab) { st.tab = d.tab; st.results = null; st.artist = null; st.busy = false; searchN++; st.q = ""; drawLists(); runSearch(); return $("#crq").focus(); }
     if (d.artist !== undefined) return openArtist(st.results[Number(d.artist)]);
     if (d.tog !== undefined) return toggle(rowSource[Number(d.tog)]);
     if (d.prev !== undefined) return togglePreview(rowSource[Number(d.prev)]);
@@ -423,8 +463,15 @@ document.addEventListener("click", async (e) => {
     }
   } catch (err) { fail(err); }
 });
+// Yazarken sonuçları getir: yazmayı bırakınca ~0,8 sn sonra (her tuşta değil).
+let liveT;
 document.addEventListener("input", (e) => {
   const t = e.target;
+  if (t.id === "crq") {
+    clearTimeout(liveT);
+    const v = t.value.trim();
+    if (v.length >= 2 && v !== st.q) liveT = setTimeout(() => $("#crq")?.value.trim() === v && runSearch(), 800);
+  }
   if (t.id === "qName") st.name = t.value;
   if (t.id === "qDesc") st.desc = t.value;
   if (t.id === "qAuthor") st.author = t.value;
@@ -436,6 +483,15 @@ document.addEventListener("change", (e) => {
   if (t.id === "qPublic") { st.public = t.checked; drawLists(); }
   if (t.id === "hideAlt") { st.hideAlt = t.checked; drawLists(); }
   if (t.id === "qCat") { st.cat = cleanCat(t.value); drawLists(); }
+  if (t.dataset.tvimg && t.files?.[0]) {
+    const i = Number(t.dataset.tvimg);
+    shrinkImage(t.files[0]).then((img) => {
+      st.items[i].img = img;
+      st.items[i].iw ||= "a";
+      drawLists();
+      if (st.public && sizeOf() > PUBLISH_LIMIT) toast("Görseller yayın sınırını aşıyor; birkaçını kaldır ya da quizi sadece kendine kaydet.", "bad");
+    }).catch(fail);
+  }
 });
 document.addEventListener("submit", (e) => {
   e.preventDefault();

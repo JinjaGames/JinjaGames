@@ -118,13 +118,17 @@ export class Game {
   }
 
   // ---- kuyruk ----
-  addSet({ list, tracks, ids, count, mode, clip, kind, items }) {
+  addSet({ list, tracks, ids, count, mode, clip, kind, items, survival }) {
     if (this.queue.length >= 12) throw Error("Kuyrukta en fazla 12 quiz olabilir.");
     if (kind === "trivia") {
       const pool = cleanItems(items);
       if (pool.length < 2) throw Error("Bu triviada yeterli soru yok.");
-      const n = Math.max(1, Math.min(pool.length, Number(count) || 10, 100));
+      // Hayatta kalma (yalnızca solo): tüm sorular, ilk yanlışta oyun biter.
+      const surv = !!survival && this.solo;
+      const n = surv ? pool.length : Math.max(1, Math.min(pool.length, Number(count) || 10, 100));
       this.queue.push({
+        survival: surv,
+        streak: 0,
         id: uid(),
         kind: "trivia",
         name: list.name,
@@ -166,6 +170,8 @@ export class Game {
   advance() {
     clearTimeout(this.timer);
     const set = this.queue[this.set];
+    // Hayatta kalma: son soru yanlışsa (ya da süre bittiyse) oyun burada biter.
+    if (set.survival && this.index >= 0 && !this.question?.answers[this.hostId]?.correct) this.index = set.questions.length - 1;
     this.index++;
     if (this.index >= set.questions.length) {
       this.phase = this.set + 1 >= this.queue.length ? "done" : "ranking";
@@ -296,6 +302,8 @@ export class Game {
     const q = this.question;
     this.phase = "reveal";
     q.autoAt = Date.now() + AUTO_NEXT;
+    const cur = this.queue[this.set];
+    if (cur?.survival && q.answers[this.hostId]?.correct) cur.streak++;
     for (const p of this.players) {
       const pts = q.answers[p.pid]?.points || 0;
       p.score += pts;
@@ -370,7 +378,7 @@ export class Game {
         this.index = -1;
         this.question = null;
         for (const p of this.players) (p.score = 0), (p.round = 0);
-        this.queue = this.queue.map((s) => ({ ...s, id: uid(), questions: shuffle(s.questions) }));
+        this.queue = this.queue.map((s) => ({ ...s, id: uid(), streak: 0, questions: shuffle(s.survival ? s.tracks : s.questions) }));
         break;
       case "lobby":
         // Çok oyunculu: herkes lobiye döner; genel puanlar ve geçmiş kalır, oynanan quizler sıradan çıkar.
@@ -450,6 +458,8 @@ export class Game {
         emoji: s.emoji || "",
         kind: s.kind || "song",
         count: s.questions.length,
+        survival: !!s.survival,
+        streak: s.streak || 0,
         mode: s.mode,
         clip: s.clip,
       })),
@@ -463,6 +473,7 @@ export class Game {
               id: q.id,
               kind: set.kind || "song",
               text: set.kind === "trivia" ? q.item.q : null,
+              pic: set.kind === "trivia" && q.item.iw === "q" ? q.item.img : null,
               url: this.phase === "preparing" ? null : q.url,
               offset: q.offset,
               clip: set.clip,
@@ -480,6 +491,9 @@ export class Game {
               reveal: reveal
                 ? {
                     title: set.kind === "trivia" ? q.item.a[0] : q.track.title,
+                    flag: set.kind === "trivia" ? q.item.f || null : null,
+                    emo: set.kind === "trivia" ? q.item.e || null : null,
+                    pic: set.kind === "trivia" && q.item.iw !== "q" ? q.item.img || null : null,
                     artist: set.kind === "trivia" ? "" : q.track.artist,
                     cover: q.cover,
                     album: q.album,
