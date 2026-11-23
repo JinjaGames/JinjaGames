@@ -70,31 +70,45 @@ const alternate =
   /\b(remix|rmx|live|canli|konser|karaoke|acoustic|akustik|speed ?up|sped ?up|slowed|reverb|instrumental|enstrumantal|cover|remaster(ed)?|demo|reprise|extended|version|versiyon|mix|edit|nightcore|8d)\b/i;
 
 export const PRESETS = [
-  { id: "motive", name: "Motive", genre: "Rap", artists: [72196] },
-  { id: "uzi", name: "UZI", genre: "Rap", artists: [98336572] },
-  { id: "manifest", name: "manifest", genre: "Pop", artists: [301153511] },
-  { id: "sezen", name: "Sezen Aksu", genre: "Pop", artists: [9289] },
-  { id: "duman", name: "Duman", genre: "Rock", artists: [14826] },
+  // picture: sayfa ilk açılışta beklemeden çizilsin diye gömülü; arka planda günde bir tazelenir
+  { id: "motive", name: "Motive", genre: "Rap", artists: [72196], picture: "https://cdn-images.dzcdn.net/images/cover/778197435a57b9e655a8bfc562ffdbdc/500x500-000000-80-0-0.jpg" },
+  { id: "uzi", name: "UZI", genre: "Rap", artists: [98336572], picture: "https://cdn-images.dzcdn.net/images/artist/65905c1901748c17c176bfd1889cc3ae/500x500-000000-80-0-0.jpg" },
+  { id: "manifest", name: "manifest", genre: "Pop", artists: [301153511], picture: "https://cdn-images.dzcdn.net/images/artist/1500d2a483a67f021e3f96a0734adc5d/500x500-000000-80-0-0.jpg" },
+  { id: "sezen", name: "Sezen Aksu", genre: "Pop", artists: [9289], picture: "https://cdn-images.dzcdn.net/images/artist/9c62f746db8e41bb49eb13a3c254f597/500x500-000000-80-0-0.jpg" },
+  { id: "duman", name: "Duman", genre: "Rock", artists: [14826], picture: "https://cdn-images.dzcdn.net/images/artist/420bd789cacec4d562f981f6eae6c76e/500x500-000000-80-0-0.jpg" },
 ];
 
 // Hazır listelerin sanatçı görselleri sitede kopya olarak tutulmaz; Deezer'ın kendi görseli
 // açılışta bir kez istenir (aranan sanatçılarda olduğu gibi).
+// Hazır listelerin görselleri: önce cihazdaki son bilinen adres (yoksa gömülü olan) hemen kullanılır,
+// günde bir kez arka planda Deezer'dan tazelenir. Değişiklik olduysa true döner (ekran ancak o zaman yeniden çizilir).
+const PIC_KEY = "jqPresetPics";
+try {
+  const c = JSON.parse(localStorage.getItem(PIC_KEY) || "null");
+  if (c?.pics) for (const p of PRESETS) if (realPic(c.pics[p.id])) p.picture = c.pics[p.id];
+} catch {}
 export async function loadPresetPictures() {
+  let cache = null;
+  try { cache = JSON.parse(localStorage.getItem(PIC_KEY) || "null"); } catch {}
+  if (cache && Date.now() - cache.t < 864e5) return false;
+  let changed = false;
   await Promise.all(
-    PRESETS.filter((p) => !p.picture).map((p) =>
+    PRESETS.map((p) =>
       jsonp(`artist/${p.artists[0]}`)
         .then(async (a) => {
-          p.picture = realPic(a?.picture_big) || realPic(a?.picture_medium);
+          let pic = realPic(a?.picture_big) || realPic(a?.picture_medium);
           // Sanatçı fotoğrafı yoksa kendi son albümünün kapağı
-          if (!p.picture) {
-            // (ortak şarkıların kapağı başka sanatçıyı gösterebilir; sanatçının kendi albümünü kullan)
+          if (!pic) {
             const al = await jsonp(`artist/${p.artists[0]}/albums`, { limit: 1 });
-            p.picture = realPic(al?.data?.[0]?.cover_big) || realPic(al?.data?.[0]?.cover_medium);
+            pic = realPic(al?.data?.[0]?.cover_big) || realPic(al?.data?.[0]?.cover_medium);
           }
+          if (pic && pic !== p.picture) { p.picture = pic; changed = true; }
         })
         .catch(() => {}),
     ),
   );
+  try { localStorage.setItem(PIC_KEY, JSON.stringify({ t: Date.now(), pics: Object.fromEntries(PRESETS.map((p) => [p.id, p.picture || ""])) })); } catch {}
+  return changed;
 }
 
 // Bir listenin şarkılarını getirir: sanatçıların en popüler 100 şarkısı, tekrarsız ve

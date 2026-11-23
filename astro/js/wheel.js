@@ -1,6 +1,6 @@
 // Doğum haritası çarkı (canvas) ve paylaşılabilir görseller (gönderi 1080×1350, hikâye 1080×1920).
-import { SIGNS, PLANETS } from "./zodiac.js?v=9";
-import { signOf, degIn, norm } from "./ephem.js?v=9";
+import { SIGNS, PLANETS } from "./zodiac.js?v=10";
+import { signOf, degIn, norm } from "./ephem.js?v=10";
 
 const GLYPH_FONT = "'Segoe UI Symbol','Noto Sans Symbols 2','Apple Symbols',sans-serif";
 const ASPECT_COLOR = { sext: "#6fd3ff", trine: "#6fd3ff", square: "#ff6b7a", opp: "#ff6b7a" };

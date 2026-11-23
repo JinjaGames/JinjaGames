@@ -1,9 +1,9 @@
 // Haftalık ve aylık yorum sayfası (hangisi olduğu bölümün data-period değerinden okunur).
-import * as E from "../ephem.js?v=9";
-import { SIGNS } from "../zodiac.js?v=9";
-import { $, $$, esc, store, SLUGS, signBySlug, mySign, saved, computeChart } from "../common.js?v=9";
-import { shareBar } from "../card.js?v=9";
-import { loadForecast, secNav } from "./ui.js?v=9";
+import * as E from "../ephem.js?v=10";
+import { SIGNS } from "../zodiac.js?v=10";
+import { $, $$, esc, store, SLUGS, signBySlug, mySign, saved, computeChart } from "../common.js?v=10";
+import { shareBar } from "../card.js?v=10";
+import { loadForecast, secNav } from "./ui.js?v=10";
 
 const period = $("[data-period]").dataset.period; // week | month
 const isWeek = period === "week";

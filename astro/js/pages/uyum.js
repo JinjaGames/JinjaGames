@@ -1,12 +1,13 @@
 // Uyum sayfası: iki burç ya da iki kayıtlı harita; ayrıntılı bölümler ve harita karşılaştırması.
-import * as E from "../ephem.js?v=9";
-import { SIGNS, PLANETS, MATCH } from "../zodiac.js?v=9";
-import { PROFILE, ELEMENT_PAIR, MOD_PAIR, REL } from "../readings.js?v=9";
-import { $, esc, SLUGS, signBySlug, saved, computeChart, combo } from "../common.js?v=9";
-import { shareBar } from "../card.js?v=9";
-import { MOON_LOVE, LEARN, SPEND, HOME_STYLE } from "../readings2.js?v=9";
-import { TIP } from "../forecast-texts.js?v=9";
-import { secNav } from "./ui.js?v=9";
+import * as E from "../ephem.js?v=10";
+import { SIGNS, PLANETS, MATCH } from "../zodiac.js?v=10";
+import { PROFILE, ELEMENT_PAIR, MOD_PAIR, REL } from "../readings.js?v=10";
+import { $, $$, esc, SLUGS, signBySlug, saved, computeChart, combo } from "../common.js?v=10";
+import { mountCharts } from "./uyumHarita.js?v=10";
+import { shareBar } from "../card.js?v=10";
+import { MOON_LOVE, LEARN, SPEND, HOME_STYLE } from "../readings2.js?v=10";
+import { TIP } from "../forecast-texts.js?v=10";
+import { secNav } from "./ui.js?v=10";
 
 const EL_ORDER = ["Ateş", "Toprak", "Hava", "Su"], MOD_ORDER = ["Öncü", "Sabit", "Değişken"];
 const pairKey = (a, b, order) => [a, b].sort((x, y) => order.indexOf(x) - order.indexOf(y)).join("-");
@@ -98,3 +99,13 @@ function draw() {
   });
 }
 draw();
+
+// Burçlarla / Doğum haritalarıyla
+function setMode(m) {
+  $$("[data-mode]").forEach((b) => b.setAttribute("aria-selected", String(b.dataset.mode === m)));
+  $("#signMode").hidden = m !== "signs";
+  $("#chartMode").hidden = m !== "charts";
+  if (m === "charts") { mountCharts(); history.replaceState(null, "", "?mode=charts"); } else draw();
+}
+$$("[data-mode]").forEach((b) => b.addEventListener("click", () => setMode(b.dataset.mode)));
+if (q.get("mode") === "charts") setMode("charts");

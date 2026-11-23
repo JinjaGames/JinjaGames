@@ -403,3 +403,25 @@ html { scroll-padding-top: 128px; }
 .toTop.show { opacity: 1; transform: none; pointer-events: auto; }
 .toTop:hover { background: #2a1f5c; }
 .mLong { margin-top: 18px; }
+
+/* ---- uyum: burçlarla / doğum haritalarıyla */
+.modeSeg { display: flex; width: min(100%, 460px); margin: 0 auto 22px; padding: 5px; border-radius: 999px; background: #ffffff0a; border: 1px solid var(--line); }
+.modeSeg button { flex: 1; min-height: 44px; border-radius: 999px; font-weight: 700; font-size: 15px; color: var(--ink2); transition: background .2s, color .2s; }
+.modeSeg button[aria-selected="true"] { background: linear-gradient(90deg, #ffd98a, #ff9fd0); color: #22103f; }
+.people { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+.person { padding: 22px; display: grid; gap: 14px; align-content: start; min-width: 0; }
+.person h3 { margin: 0; }
+.savedPick { display: grid; gap: 8px; }
+.savedPick > small { color: var(--muted); font-size: 13.5px; }
+.savedPick > div { display: flex; flex-wrap: wrap; gap: 6px; }
+.savedPick .chip { border-radius: 999px; border: 1px solid #ffffff22; background: #ffffff08; }
+.savedPick .chip.on { border-color: var(--gold); background: #f5c66b1f; color: var(--gold); }
+.tzLine { font-size: 13.5px; color: var(--muted); margin: -4px 0 0; }
+.chk.keep { white-space: normal; }
+@media (max-width: 760px) { .people { grid-template-columns: 1fr; } .person { padding: 18px; } }
+.cMatch { margin-top: 26px; }
+.bigThree { display: grid; gap: 4px; font-size: 14.5px; color: var(--ink2); }
+.bigThree b { font-weight: 700; }
+.band { font: 600 13px var(--sans); color: var(--gold); margin-left: 8px; padding: 3px 10px; border-radius: 999px; background: #f5c66b1a; vertical-align: 4px; white-space: nowrap; }
+.fcSec h4 { font: 700 16px var(--sans); margin: 16px 0 10px; color: #fff; }
+.fcSec .asp p small { display: block; margin: 2px 0 4px; }

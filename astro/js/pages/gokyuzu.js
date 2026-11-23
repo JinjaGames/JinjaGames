@@ -1,8 +1,8 @@
-import { $, esc } from "../common.js?v=9";
-import { SIGNS, PLANETS } from "../zodiac.js?v=9";
-import * as E from "../ephem.js?v=9";
-import { shareBar } from "../card.js?v=9";
-import { mountSky, nowHtml, loadForecast, phaseName } from "./ui.js?v=9";
+import { $, esc } from "../common.js?v=10";
+import { SIGNS, PLANETS } from "../zodiac.js?v=10";
+import * as E from "../ephem.js?v=10";
+import { shareBar } from "../card.js?v=10";
+import { mountSky, nowHtml, loadForecast, phaseName } from "./ui.js?v=10";
 
 const now = nowHtml();
 $("#todayTitle").textContent = now.title;

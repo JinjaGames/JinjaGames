@@ -3,7 +3,7 @@
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent / "astro"
-V = "9"
+V = "10"
 NAV = [("", "Ana sayfa"), ("chart/", "Doğum haritası"), ("weekly/", "Haftalık"), ("monthly/", "Aylık"), ("compatibility/", "Uyum"), ("signs/", "Burçlar"), ("sky/", "Gökyüzü")]
 
 NOTES = """
@@ -126,13 +126,24 @@ PAGES = {
     desc="İki burcun aşkta, arkadaşlıkta ve işte nasıl anlaştığını öğren. Kayıtlı doğum haritalarınla Venüs, Mars ve Ay karşılaştırması.",
     body=f"""
   <section class="sec first">
-    <div class="secHead"><span class="eyebrow">Uyum</span><h1 class="h2">İkiniz nasıl anlaşırsınız?</h1><p>İki burç seç ya da kayıtlı doğum haritalarından birini kullan. Haritalarla bakınca Venüs, Mars ve Ay da işin içine girer.</p></div>
+    <div class="secHead"><span class="eyebrow">Uyum</span><h1 class="h2">İkiniz nasıl anlaşırsınız?</h1><p>Hızlıca iki burca bak ya da iki kişinin doğum haritasını karşılaştır. Haritalarla bakınca Ay, Venüs, Mars ve yükselen de işin içine girer.</p></div>
+    <div class="modeSeg" role="tablist" aria-label="Uyum türü"><button type="button" role="tab" data-mode="signs" aria-selected="true">Burçlarla</button><button type="button" role="tab" data-mode="charts" aria-selected="false">Doğum haritalarıyla</button></div>
+    <div id="signMode">
     <div class="match glass">
       <div class="mSide"><span>Sen</span><div id="m1"></div></div>
       <div class="mScore"><svg viewBox="0 0 120 120"><circle cx="60" cy="60" r="52"/><circle class="arc" id="mArc" cx="60" cy="60" r="52" pathLength="100"/></svg><b id="mNum">0</b><small>%</small></div>
       <div class="mSide"><span>O</span><div id="m2"></div></div>
     </div>
     <div id="mDetail"></div>
+    </div>
+    <div id="chartMode" hidden>
+      <div class="people">
+        <div class="person glass" id="p1"></div>
+        <div class="person glass" id="p2"></div>
+      </div>
+      <p class="more"><button type="button" class="btn gold big" id="cGo">Uyumumuzu hesapla</button></p>
+      <div id="cDetail"></div>
+    </div>
   </section>
   <section class="sec">{NOTES}</section>"""),
 

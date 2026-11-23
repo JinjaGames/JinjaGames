@@ -509,13 +509,13 @@ function renderHome() {
 }
 
 // ---------- ana sayfa plağı: sürükleyip çevir, bırakınca ivmeyle döner ----------
-let vinylRAF = 0;
+let vinylRAF = 0, vinylAngle = 0;
 function initVinyl() {
   cancelAnimationFrame(vinylRAF);
   const stage = $("#hmStage"), disc = $("#hmVinyl"), label = $("#hmLabel");
   if (!stage || !disc) return;
   const still = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-  let angle = 0, speed = still ? 0 : 0.9, base = still ? 0 : 0.9, drag = null, moved = 0;
+  let angle = vinylAngle, speed = still ? 0 : 0.9, base = still ? 0 : 0.9, drag = null, moved = 0;
   const center = () => { const r = disc.getBoundingClientRect(); return [r.left + r.width / 2, r.top + r.height / 2]; };
   const at = (e) => { const [cx, cy] = center(); return (Math.atan2(e.clientY - cy, e.clientX - cx) * 180) / Math.PI; };
   const onDown = (e) => {
@@ -555,10 +555,13 @@ function initVinyl() {
     if (!disc.isConnected) return;
     if (!drag) speed += (base - speed) * 0.02;
     angle += speed;
+    vinylAngle = angle % 360;
     disc.style.transform = `rotate(${angle}deg)`;
     if (label) label.style.setProperty("--r", `${angle}deg`);
     vinylRAF = requestAnimationFrame(tick);
   };
+  disc.style.transform = `rotate(${angle}deg)`;
+  if (label) label.style.setProperty("--r", `${angle}deg`);
   vinylRAF = requestAnimationFrame(tick);
 }
 
@@ -1858,8 +1861,8 @@ function boot() {
   if (tab === "senin" && customLists().length) ui.genre = "Senin";
   if (tab) history.replaceState(null, "", location.pathname);
   loadCommunity();
-  loadPresetPictures().then(() => {
-    if (screen === "home" && !mode) renderHome();
+  loadPresetPictures().then((changed) => {
+    if (changed && screen === "home" && !mode) renderHome();
   });
   const saved = store.get("jqSession", null, sessionStorage);
   const invite = ((new URLSearchParams(location.search).get("room") || new URLSearchParams(location.search).get("oda")) || "").toUpperCase();
