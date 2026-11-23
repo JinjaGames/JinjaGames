@@ -2,7 +2,7 @@
 import * as E from "../ephem.js";
 import { SIGNS } from "../zodiac.js";
 import { $, $$, esc, store, SLUGS, signBySlug, mySign, saved, computeChart, shareLink } from "../common.js";
-import { loadForecast } from "./_ui.js";
+import { loadForecast } from "./ui.js";
 
 const period = $("[data-period]").dataset.period; // week | month
 let sel = signBySlug(new URLSearchParams(location.search).get("sign")) ?? mySign();

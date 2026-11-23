@@ -6,7 +6,7 @@ import { MOON_HOME, HOME_STYLE, MOON_CARE, H12_SIGN, LEARN, H9_SIGN, H6_SIGN, SP
 import { SUN_WEEK, VENUS_LOVE, MARS_WORK, JUPITER_LUCK, TOPIC } from "../forecast-texts.js";
 import { $, $$, esc, toast, saved, keepChart, computeChart, lineOf, degTxt, ORDER, placePicker, shareImage, downloadBlob, MONTHS } from "../common.js";
 import { drawWheel, renderCard } from "../wheel.js";
-import { mountSky } from "./_ui.js";
+import { mountSky } from "./ui.js";
 
 let sky = null, current = null, cat = "ozet", view = "3d";
 mountSky((s) => { sky = s; if (current) paintSky(); });

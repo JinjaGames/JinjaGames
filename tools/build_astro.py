@@ -3,7 +3,7 @@
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent / "astro"
-V = "5"
+V = "6"
 NAV = [("", "Ana sayfa"), ("chart/", "Doğum haritası"), ("weekly/", "Haftalık"), ("monthly/", "Aylık"), ("compatibility/", "Uyum"), ("signs/", "Burçlar"), ("sky/", "Gökyüzü")]
 
 NOTES = """

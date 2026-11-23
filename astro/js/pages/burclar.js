@@ -2,7 +2,7 @@
 import { SIGNS, PLANETS } from "../zodiac.js";
 import { PROFILE } from "../readings.js";
 import { $, esc, SLUGS, signBySlug, mySign, shareLink } from "../common.js";
-import { signGridHtml, loadForecast } from "./_ui.js";
+import { signGridHtml, loadForecast } from "./ui.js";
 
 const i = signBySlug(new URLSearchParams(location.search).get("sign")) ?? mySign();
 const s = SIGNS[i], p = PROFILE[i];
