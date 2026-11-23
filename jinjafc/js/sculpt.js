@@ -1,5 +1,5 @@
 // EA SPORTS FC 27 oyuncu oluşturucu, Sculpt > Shape menüsünün yapısı.
-// Kaynak: oyun içi ekran kayıtları (Clubs / Create Your Pro). Adlar oyundaki İngilizce hâliyle.
+// Kaynak: oyun içi ekran kayıtları (Clubs / Create Your Pro; Haaland, LeBron James, Neymar, Pessi ve Sophie Rain yüz videoları). Adlar oyundaki İngilizce hâliyle.
 // Her kaydırıcı 0-100; çift yönlüler (Narrow–Widen gibi) 50'de nötr, "Neutral–X" olanlar 0'da nötr.
 // Not: Weight ve Definition sekmelerinin içeriği bu kaynakta görünmüyor; bu yüzden listede yok.
 
@@ -31,11 +31,11 @@ export const SCULPT = {
     Eyes: { "Eye Corner Inner": box("NW", "DU", "LS"), "Eye Corner Outer": box("NW", "DU", "LS"), "Upper Inner Eyelid": box("NW", "DU", "LS"), "Eyelid Upper Outer": box("NW", "DU", "LS"),
       "Eyelid Fold Inner": box("NW", "DU", "BF", "LS"), "Eyelid Fold Center": box("NW", "DU", "BF", "LS"), "Eyelid Fold Outer": box("NW", "DU", "BF", "LS"),
       "Eyelid Lower Inner": box("NW", "DU", "LS"), "Eyelid Lower Center": box("NW", "DU", "LS"), "Eyelid Lower Outer": box("NW", "DU", "LS") },
-    Ears: { Earlobe: box("NW", "DU", "BF"), "Ear Tragus": box("NW", "DU", "BF"), "Ear Outside Top": box("NW", "DU", "BF"), "Ear Outside Bottom": box("NW", "DU", "BF"), "Ear Inside Top": box("NW", "DU", "BF"), "Ear Inside Bottom": box("NW", "DU", "BF") },
+    Ears: { Earlobe: box("NW", "DU", "BF"), "Ear Tragus": box("NW", "DU", "BF"), "Ear Outside Top": box("NW", "DU", "BF"), "Ear Outside Middle": box("NW", "DU", "BF"), "Ear Outside Bottom": box("NW", "DU", "BF"), "Ear Inside Top": box("NW", "DU", "BF"), "Ear Inside Bottom": box("NW", "DU", "BF") },
     Nose: { "Upper Nose Tip": box("NW", "DU", "BF", "RA", "SH"), "Nose Tip Upper": box("NW", "DU", "BF", "RA", "SH"), "Nose Tip Under": box("NW", "DU", "BF", "RA", "SH"), "Nose Tip Lower": box("NW", "DU", "BF", "RA", "SH"),
       "Nostril Upper": box("NW", "DU", "BF", "RA"), "Nostril Lower": box("NW", "DU", "BF", "RA"), "Nostril Outside": box("NW", "DU", "BF", "RA"), "Nostril Outside Center": box("NW", "DU", "BF", "RA") },
-    Cheeks: { Cheeks: box("DU", "LM"), "Upper Inside Cheeks": box("LM"), "Lower Inside Cheeks": box("NL"), "Lower Outside Cheeks": box("NL") },
-    Mouth: { "Mouth Corners": box("NW", "DU", "BF", "RA"), "Lip Gap Sides": box("NW", "DU", "BF", "RA"), Philtrum: box("NW", "DU", "BF", "RA", "SH"),
+    Cheeks: { Cheeks: box("DU", "LM"), "Upper Inside Cheeks": box("DU", "LM"), "Upper Outside Cheeks": box("LM"), "Inside Cheeks": box("LM"), "Lower Inside Cheeks": box("NL"), "Lower Outside Cheeks": box("NL") },
+    Mouth: { "Mouth Corners": box("NW", "DU", "BF", "RA"), "Mouth Corner Grooves": box("NL"), "Lip Gap Center": box("NW", "DU", "BF", "RA"), "Lip Gap Sides": box("NW", "DU", "BF", "RA"), Philtrum: box("NW", "DU", "BF", "RA", "SH"),
       "Upper Lip Fullness": box("NW", "DU", "BF", "RA"), "Upper Lip Top Center": box("NW", "DU", "BF", "RA", "SH"), "Upper Lip Top Sides": box("NW", "DU", "BF", "RA"), "Upper Lip Bottom Center": box("NW", "DU", "BF", "RA", "SH"), "Upper Lip Bottom Sides": box("NW", "DU", "BF", "RA"),
       "Lower Lip Fullness": box("NW", "DU", "BF", "RA"), "Lower Lip Top Center": box("NW", "DU", "BF", "RA", "SH"), "Lower Lip Top Sides": box("NW", "DU", "BF", "RA"), "Lower Lip Bottom Center": box("NW", "DU", "BF", "RA", "SH"), "Lower Lip Bottom Sides": box("NW", "DU", "BF", "RA") },
     Chin: { "Chin Sides": box("NL"), "Chin Cleft": box("DU", "SH") },
@@ -48,8 +48,8 @@ export const SCULPT = {
     Ears: { "Ear Outside Top": box("LM"), "Ear Outside Bottom": box("LM") },
     Nose: { Nose: box("LM") },
     Cheeks: { "Upper Cheeks": box("DU", "LM"), "Lower Cheeks": box("DU", "LM"), Jowl: box("DU", "LM"), "Cheeks Inside": box("DU", "LM"), Temples: box("DU", "LM") },
-    Mouth: { "Lower Lip": box("DU", "LM"), "Mouth Sides": box("DU", "LM") },
-    Chin: { Chin: box("DU", "LM") },
+    Mouth: { "Upper Lip": box("DU", "LM"), "Lower Lip": box("DU", "LM"), "Mouth Sides": box("DU", "LM") },
+    Chin: { Chin: box("DU", "LM"), "Under Chin": box("DU", "LM") },
     Jaw: { Jaw: box("DU", "LM") },
   },
 };

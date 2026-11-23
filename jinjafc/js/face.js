@@ -71,29 +71,35 @@ const BASE = measures(CAN); // kanonik yüz (yalnızca referans)
 
 // Ölçüden kaydırıcıya: oran ortalamadan %k sapınca değer gain*k kadar kayar
 // [katman, bölge, alt bölge, kaydırıcı türü, ölçü, yön(+1 / -1), kazanç, açıklama]
+// Ölçüden kaydırıcıya: değer = başlangıç + katsayı × sapma (sapma = ortalamadan kaç standart sapma uzakta).
+// Başlangıç ve katsayılar, FC 27 yüz videolarında (Haaland, LeBron James, Neymar, Pessi) oyundaki bitmiş yüzlerin
+// ölçüleriyle içerik üreticisinin seçtiği gerçek değerler karşılaştırılarak ayarlandı. Örneğin üreticiler kaşları
+// neredeyse hep 0-20 arasında tutuyor; çene keskinliğini Jaw değil Chin › Round/Angular ile veriyor; burun genişliğini
+// Flesh › Nostril Outside Center ile ayarlıyor.
+// [katman, bölge, alt bölge, kaydırıcı türü, ölçü, başlangıç, katsayı, açıklama]
 const RULES = [
-  ["Skeletal", "Head", "Skull", "NW", "templeW", 1, 1, "Şakak hizasında kafa genişliği"],
-  ["Skeletal", "Forehead", "Upper Forehead", "NW", "foreheadW", 1, 1, "Alnın üst kısmının genişliği"],
-  ["Skeletal", "Forehead", "Lower Forehead", "DU", "foreheadH", 1, 1, "Alın yüksekliği (kaşlarla saç çizgisi arası)"],
-  ["Skeletal", "Brow Ridge", "Eyebrows", "DU", "browGap", 1, 1, "Kaşların gözden yüksekliği"],
-  ["Skeletal", "Eyes", "Eyes", "NW", "eyeGap", 1, 1, "İki göz arası mesafe"],
-  ["Skeletal", "Eyes", "Eyes", "DU", "eyeY", -1, 1, "Gözlerin yüzdeki yüksekliği"],
-  ["Skeletal", "Eyes", "Eyes", "LS", "eyeW", -1, 1, "Göz büyüklüğü"],
-  ["Flesh", "Eyes", "Eye Corner Outer", "DU", "eyeTilt", 1, 1, "Göz dış köşesinin eğimi"],
-  ["Flesh", "Eyes", "Eyelid Fold Center", "DU", "eyeOpen", 1, 1, "Gözün açıklığı (üst kapak)"],
-  ["Skeletal", "Nose", "Nose", "NW", "noseW", 1, 1, "Burun kanatlarının genişliği"],
-  ["Skeletal", "Nose", "Nose", "DU", "noseL", -1, 1, "Burun uzunluğu"],
-  ["Skeletal", "Cheeks", "Cheeks", "NW", "faceRatio", -1, 1, "Elmacık kemiği genişliği (yüzün eni/boyu)"],
-  ["Fat", "Cheeks", "Lower Cheeks", "LM", "lowerCheekW", 1, 1, "Alt yanak dolgunluğu"],
-  ["Skeletal", "Mouth", "Mouth", "NW", "mouthW", 1, 1, "Ağız genişliği"],
-  ["Skeletal", "Mouth", "Mouth", "DU", "mouthY", -1, 1, "Ağzın burun ile çene arasındaki yeri"],
-  ["Flesh", "Mouth", "Upper Lip Top Center", "DU", "upperLip", 1, 1, "Üst dudak kalınlığı"],
-  ["Flesh", "Mouth", "Lower Lip Bottom Center", "DU", "lowerLip", -1, 1, "Alt dudak kalınlığı"],
-  ["Flesh", "Mouth", "Philtrum", "DU", "philtrum", -1, 1, "Burun ile üst dudak arası mesafe"],
-  ["Skeletal", "Chin", "Chin", "NW", "chinW", 1, 1, "Çene ucunun genişliği"],
-  ["Skeletal", "Chin", "Chin", "DU", "chinH", -1, 1, "Çene ucunun uzunluğu"],
-  ["Skeletal", "Jaw", "Jaw", "NW", "jawW", 1, 1, "Çene hattının genişliği"],
-  ["Skeletal", "Jaw", "Jaw", "RA", "jawAng", -1, 1, "Çene köşesinin keskinliği"],
+  ["Skeletal", "Head", "Skull", "NW", "templeW", 30, 20, "Şakak hizasında kafa genişliği"],
+  ["Skeletal", "Forehead", "Upper Forehead", "NW", "foreheadW", 40, 15, "Alnın üst kısmının genişliği"],
+  ["Skeletal", "Forehead", "Lower Forehead", "DU", "foreheadH", 50, 8, "Alın yüksekliği (kaşlarla saç çizgisi arası)"],
+  ["Skeletal", "Brow Ridge", "Eyebrows", "DU", "browGap", 15, 10, "Kaşların gözden yüksekliği"],
+  ["Skeletal", "Eyes", "Eyes", "NW", "eyeGap", 45, 22, "İki göz arası mesafe"],
+  ["Skeletal", "Eyes", "Eyes", "DU", "eyeY", 60, -8, "Gözlerin yüzdeki yüksekliği"],
+  ["Skeletal", "Eyes", "Eyes", "LS", "eyeW", 55, -12, "Göz büyüklüğü (küçük göz = Smaller tarafı)"],
+  ["Flesh", "Eyes", "Eye Corner Outer", "DU", "eyeTilt", 50, 12, "Göz dış köşesinin eğimi"],
+  ["Flesh", "Eyes", "Eyelid Fold Center", "DU", "eyeOpen", 55, 10, "Gözün açıklığı (üst kapak)"],
+  ["Flesh", "Nose", "Nostril Outside Center", "NW", "noseW", 60, 18, "Burun kanatlarının genişliği"],
+  ["Skeletal", "Nose", "Nose", "DU", "noseL", 50, -12, "Burun uzunluğu"],
+  ["Skeletal", "Cheeks", "Cheeks", "NW", "faceRatio", 45, -22, "Elmacık kemiği genişliği (yüzün eni/boyu)"],
+  ["Fat", "Cheeks", "Lower Cheeks", "LM", "lowerCheekW", 55, 15, "Alt yanak dolgunluğu"],
+  ["Skeletal", "Mouth", "Mouth", "NW", "mouthW", 55, 12, "Ağız genişliği"],
+  ["Skeletal", "Mouth", "Mouth", "DU", "mouthY", 35, -10, "Ağzın burun ile çene arasındaki yeri"],
+  ["Flesh", "Mouth", "Upper Lip Top Center", "DU", "upperLip", 20, 10, "Üst dudak kalınlığı"],
+  ["Flesh", "Mouth", "Lower Lip Bottom Center", "DU", "lowerLip", 70, -10, "Alt dudak kalınlığı"],
+  ["Flesh", "Mouth", "Philtrum", "DU", "philtrum", 70, -10, "Burun ile üst dudak arası mesafe"],
+  ["Skeletal", "Chin", "Chin", "NW", "chinW", 40, 20, "Çene ucunun genişliği"],
+  ["Skeletal", "Chin", "Chin", "DU", "chinH", 45, -10, "Çene ucunun uzunluğu"],
+  ["Skeletal", "Chin", "Chin", "RA", "jawAng", 70, -20, "Çene hattının keskinliği (keskin çene = Angular)"],
+  ["Skeletal", "Jaw", "Jaw", "NW", "jawW", 30, 15, "Çene hattının genişliği"],
 ];
 
 // Kalibrasyon: aynı ölçüler, gerçek olmayan (yapay zekâ ile üretilmiş) 24 önden yüz fotoğrafında ölçüldü.
@@ -102,17 +108,15 @@ const CALIB = {
   faceRatio: [1.1894, 0.051], templeW: [0.8423, 0.0235], foreheadW: [0.4964, 0.0173], foreheadH: [0.1799, 0.0106], jawW: [0.8015, 0.0181],
   jawAng: [135.72, 2.77], chinW: [0.3245, 0.0102], chinH: [0.2015, 0.0201], lowerCheekW: [0.8936, 0.0158], eyeGap: [0.2407, 0.01],
   eyeW: [0.1963, 0.0072], eyeOpen: [0.2915, 0.0291], eyeY: [0.3136, 0.0125], eyeTilt: [0.016, 0.0057], browGap: [0.0999, 0.0128],
-  noseW: [0.2861, 0.013], noseL: [0.2944, 0.0093], mouthW: [0.41, 0.03], mouthY: [0.2702, 0.0371], upperLip: [0.0295, 0.0061],
-  lowerLip: [0.0571, 0.0058], philtrum: [0.08, 0.0143],
+  noseW: [0.2861, 0.013], noseL: [0.2944, 0.0093], mouthW: [0.41, 0.03], mouthY: [0.31, 0.035], upperLip: [0.04, 0.007],
+  lowerLip: [0.07, 0.008], philtrum: [0.08, 0.0143],
 };
 /** Ortalamadan kaç standart sapma uzakta (uç değerler ±2,5'te kesilir) */
 export const zOf = (m, key) => clamp((m[key] - CALIB[key][0]) / CALIB[key][1], -2.5, 2.5);
 // bir standart sapma ≈ 18 puan; kazanç, ölçünün o kaydırıcıyı ne kadar güçlü etkilediğini ayarlar
 function sliderValue(m, rule) {
-  const [, , , type, key, dir, gain] = rule;
-  const neutral = S[type][2];
-  const raw = neutral + dir * gain * 18 * zOf(m, key);
-  return clamp(round5(raw), neutral === 0 ? 0 : 10, 90);
+  const [, , , , key, start, k] = rule;
+  return clamp(round5(start + k * zOf(m, key)), 0, 100);
 }
 
 // --- renk örnekleme ---

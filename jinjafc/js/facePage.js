@@ -1,5 +1,5 @@
 // JinjaFC · Pro Clubs yüzü sayfası
-import { analyze, loadModel, grouped, EYE_NAMES, HAIR_NAMES } from "./face.js";
+import { analyze, loadModel, grouped, EYE_NAMES, HAIR_NAMES } from "./face.js?v=2";
 import { headPreview } from "./head3d.js";
 import { toast, shareOrDownload, esc } from "./util.js";
 
