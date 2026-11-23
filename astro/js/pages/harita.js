@@ -1,12 +1,12 @@
 // Doğum haritası sayfası: form, sonuçlar, 3D/çark görünümü, kategori kategori okuma, kaydet ve paylaş.
-import * as E from "../ephem.js?v=7";
-import { SIGNS, PLANETS, HOUSES, SUN, MOON, ASC, MERCURY, VENUS, MARS, ASPECT_TXT } from "../zodiac.js?v=7";
-import { PROFILE, MC_SIGN, H2_SIGN, H7_SIGN, H4_SIGN, PLANET_DO, HOUSE_AREA } from "../readings.js?v=7";
-import { MOON_HOME, HOME_STYLE, MOON_CARE, H12_SIGN, LEARN, H9_SIGN, H6_SIGN, SPEND, MOON_LOVE } from "../readings2.js?v=7";
-import { SUN_WEEK, VENUS_LOVE, MARS_WORK, JUPITER_LUCK, TOPIC } from "../forecast-texts.js?v=7";
-import { $, $$, esc, toast, saved, keepChart, computeChart, lineOf, degTxt, ORDER, placePicker, shareImage, downloadBlob, MONTHS } from "../common.js?v=7";
-import { drawWheel, renderCard } from "../wheel.js?v=7";
-import { mountSky } from "./ui.js?v=7";
+import * as E from "../ephem.js?v=9";
+import { SIGNS, PLANETS, HOUSES, SUN, MOON, ASC, MERCURY, VENUS, MARS, ASPECT_TXT } from "../zodiac.js?v=9";
+import { PROFILE, MC_SIGN, H2_SIGN, H7_SIGN, H4_SIGN, PLANET_DO, HOUSE_AREA } from "../readings.js?v=9";
+import { MOON_HOME, HOME_STYLE, MOON_CARE, H12_SIGN, LEARN, H9_SIGN, H6_SIGN, SPEND, MOON_LOVE } from "../readings2.js?v=9";
+import { SUN_WEEK, VENUS_LOVE, MARS_WORK, JUPITER_LUCK, TOPIC } from "../forecast-texts.js?v=9";
+import { $, $$, esc, toast, saved, keepChart, computeChart, lineOf, degTxt, ORDER, placePicker, shareImage, downloadBlob, MONTHS } from "../common.js?v=9";
+import { drawWheel, renderCard } from "../wheel.js?v=9";
+import { mountSky } from "./ui.js?v=9";
 
 let sky = null, current = null, cat = "ozet", view = "3d";
 mountSky((s) => { sky = s; if (current) paintSky(); });
@@ -98,16 +98,20 @@ const CATS = [["ozet", "Özet"], ["kisilik", "Kişilik"], ["duygular", "Duygular
 function tabs() {
   $("#catTabs").innerHTML = CATS.map(([id, t]) => `<button type="button" role="tab" data-cat="${id}" aria-selected="${id === cat}">${t}</button>`).join("");
 }
-$("#catTabs").addEventListener("click", (e) => {
-  const b = e.target.closest("[data-cat]");
-  if (!b) return;
-  cat = b.dataset.cat;
+// sekme değiştir: seçili sekmeyi ortala, yeni yazının başı görünmüyorsa oraya kaydır
+function selectCat(id) {
+  cat = id;
   tabs();
   panel();
-  b.scrollIntoView({ inline: "center", block: "nearest", behavior: "smooth" });
-  $("#catTabs [aria-selected=true]")?.focus({ preventScroll: true });
-});
+  const t = $("#catTabs"), b = $("#catTabs [aria-selected=true]");
+  t.scrollTo({ left: b.offsetLeft - t.clientWidth / 2 + b.clientWidth / 2, behavior: "smooth" });
+  const top = $("#catPanel").getBoundingClientRect().top, bar = t.getBoundingClientRect().bottom;
+  if (top < bar - 2) scrollBy({ top: top - bar - 8, behavior: "smooth" });
+}
+$("#catTabs").addEventListener("click", (e) => { const b = e.target.closest("[data-cat]"); if (b) selectCat(b.dataset.cat); });
+$("#catPanel").addEventListener("click", (e) => { const b = e.target.closest("[data-next]"); if (b) selectCat(b.dataset.next); });
 const P = (b) => `<span class="pgl" style="color:${PLANETS[b].c}">${PLANETS[b].g}</span>`;
+const G = (i) => `<span class="pgl" style="color:${SIGNS[i].c}">${SIGNS[i].g}</span>`;
 const sec = (title, html) => `<section class="rd"><h3>${title}</h3>${html}</section>`;
 // saat yoksa evler güneş burcuna göre (güneş evi) hesaplanır
 const houseOf = (b) => current.info.noTime ? ((E.signOf(current.chart.pos[b].lon) - E.signOf(current.chart.pos.sun.lon) + 12) % 12) + 1 : current.chart.pos[b].house;
@@ -140,8 +144,8 @@ function panel() {
       sec("Öne çıkan açılar", aspList(c.aspects.filter((a) => ORDER.indexOf(a.a) < 7 && ORDER.indexOf(a.b) < 7).slice(0, 5)));
   } else if (cat === "kisilik") {
     const ruler = SIGNS[as].ruler;
-    html = sec(`${SIGNS[s].g} Güneş ${SIGNS[s].n}`, `<p>${SUN[s]}</p><p>${PROFILE[s].intro}</p><div class="chips">${PROFILE[s].plus.map((x) => `<span class="ok">${x}</span>`).join("")}${PROFILE[s].minus.map((x) => `<span class="no">${x}</span>`).join("")}</div>`) +
-      (info.noTime ? "" : sec(`↑ Yükselen ${SIGNS[as].n}`, `<p>${ASC[as]}</p><p>Yükselen burcunun yöneticisi ${PLANETS[ruler].n}; haritanda ${S(c.pos[ruler].lon).n} burcunda ve ${houseOf(ruler)}. evinde. Bu, hayatının en çok ${HOUSE_AREA[houseOf(ruler)]} etrafında şekillendiğini gösterir.</p>`)) +
+    html = sec(`${G(s)} Güneş ${SIGNS[s].n}`, `<p>${SUN[s]}</p><p>${PROFILE[s].intro}</p><div class="chips">${PROFILE[s].plus.map((x) => `<span class="ok">${x}</span>`).join("")}${PROFILE[s].minus.map((x) => `<span class="no">${x}</span>`).join("")}</div>`) +
+      (info.noTime ? "" : sec(`${G(as)} Yükselen ${SIGNS[as].n}`, `<p>${ASC[as]}</p><p>Yükselen burcunun yöneticisi ${PLANETS[ruler].n}; haritanda ${S(c.pos[ruler].lon).n} burcunda ve ${houseOf(ruler)}. evinde. Bu, hayatının en çok ${HOUSE_AREA[houseOf(ruler)]} etrafında şekillendiğini gösterir.</p>`)) +
       sec("Güneşin açıları", aspList(aspFor(["sun"])));
   } else if (cat === "duygular") {
     html = sec(`${P("moon")} Ay ${SIGNS[mo].n}`, `<p>${MOON[mo]}</p><p>Ay ${houseOf("moon")}. evinde: duygusal huzurunu en çok ${HOUSE_AREA[houseOf("moon")]} alanında ararsın.</p>`) +
@@ -161,13 +165,13 @@ function panel() {
       sec("6. ev: günlük işin ve çalışma düzenin", `<p>${H6_SIGN[cuspSign(6)]}</p>${pList(6)}`) +
       sec(`${P("saturn")} Satürn: emeğin karşılığı`, `<p>Satürn ${houseOf("saturn")}. evinde, ${S(c.pos.saturn.lon).n} burcunda. ${HOUSE_AREA[houseOf("saturn")]} alanında yavaş ama kalıcı bir başarı inşa edersin; burada sabır en büyük silahın.</p>`) +
       sec(`${P("mars")} Mars: çalışma tarzın`, `<p>${MARS[E.signOf(c.pos.mars.lon)]}</p>`) +
-      sec(`${SIGNS[s].g} Güneş burcunun kariyer eğilimi`, `<p>${PROFILE[s].career}</p>`) + noTimeNote();
+      sec(`${G(s)} Güneş burcunun kariyer eğilimi`, `<p>${PROFILE[s].career}</p>`) + noTimeNote();
   } else if (cat === "para") {
     html = sec("2. ev: para ve değerler", `<p>${H2_SIGN[cuspSign(2)]}</p>${info.noTime ? "" : rulerLine(2, "Para evinin")}${pList(2)}`) +
       sec(`${P("venus")} Venüs ${SIGNS[E.signOf(c.pos.venus.lon)].n}: harcama tarzın`, `<p>${SPEND[E.signOf(c.pos.venus.lon)]}</p>`) +
       sec(`${P("jupiter")} Jüpiter: şansın nerede`, `<p>Jüpiter ${houseOf("jupiter")}. evinde, ${S(c.pos.jupiter.lon).n} burcunda. Bolluk ve fırsatlar en çok ${HOUSE_AREA[houseOf("jupiter")]} alanından gelir.</p>`) +
       sec("8. ev: ortak kaynaklar", `<p>Sekizinci evin ${SIGNS[cuspSign(8)].n} burcunda. Ortak para, yatırım ve başkalarının kaynaklarıyla ilişkin ${SIGNS[cuspSign(8)].kw[0]} bir tavır taşır.</p>${inHouse(8).length ? `<ul class="pl2">${inHouse(8).map(planetLine).join("")}</ul>` : ""}`) +
-      sec(`${SIGNS[s].g} Güneş burcunun para ilişkisi`, `<p>${PROFILE[s].money}</p>`) + noTimeNote();
+      sec(`${G(s)} Güneş burcunun para ilişkisi`, `<p>${PROFILE[s].money}</p>`) + noTimeNote();
   } else if (cat === "zihin") {
     const me = E.signOf(c.pos.mercury.lon);
     html = sec(`${P("mercury")} Merkür ${SIGNS[me].n}`, `<p>${MERCURY[me]}</p><p>Merkür ${houseOf("mercury")}. evinde: zihnin en çok ${HOUSE_AREA[houseOf("mercury")]} ile meşgul.${c.pos.mercury.retro ? " Doğduğunda Merkür geri hareketteydi; düşüncelerini içinde uzun süre olgunlaştırır, sonra konuşursun." : ""}</p>`) +
@@ -178,7 +182,7 @@ function panel() {
   } else if (cat === "aile") {
     html = sec("4. ev: köklerin ve evin", `<p>${H4_SIGN[cuspSign(4)]}</p>${info.noTime ? "" : rulerLine(4, "Ev ve aile evinin")}${pList(4)}`) +
       sec(`${P("moon")} Ay ${SIGNS[mo].n}: evde neye ihtiyaç duyarsın`, `<p>${MOON_HOME[mo]}</p>`) +
-      sec(`${SIGNS[s].g} Kurduğun aile`, `<p>${HOME_STYLE[s]}</p>`) +
+      sec(`${G(s)} Kurduğun aile`, `<p>${HOME_STYLE[s]}</p>`) +
       sec(`${P("saturn")} Satürn: aileden gelen sorumluluklar`, `<p>Satürn ${houseOf("saturn")}. evinde. Ailenden öğrendiğin kurallar ve taşıdığın sorumluluklar en çok ${HOUSE_AREA[houseOf("saturn")]} alanında kendini gösterir; burada zamanla olgunlaşır, kendi kurallarını koymayı öğrenirsin.</p>`) +
       sec("Ayın açıları", aspList(aspFor(["moon"])) || "<p>Ayın güçlü bir açısı yok; aile duyguların daha sakin ve kendi hâlinde akar.</p>") + noTimeNote();
   } else if (cat === "buay") {
@@ -188,6 +192,8 @@ function panel() {
       (info.noTime ? "" : sec("Evler", `<ol class="houses">${Array.from({ length: 12 }, (_, i) => i + 1).map((h) => { const sg = SIGNS[cuspSign(h)]; return `<li><b>${h}</b><span style="color:${sg.c}">${sg.g} ${sg.n} ${Math.floor(E.degIn(c.houses.cusps[h]))}°</span><small>${HOUSES[h]}</small><i>${inHouse(h).map(P).join("")}</i></li>`; }).join("")}</ol>`)) +
       sec("Tüm açılar", aspList(c.aspects.slice(0, 12)).replace('class="asp"', 'class="asp all"'));
   }
+  const k = CATS.findIndex((x) => x[0] === cat), prev = CATS[k - 1], next = CATS[k + 1];
+  html += `<nav class="catNext">${prev ? `<button type="button" class="btn glass sm" data-next="${prev[0]}">← ${prev[1]}</button>` : "<span></span>"}${next ? `<button type="button" class="btn gold sm" data-next="${next[0]}">${next[1]} →</button>` : ""}</nav>`;
   $("#catPanel").innerHTML = html;
 }
 // Bu ay sana: şu anki gezegenlerin doğum haritandaki evlere göre yorumu

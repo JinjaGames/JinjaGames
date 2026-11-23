@@ -3,7 +3,7 @@
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent / "astro"
-V = "7"
+V = "9"
 NAV = [("", "Ana sayfa"), ("chart/", "Doğum haritası"), ("weekly/", "Haftalık"), ("monthly/", "Aylık"), ("compatibility/", "Uyum"), ("signs/", "Burçlar"), ("sky/", "Gökyüzü")]
 
 NOTES = """
@@ -152,6 +152,7 @@ PAGES = {
   <section class="sec first">
     <div class="secHead"><span class="eyebrow" id="todayTitle">Bugün</span><h1 class="h2">Gökyüzü şu an</h1><p>Gezegenlerin şu anki yerleri, ayın evresi ve bu dönemin önemli anları.</p></div>
     <div class="viewer glass solo">{SKY_BOX}</div>
+    <div id="skyShare"></div>
     <div class="now" id="nowGrid"></div>
     <div class="twoCol">
       <div class="glass skyNotes"><h3>Bu haftanın gökyüzü</h3><ul id="weekSky"></ul></div>

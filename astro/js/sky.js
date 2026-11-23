@@ -1,7 +1,7 @@
 // 3B gökyüzü: yıldızlar, burç kuşağı, gezegenler ve (doğum haritasında) evler ile açılar.
 // Sürükle: döndür · tekerlek ya da iki parmak: yakınlaştır · gezegene dokun: bilgi.
-import { SIGNS, PLANETS } from "./zodiac.js?v=7";
-import { signOf, degIn } from "./ephem.js?v=7";
+import { SIGNS, PLANETS } from "./zodiac.js?v=9";
+import { signOf, degIn } from "./ephem.js?v=9";
 
 const THREE = window.THREE;
 const RING = 11, PL = 8.2;
@@ -168,19 +168,26 @@ export function createSky(canvas, { onPick } = {}) {
 
   // kamera ve etkileşim
   let yaw = -0.6, pitch = 0.95, dist = 30, tYaw = yaw, tPitch = pitch, tDist = dist, drag = null, auto = true, idleT = 0;
+  // yalnızca ana sayfadaki büyük gökyüzünde sahne yazının arkasından kaydırılır; diğer kutularda ortada durur
+  const hero = !!canvas.closest(".hero");
+  let lastW = 0, lastH = 0, sizeClass = "";
   function resize() {
     const w = canvas.clientWidth, h = canvas.clientHeight;
-    if (!w || !h) return;
-    gl.setSize(w, h, false);
+    if (!w || !h || (w === lastW && h === lastH)) return;
+    lastW = w; lastH = h;
+    gl.setSize(w, h, false); // çizim tamponu kutunun gerçek boyutunda: bulanıklık olmaz
     cam.aspect = w / h;
-    tDist = dist = w < 640 ? 40 : w < 1000 ? 34 : 30;
-    // geniş ekranda sahneyi sağa, dar ekranda yukarı kaydır: soldaki/alttaki yazının arkasında kalmasın
-    if (w >= 900) cam.setViewOffset(w, h, -w * 0.2, 0, w, h);
-    else cam.setViewOffset(w, h, 0, h * 0.16, w, h);
+    const cls = w < 640 ? "s" : w < 1000 ? "m" : "l";
+    if (cls !== sizeClass) { sizeClass = cls; tDist = dist = cls === "s" ? 40 : cls === "m" ? 34 : 30; }
+    if (hero && w >= 900) cam.setViewOffset(w, h, -w * 0.2, 0, w, h);
+    else if (hero) cam.setViewOffset(w, h, 0, h * 0.16, w, h);
+    else cam.clearViewOffset();
     cam.updateProjectionMatrix();
   }
   resize();
   addEventListener("resize", resize);
+  // kutu gizliyken oluşturulup sonradan açılırsa (harita sonucu gibi) boyutu yeniden ölç
+  if ("ResizeObserver" in window) new ResizeObserver(resize).observe(canvas);
   const ray = new THREE.Raycaster(), ndc = new THREE.Vector2();
   function pickAt(e) {
     const r = canvas.getBoundingClientRect();

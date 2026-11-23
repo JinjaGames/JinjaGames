@@ -1,8 +1,12 @@
 // Uyum sayfası: iki burç ya da iki kayıtlı harita; ayrıntılı bölümler ve harita karşılaştırması.
-import * as E from "../ephem.js?v=7";
-import { SIGNS, PLANETS, MATCH } from "../zodiac.js?v=7";
-import { PROFILE, ELEMENT_PAIR, MOD_PAIR, REL } from "../readings.js?v=7";
-import { $, esc, SLUGS, signBySlug, mySign, saved, computeChart, shareLink, combo } from "../common.js?v=7";
+import * as E from "../ephem.js?v=9";
+import { SIGNS, PLANETS, MATCH } from "../zodiac.js?v=9";
+import { PROFILE, ELEMENT_PAIR, MOD_PAIR, REL } from "../readings.js?v=9";
+import { $, esc, SLUGS, signBySlug, saved, computeChart, combo } from "../common.js?v=9";
+import { shareBar } from "../card.js?v=9";
+import { MOON_LOVE, LEARN, SPEND, HOME_STYLE } from "../readings2.js?v=9";
+import { TIP } from "../forecast-texts.js?v=9";
+import { secNav } from "./ui.js?v=9";
 
 const EL_ORDER = ["Ateş", "Toprak", "Hava", "Su"], MOD_ORDER = ["Öncü", "Sabit", "Değişken"];
 const pairKey = (a, b, order) => [a, b].sort((x, y) => order.indexOf(x) - order.indexOf(y)).join("-");
@@ -57,20 +61,40 @@ function draw() {
   history.replaceState(null, "", `?a=${A.id}&b=${B.id}`);
   const first = (t) => t.split(". ").slice(0, 2).join(". ") + (t.split(". ").length > 2 ? "." : "");
   const sub = (k) => Math.max(30, Math.min(98, score + k));
+  const two = (fa, fb) => `<p><b>${sa.n}:</b> ${fa}</p><p><b>${sb.n}:</b> ${fb}</p>`;
+  const low = (t) => t.charAt(0).toLocaleLowerCase("tr") + t.slice(1);
+  const sameEl = sa.el === sb.el, sameMod = sa.mod === sb.mod;
+  const SECS = [
+    ["genel", "Genel uyum", `<p>${M.d}</p><p>${el}</p><p>${sa.n} ${sa.el.toLocaleLowerCase("tr")}, ${sb.n} ${sb.el.toLocaleLowerCase("tr")} grubundan. ${sameEl ? "Aynı elementten oldukları için birbirlerini sözsüz anlarlar; ama aynı zayıflıkları da paylaşırlar." : "Farklı elementlerden geldikleri için birbirlerine eksik olanı tamamlayabilirler; bunun için farkı merak etmek gerekir."}</p>`],
+    ["ask", "Aşkta", `<p>${el}</p>${two(PROFILE[a].love, PROFILE[b].love)}`],
+    ["ihtiyac", "İlişkide ne isterler", `${two(MOON_LOVE[a], MOON_LOVE[b])}<p>Bu ihtiyaçları açıkça konuşmak, tahmin etmeye çalışmaktan her zaman daha iyi sonuç verir.</p>`],
+    ["iletisim", "İletişim ve tartışmalar", `${two(LEARN[a], LEARN[b])}<p>${sameMod ? "İkisi de aynı nitelikte olduğu için tartışmada ikisi de geri adım atmak istemeyebilir; sırayla konuşmak ve konuyu ertesi güne bırakmak işe yarar." : "Nitelikleri farklı; biri harekete geçmek, öteki beklemek isteyebilir. Kararları birlikte bir takvime bağlamak çatışmayı azaltır."}</p>`],
+    ["dost", "Arkadaşlıkta", `<p><b>${sa.n}</b> ${low(PROFILE[a].friend)}</p><p><b>${sb.n}</b> ${low(PROFILE[b].friend)}</p>`],
+    ["is", "İşte ve ortak projelerde", `<p>${mod}</p><p>${sa.n} ${sa.mod.toLocaleLowerCase("tr")}, ${sb.n} ${sb.mod.toLocaleLowerCase("tr")} bir burç; ${sameMod ? "aynı tempoda çalışırlar ama ikisi de aynı rolü isteyebilir." : "iş bölümünü bu farka göre yaparlarsa birbirlerini tamamlarlar."}</p>${two(PROFILE[a].career, PROFILE[b].career)}`],
+    ["para", "Para ve ortak hayat", `${two(SPEND[a], SPEND[b])}<p>Ortak bir bütçe, ikisinin de harcama tarzına alan bırakacak şekilde kurulursa para konusu tartışma değil güven kaynağı olur.</p>`],
+    ["ev", "Ev ve aile hayatı", two(HOME_STYLE[a], HOME_STYLE[b])],
+    ["guc", "Güçlü yanlar ve dikkat", `<p>${R.good}</p><p>${R.hard}</p><div class="pn"><div class="pnCol ok"><small>Destekleyen</small>${[...new Set([...PROFILE[a].plus.slice(0, 3), ...PROFILE[b].plus.slice(0, 3)])].map((x) => `<span>${x}</span>`).join("")}</div><div class="pnCol no"><small>Dikkat</small>${[...new Set([...PROFILE[a].minus.slice(0, 2), ...PROFILE[b].minus.slice(0, 2)])].map((x) => `<span>${x}</span>`).join("")}</div></div>`],
+    ["oneri", "Öneriler", `<p>${R.tip}</p><ul class="plain"><li><b>${sa.n} için:</b> ${TIP[sa.el][a % 3]}</li><li><b>${sb.n} için:</b> ${TIP[sb.el][(b + 1) % 3]}</li></ul>`],
+  ];
   $("#mDetail").innerHTML = `
     <header class="mHead"><h2>${sa.g} ${sa.n} <span>&amp;</span> ${sb.g} ${sb.n}</h2><span class="mType">${M.t} · ${sa.el} ile ${sb.el}</span><p>${M.d}</p>
       <div class="subScores"><span>Aşk <b>%${sub(friendly ? 2 : dist === 3 ? 4 : 0)}</b></span><span>Arkadaşlık <b>%${sub(dist === 2 || dist === 4 ? 4 : -3)}</b></span><span>İş <b>%${sub(sa.mod !== sb.mod ? 3 : -4)}</b></span></div>
-      <button type="button" class="btn glass sm" id="shareM">Paylaş</button></header>
-    <div class="mGrid">
-      <section class="rd glass"><h3>Aşkta</h3><p>${el}</p><p><b>${sa.n}:</b> ${first(PROFILE[a].love)}</p><p><b>${sb.n}:</b> ${first(PROFILE[b].love)}</p></section>
-      <section class="rd glass"><h3>Arkadaşlıkta</h3><p><b>${sa.n}</b> ${PROFILE[a].friend.charAt(0).toLocaleLowerCase("tr") + PROFILE[a].friend.slice(1)}</p><p><b>${sb.n}</b> ${PROFILE[b].friend.charAt(0).toLocaleLowerCase("tr") + PROFILE[b].friend.slice(1)}</p></section>
-      <section class="rd glass"><h3>İşte ve ortak projelerde</h3><p>${mod}</p><p>${sa.n} ${sa.mod.toLocaleLowerCase("tr")}, ${sb.n} ${sb.mod.toLocaleLowerCase("tr")} bir burç; ${sa.mod === sb.mod ? "aynı tempoda çalışırsınız ama ikiniz de aynı rolü isteyebilirsiniz." : "iş bölümünü bu farka göre yaparsanız birbirinizi tamamlarsınız."}</p></section>
-      <section class="rd glass two"><h3>Güçlü yanlarınız</h3><p>${R.good}</p><div class="chips">${[...new Set([...PROFILE[a].plus.slice(0, 2), ...PROFILE[b].plus.slice(0, 2)])].map((x) => `<span class="ok">${x}</span>`).join("")}</div></section>
-      <section class="rd glass two"><h3>Dikkat etmeniz gerekenler</h3><p>${R.hard}</p><div class="chips">${[...new Set([PROFILE[a].minus[0], PROFILE[b].minus[0]])].map((x) => `<span class="no">${x}</span>`).join("")}</div></section>
-      <section class="rd glass wide"><h3>Öneri</h3><p>${R.tip}</p></section>
-    </div>
+      </header>
+    <div id="mShare"></div>
+    <article class="glass fc mLong">
+      <nav class="secNav" aria-label="Bölümler">${SECS.map(([id, t]) => `<a href="#s-${id}">${t}</a>`).join("")}</nav>
+      ${SECS.map(([id, t, h]) => `<section class="fcSec" id="s-${id}"><h3>${t}</h3>${h}</section>`).join("")}
+    </article>
     ${synastry()}
     ${!A.chart || !B.chart ? `<p class="hint">İkinizin de doğum haritası kayıtlıysa Venüs, Mars ve Ay karşılaştırması da burada görünür. <a href="/astro/chart/">Harita çıkar ve sakla →</a></p>` : ""}`;
-  $("#shareM").addEventListener("click", () => shareLink(location.href, `${sa.n} ve ${sb.n} uyumu: %${score}`));
+  secNav($(".secNav", $("#mDetail")));
+  const nm = (o, sg) => (o.chart ? o.chart.name || sg.n : sg.n);
+  shareBar($("#mShare"), {
+    file: () => `uyum-${SLUGS[a]}-${SLUGS[b]}`,
+    url: () => location.href,
+    text: () => `${nm(A, sa)} ve ${nm(B, sb)} uyumu: %${score}`,
+    card: () => ({ glyph: `${sa.g}${sb.g}`, color: "#ff8fc7", eyebrow: `Burç uyumu · %${score}`, title: `${nm(A, sa)} & ${nm(B, sb)}`, sub: `${M.t} · ${sa.el} ile ${sb.el}`,
+      blocks: [{ h: "Aşkta", t: el }, { h: "Güçlü yanlarınız", t: R.good }, { h: "Dikkat", t: R.hard }, { h: "Öneri", t: R.tip }] }),
+  });
 }
 draw();

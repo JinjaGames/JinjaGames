@@ -1,8 +1,8 @@
 // Sayfalar arası ortak arayüz: menü, 3B gökyüzü, burç ızgarası, "şu an" kartları.
-import * as E from "../ephem.js?v=7";
-import { SIGNS, PLANETS } from "../zodiac.js?v=7";
-import { $, $$, MONTHS, ORDER, SLUGS } from "../common.js?v=7";
-import { createSky } from "../sky.js?v=7";
+import * as E from "../ephem.js?v=9";
+import { SIGNS, PLANETS } from "../zodiac.js?v=9";
+import { $, $$, MONTHS, ORDER, SLUGS } from "../common.js?v=9";
+import { createSky } from "../sky.js?v=9";
 
 // telefon menüsü
 const mb = $(".menuBtn");
@@ -11,6 +11,36 @@ mb?.addEventListener("click", () => {
   mb.setAttribute("aria-expanded", String(open));
   document.body.classList.toggle("navOpen", open);
 });
+
+// yukarı çık düğmesi: uzun sayfalarda menüye ve sekmelere tek dokunuşla dön
+{
+  const b = document.createElement("button");
+  b.type = "button";
+  b.className = "toTop";
+  b.setAttribute("aria-label", "Sayfanın başına dön");
+  b.innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 14 6-6 6 6"/></svg>';
+  b.addEventListener("click", () => scrollTo({ top: 0, behavior: "smooth" }));
+  document.body.append(b);
+  const upd = () => b.classList.toggle("show", scrollY > 700);
+  addEventListener("scroll", upd, { passive: true });
+  upd();
+}
+
+/** Yapışkan bölüm menüsü: okunan bölümü işaretler, dokununca o bölüme kaydırır. */
+export function secNav(nav) {
+  if (!nav) return;
+  const links = $$("a[href^='#']", nav);
+  const mark = (id) => links.forEach((a) => {
+    const on = a.getAttribute("href") === "#" + id;
+    a.classList.toggle("on", on);
+    if (on) nav.scrollTo({ left: a.offsetLeft - nav.clientWidth / 2 + a.clientWidth / 2, behavior: "smooth" });
+  });
+  const io = new IntersectionObserver((es) => {
+    const vis = es.filter((e) => e.isIntersecting).sort((a, b) => a.boundingClientRect.top - b.boundingClientRect.top)[0];
+    if (vis) mark(vis.target.id);
+  }, { rootMargin: "-130px 0px -60% 0px" });
+  links.forEach((a) => { const t = document.getElementById(a.getAttribute("href").slice(1)); if (t) io.observe(t); });
+}
 
 /** Sayfadaki 3B gökyüzünü kurar; THREE yüklenene kadar bekler. */
 export function mountSky(onReady) {
