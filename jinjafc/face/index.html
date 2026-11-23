@@ -1,0 +1,89 @@
+<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Pro Clubs yüzü · Fotoğrafından FC 27 yüz ayarları · JinjaFC</title>
+<meta name="description" content="Yüzünün fotoğrafını yükle; EA SPORTS FC 27 Clubs oyuncu oluşturucusunda hangi Sculpt ayarlarını yapacağını adım adım gör. Fotoğraf cihazından çıkmaz, kaydedilmez.">
+<link rel="canonical" href="https://jinjagames.com/jinjafc/face/">
+<meta name="theme-color" content="#07130f">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'wasm-unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self'; connect-src 'self' data: blob:; worker-src 'self' blob:; object-src 'none'; base-uri 'self'; form-action 'none'">
+<meta name="referrer" content="no-referrer">
+<link rel="icon" href="/jinjafc/logo.svg" type="image/svg+xml">
+<link rel="stylesheet" href="/assets/fonts.css">
+<link rel="stylesheet" href="/jinjafc/jinjafc.css?v=1">
+<script src="/assets/vendor/three.min.js" defer></script>
+<script type="module" src="/jinjafc/js/facePage.js?v=1"></script>
+</head>
+<body>
+<header class="top">
+  <a class="back" href="/apps/" aria-label="Web uygulamalarına dön"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m15 18-6-6 6-6"/></svg></a>
+  <a class="brand" href="/jinjafc/"><img src="/jinjafc/logo.svg" alt="" width="32" height="32">Jinja<b>FC</b></a>
+  <nav class="nav" aria-label="JinjaFC"><a href="/jinjafc/">Ana sayfa</a><a href="/jinjafc/face/" aria-current="page">Pro Clubs yüzü</a><a href="/jinjafc/squad/">Kadro kurucu</a></nav>
+</header>
+<main class="wrap">
+  <section class="head">
+    <span class="eyebrow">FC 27 · Clubs</span>
+    <h1>Yüzünü <em>sahaya</em> taşı.</h1>
+    <p>Önden çekilmiş bir fotoğrafını yükle; yüzünü ölçüp oyuncu oluşturucuda hangi Sculpt ayarını kaça getireceğini adım adım söyleyelim. Ten, göz ve saç rengini de çıkarıyoruz.</p>
+    <span class="privacy"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3 4 6v6c0 5 3.4 8 8 9 4.6-1 8-4 8-9V6z"/><path d="m9 12 2 2 4-4"/></svg>Fotoğrafın cihazından çıkmaz, hiçbir yere kaydedilmez.</span>
+  </section>
+
+  <section class="card upload" id="uploadBox">
+    <label class="drop" id="drop">
+      <svg class="big" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="5" width="18" height="15" rx="3"/><circle cx="12" cy="12.5" r="3.5"/><path d="M8 5l1.5-2h5L16 5"/></svg>
+      <b>Fotoğraf seç ya da buraya bırak</b>
+      <span class="muted">JPG, PNG, HEIC · telefonda kameradan da çekebilirsin</span>
+      <span class="row"><span class="btn lime" id="pickBtn">Fotoğraf seç</span><span class="btn ghost" id="camBtn">Kamerayla çek</span></span>
+      <input type="file" id="file" accept="image/*" hidden>
+      <input type="file" id="cam" accept="image/*" capture="user" hidden>
+    </label>
+    <div class="tips">
+      <h3>En doğru sonuç için</h3>
+      <ul>
+        <li>Kameraya tam karşıdan bak, kafanı yana yatırma.</li>
+        <li>Yüz ifaden nötr olsun; gülümseme ağız ve yanak ölçülerini değiştirir.</li>
+        <li>Gözlük, şapka ve saçı alnını kapatacak şekilde bırakma.</li>
+        <li>Gün ışığı ya da beyaz ışık; tek taraftan sert ışık rengi bozar.</li>
+        <li>Yüz fotoğrafın büyük kısmını kaplasın, filtre kullanma.</li>
+      </ul>
+    </div>
+  </section>
+  <div class="card status" id="status" hidden><span class="spin" aria-hidden="true"></span><span id="statusText">Hazırlanıyor…</span></div>
+  <div class="note" id="error" hidden role="alert"></div>
+
+  <section class="result" id="result" hidden aria-live="polite">
+    <div class="warn" id="warnings"></div>
+    <div class="views">
+      <div class="view"><span class="lbl">Ölçülen noktalar</span><canvas id="photo" aria-label="Fotoğraf ve ölçüm noktaları"></canvas>
+        <div class="ctl"><button type="button" id="togglePts">Noktaları gizle</button></div></div>
+      <div class="view d3"><span class="lbl">3D önizleme</span><canvas id="head" aria-label="3D kafa önizlemesi"></canvas>
+        <span class="disc">Fotoğrafından oluşturulan önizleme; oyundaki yüz bununla birebir aynı olmaz.</span>
+        <div class="ctl"><button type="button" id="front">Önden</button><button type="button" id="spinBtn">Döndür</button></div></div>
+    </div>
+    <div class="summary" id="summary"></div>
+    <div class="card" style="padding:16px">
+      <div class="saveBar">
+        <button type="button" class="btn lime" id="saveImg"><svg viewBox="0 0 24 24"><path d="M12 3v12"/><path d="m7 10 5 5 5-5"/><path d="M5 21h14"/></svg>Ayarları görsel olarak kaydet</button>
+        <button type="button" class="btn ghost" id="copyTxt"><svg viewBox="0 0 24 24"><rect x="8" y="8" width="13" height="13" rx="2"/><path d="M16 8V5a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h3"/></svg>Metin olarak kopyala</button>
+        <button type="button" class="btn ghost" id="shareBtn"><svg viewBox="0 0 24 24"><path d="M4 12v7a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-7"/><path d="m16 6-4-4-4 4"/><path d="M12 2v13"/></svg>Paylaş</button>
+        <button type="button" class="btn ghost" id="again"><svg viewBox="0 0 24 24"><path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5"/></svg>Yeni fotoğraf</button>
+      </div>
+    </div>
+    <div class="steps" id="steps"></div>
+  </section>
+
+  <section class="card step" style="margin-top:22px">
+    <h3>Bilmen gerekenler</h3>
+    <ul class="plain">
+      <li><b>Fotoğrafın güvende.</b> Analiz tamamen bu cihazda, tarayıcının içinde yapılır. Fotoğraf internete gönderilmez, cihazına da kaydedilmez; sayfayı kapatınca silinir. Sadece sen "kaydet" dersen ayarlar görsel olarak indirilir.</li>
+      <li><b>Değerler başlangıç noktasıdır.</b> Yüzün tek bir fotoğraftan, ortalama bir yüzle karşılaştırılarak ölçülür. Oyunda her ayardan sonra yüzü yandan ve önden kontrol edip ±5–10 oynamak en iyi sonucu verir.</li>
+      <li><b>Menü adları oyundaki gibidir.</b> Ayarlar FC 27'nin Sculpt › Shape bölümündeki katman (Skeletal, Flesh, Fat), bölge ve alt bölge adlarıyla yazılır. Listede olmayan kaydırıcıları olduğu gibi bırak.</li>
+      <li>JinjaFC, EA SPORTS ile bağlantılı değildir; EA SPORTS FC, Electronic Arts'ın ticari markasıdır.</li>
+    </ul>
+  </section>
+</main>
+<footer class="foot"><a href="/jinjafc/">JinjaFC</a> · <a href="/">JinjaGames</a> · <a href="/apps/">Diğer web uygulamaları</a> · <a href="/privacy/">Gizlilik</a></footer>
+<script src="/assets/to-top.js?v=2" defer></script>
+</body>
+</html>

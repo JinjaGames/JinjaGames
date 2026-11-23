@@ -227,6 +227,7 @@ footer{border-top:1px solid var(--line);padding:40px 0}
 .app.flip .app-media{order:2}
 .app-media{position:relative;display:block;aspect-ratio:16/10;border-radius:22px;overflow:hidden;isolation:isolate;box-shadow:var(--shadow-2);transition:transform .45s var(--ease),box-shadow .3s}
 .app-media:hover{transform:translateY(-4px)}
+.app-media.fcm{display:grid;place-items:center;background:radial-gradient(70% 70% at 50% 40%,#1f9d5c55,transparent 70%),repeating-linear-gradient(90deg,#0f3d26 0 10%,#0d3622 10% 20%)}
 .app-media::after{content:"";position:absolute;inset:0;border-radius:inherit;box-shadow:inset 0 0 0 1px rgba(255,255,255,.08);pointer-events:none}
 .fb{background:#0a1c12}
 .fb .pitch{position:absolute;inset:0;width:100%;height:100%}
@@ -309,6 +310,7 @@ html[data-theme="dark"] .app .btn.p{color:#fff}
             <a class="app-item feat" href="/quiz/" style="--a:#ff5b3a"><img src="/assets/img/apps/jinjaquiz.svg" alt="" width="52" height="52"><span><b>JinjaQuiz <em class="tag"><span class="en i">New</span><span class="tr i">Yeni</span></em></b><small class="en i">Song and trivia quizzes, solo or in a lobby with friends</small><small class="tr i">Şarkı ve trivia quizleri; tek başına ya da arkadaşlarınla lobide</small></span><i class="go" aria-hidden="true">&rarr;</i></a>
             <a class="app-item" href="/astro/" style="--a:#a77bff"><img src="/assets/img/apps/jinjaastro.svg" alt="" width="44" height="44"><span><b>JinjaAstro <em class="tag"><span class="en i">New</span><span class="tr i">Yeni</span></em></b><small class="en i">Your birth chart in 3D, rising sign and weekly horoscopes</small><small class="tr i">3D doğum haritası, yükselen burç ve haftalık yorumlar</small></span><i class="go" aria-hidden="true">&rarr;</i></a>
             <a class="app-item" href="/football/" style="--a:#3ddc84"><img src="/assets/img/apps/football.svg" alt="" width="44" height="44"><span><b>Jinja Football <em class="tag live"><span class="en i">Live</span><span class="tr i">Canlı</span></em></b><small class="en i">Change a match, a transfer or a penalty in football history</small><small class="tr i">Futbol tarihinde bir maçı, transferi ya da penaltıyı değiştir</small></span><i class="go" aria-hidden="true">&rarr;</i></a>
+            <a class="app-item" href="/jinjafc/" style="--a:#4ef08a"><img src="/assets/img/apps/jinjafc.svg" alt="" width="44" height="44"><span><b>JinjaFC <em class="tag"><span class="en i">New</span><span class="tr i">Yeni</span></em></b><small class="en i">FC 27 squad builder with chemistry, and your face for Clubs</small><small class="tr i">FC 27 kimyalı kadro kurucu ve Clubs için yüz ayarları</small></span><i class="go" aria-hidden="true">&rarr;</i></a>
             <a class="app-item" href="/peer/" style="--a:#5aa0ff"><img src="/assets/img/apps/jinjapeer.svg" alt="" width="44" height="44"><span><b>JinjaPeer</b><small class="en i">Send files straight to another device, encrypted</small><small class="tr i">Dosyaları şifreli olarak doğrudan başka cihaza gönder</small></span><i class="go" aria-hidden="true">&rarr;</i></a>
             <a class="apps-all" href="/apps/"><span class="en i">All web apps</span><span class="tr i">Tüm web uygulamaları</span><span aria-hidden="true">&rarr;</span></a>
           </div>
@@ -347,6 +349,7 @@ html[data-theme="dark"] .app .btn.p{color:#fff}
         <a class="qk" href="/quiz/" style="--a:#ff5b3a"><img src="/assets/img/apps/jinjaquiz.svg" alt="" width="48" height="48"><span><b>JinjaQuiz</b><small class="en i">Song &amp; trivia quizzes</small><small class="tr i">Şarkı ve trivia quizleri</small></span><i aria-hidden="true">&rarr;</i></a>
         <a class="qk" href="/astro/" style="--a:#a77bff"><img src="/assets/img/apps/jinjaastro.svg" alt="" width="48" height="48"><span><b>JinjaAstro</b><small class="en i">3D birth chart &amp; horoscopes</small><small class="tr i">3D harita ve burç yorumları</small></span><i aria-hidden="true">&rarr;</i></a>
         <a class="qk" href="/football/" style="--a:#3ddc84"><img src="/assets/img/apps/football.svg" alt="" width="48" height="48"><span><b>Jinja Football</b><small class="en i">Rewrite football history</small><small class="tr i">Futbol tarihini değiştir</small></span><i aria-hidden="true">&rarr;</i></a>
+        <a class="qk" href="/jinjafc/" style="--a:#4ef08a"><img src="/assets/img/apps/jinjafc.svg" alt="" width="48" height="48"><span><b>JinjaFC</b><small class="en i">FUT squads &amp; Clubs face</small><small class="tr i">FUT kadro ve Clubs yüzü</small></span><i aria-hidden="true">&rarr;</i></a>
         <a class="qk" href="/peer/" style="--a:#5aa0ff"><img src="/assets/img/apps/jinjapeer.svg" alt="" width="48" height="48"><span><b>JinjaPeer</b><small class="en i">Encrypted file transfer</small><small class="tr i">Şifreli dosya gönderimi</small></span><i aria-hidden="true">&rarr;</i></a>
       </div>
     </div>
@@ -389,6 +392,23 @@ html[data-theme="dark"] .app .btn.p{color:#fff}
           <li><span class="en i">Everything is calculated on your device; nothing is uploaded</span><span class="tr i">Her şey cihazında hesaplanır, hiçbir bilgin bir yere gönderilmez</span></li>
         </ul>
         <div class="acts"><a class="btn p" href="/astro/"><span class="en i">Open JinjaAstro</span><span class="tr i">JinjaAstro'yu aç</span> <span class="arw">&rarr;</span></a><span class="note"><span class="en i">Interface in Turkish</span><span class="tr i">Türkçe arayüz</span></span></div>
+      </div>
+    </article>
+
+    <article class="app rv flip" id="jinjafc" style="--accent:#1f9d5c">
+      <a class="app-media fcm" href="/jinjafc/" tabindex="-1" aria-hidden="true">
+        <img src="/assets/img/apps/jinjafc.svg" alt="" width="160" height="160" style="width:42%;max-width:170px;margin:auto;filter:drop-shadow(0 18px 40px #1f9d5c88)">
+      </a>
+      <div class="app-body">
+        <div class="app-head"><img src="/assets/img/apps/jinjafc.svg" alt="" width="52" height="52"><div><span class="kind"><span class="en i">EA SPORTS FC 27 tools</span><span class="tr i">EA SPORTS FC 27 araçları</span></span><h2>JinjaFC</h2></div><span class="badge new">New</span></div>
+        <p class="en">Build your Ultimate Team squad with live chemistry and team rating, find the players that add the most chemistry, and save or share the result. Upload a front facing photo and see which Clubs face sculpt settings to change, with a 3D preview.</p>
+        <p class="tr">Ultimate Team kadronu canlı kimya ve takım reytingiyle kur, kimyaya en çok katkı yapan oyuncuları bul, kadronu kaydet ya da paylaş. Önden çekilmiş bir fotoğrafını yükle; Clubs oyuncu oluşturucuda hangi yüz ayarlarını yapacağını 3D önizlemeyle gör.</p>
+        <ul class="feat">
+          <li><span class="en i">All FC 27 players, updated daily, with league, nation and club filters</span><span class="tr i">Her gün güncellenen tüm FC 27 oyuncuları; lig, ülke ve kulüp filtreleri</span></li>
+          <li><span class="en i">Face settings use the real in-game menu names, step by step</span><span class="tr i">Yüz ayarları oyundaki menü adlarıyla, adım adım</span></li>
+          <li><span class="en i">Your photo never leaves your device</span><span class="tr i">Fotoğrafın cihazından hiç çıkmaz</span></li>
+        </ul>
+        <div class="acts"><a class="btn p" href="/jinjafc/"><span class="en i">Open JinjaFC</span><span class="tr i">JinjaFC'yi aç</span> <span class="arw">&rarr;</span></a><span class="note"><span class="en i">Interface in Turkish</span><span class="tr i">Türkçe arayüz</span></span></div>
       </div>
     </article>
 

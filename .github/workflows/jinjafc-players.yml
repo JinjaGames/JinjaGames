@@ -1,0 +1,42 @@
+# JinjaFC: FC 27 oyuncu listesini EA SPORTS FC reyting listesinden günde bir kez günceller.
+# Liste eksik gelirse betik başarısız olur ve eski dosya korunur; veri değişmediyse commit atılmaz.
+name: JinjaFC oyuncuları
+
+on:
+  schedule:
+    - cron: "40 3 * * *"
+  workflow_dispatch: {}
+
+permissions:
+  contents: write
+
+concurrency:
+  group: jinjafc-players
+  cancel-in-progress: false
+
+jobs:
+  players:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Oyuncuları çek
+        run: node tools/fc_players.mjs
+
+      - name: Değiştiyse siteye işle
+        run: |
+          git config user.name "jinjagames-bot"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add jinjafc/data/players.json
+          if git diff --cached --quiet; then
+            echo "Değişiklik yok."
+          else
+            git commit -m "JinjaFC: oyuncu listesi güncellendi"
+            git pull --rebase --autostash
+            git push
+          fi
