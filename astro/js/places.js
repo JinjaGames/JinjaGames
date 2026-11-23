@@ -1,6 +1,6 @@
 // Ülke → şehir listesi. Her şehir: [ad, enlem, boylam]. Ülkenin saat kuralı cities.js'teki utcOffset ile hesaplanır.
 // Kurallar: "TR", "EU0/EU1/EU2", "US-5..-8", "AU10", "FIX:x" (yaz saati olmayan sabit fark).
-import { TR_CITIES } from "./cities.js";
+import { TR_CITIES } from "./cities.js?v=7";
 
 const C = (name, tz, cities, flag) => ({ name, tz, flag, cities: cities.map(([n, la, lo, z]) => ({ n, la, lo, tz: z || tz })) });
 

@@ -1,8 +1,8 @@
 // Sayfalar arası ortak arayüz: menü, 3B gökyüzü, burç ızgarası, "şu an" kartları.
-import * as E from "../ephem.js";
-import { SIGNS, PLANETS } from "../zodiac.js";
-import { $, $$, MONTHS, ORDER, SLUGS } from "../common.js";
-import { createSky } from "../sky.js";
+import * as E from "../ephem.js?v=7";
+import { SIGNS, PLANETS } from "../zodiac.js?v=7";
+import { $, $$, MONTHS, ORDER, SLUGS } from "../common.js?v=7";
+import { createSky } from "../sky.js?v=7";
 
 // telefon menüsü
 const mb = $(".menuBtn");

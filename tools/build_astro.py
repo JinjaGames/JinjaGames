@@ -3,7 +3,7 @@
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent / "astro"
-V = "6"
+V = "7"
 NAV = [("", "Ana sayfa"), ("chart/", "Doğum haritası"), ("weekly/", "Haftalık"), ("monthly/", "Aylık"), ("compatibility/", "Uyum"), ("signs/", "Burçlar"), ("sky/", "Gökyüzü")]
 
 NOTES = """
@@ -205,3 +205,13 @@ for path, p in PAGES.items():
     out.parent.mkdir(parents=True, exist_ok=True)
     out.write_text(html, encoding="utf-8")
     print("yazıldı", out.relative_to(ROOT.parent))
+
+# Modüller içindeki import yollarına da sürüm ekle: tarayıcı eski ve yeni dosyaları karıştırmasın.
+import re
+IMP = re.compile(r'(from\s*"|import\(\s*")(\.{1,2}/[^"?]+\.js)(\?v=\w+)?"')
+for js in (ROOT / "js").rglob("*.js"):
+    src = js.read_text(encoding="utf-8")
+    new = IMP.sub(lambda m: f'{m.group(1)}{m.group(2)}?v={V}"', src)
+    if new != src:
+        js.write_text(new, encoding="utf-8")
+        print("sürüm", js.relative_to(ROOT.parent))

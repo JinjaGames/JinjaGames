@@ -1,8 +1,8 @@
 // Uyum sayfası: iki burç ya da iki kayıtlı harita; ayrıntılı bölümler ve harita karşılaştırması.
-import * as E from "../ephem.js";
-import { SIGNS, PLANETS, MATCH } from "../zodiac.js";
-import { PROFILE, ELEMENT_PAIR, MOD_PAIR, REL } from "../readings.js";
-import { $, esc, SLUGS, signBySlug, mySign, saved, computeChart, shareLink, combo } from "../common.js";
+import * as E from "../ephem.js?v=7";
+import { SIGNS, PLANETS, MATCH } from "../zodiac.js?v=7";
+import { PROFILE, ELEMENT_PAIR, MOD_PAIR, REL } from "../readings.js?v=7";
+import { $, esc, SLUGS, signBySlug, mySign, saved, computeChart, shareLink, combo } from "../common.js?v=7";
 
 const EL_ORDER = ["Ateş", "Toprak", "Hava", "Su"], MOD_ORDER = ["Öncü", "Sabit", "Değişken"];
 const pairKey = (a, b, order) => [a, b].sort((x, y) => order.indexOf(x) - order.indexOf(y)).join("-");
@@ -11,7 +11,8 @@ const list = saved();
 // seçenekler: 12 burç + kayıtlı haritalar
 const OPTS = [...SIGNS.map((s, i) => ({ id: SLUGS[i], n: `${s.g} ${s.n}`, sign: i })), ...list.map((c, i) => ({ id: "h" + i, n: `★ ${c.name || "Kayıtlı harita"}`, chart: c }))];
 const pickOf = (id) => OPTS.find((o) => o.id === id) || (signBySlug(id) != null ? OPTS[signBySlug(id)] : undefined);
-let A = pickOf(q.get("a")) || (list[0] ? pickOf("h0") : pickOf(SLUGS[mySign()])), B = pickOf(q.get("b")) || pickOf(SLUGS[(signOf(A) + 6) % 12]);
+// varsayılan: solda Kova, sağda Terazi; kullanıcı istediğini seçer
+let A = pickOf(q.get("a")) || pickOf("aquarius"), B = pickOf(q.get("b")) || pickOf("libra");
 function signOf(o) { return o.sign ?? E.signOf(computeChart(o.chart).pos.sun.lon); }
 
 function select(el, cur, onPick) {

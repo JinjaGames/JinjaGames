@@ -1,12 +1,12 @@
 // Doğum haritası sayfası: form, sonuçlar, 3D/çark görünümü, kategori kategori okuma, kaydet ve paylaş.
-import * as E from "../ephem.js";
-import { SIGNS, PLANETS, HOUSES, SUN, MOON, ASC, MERCURY, VENUS, MARS, ASPECT_TXT } from "../zodiac.js";
-import { PROFILE, MC_SIGN, H2_SIGN, H7_SIGN, H4_SIGN, PLANET_DO, HOUSE_AREA } from "../readings.js";
-import { MOON_HOME, HOME_STYLE, MOON_CARE, H12_SIGN, LEARN, H9_SIGN, H6_SIGN, SPEND, MOON_LOVE } from "../readings2.js";
-import { SUN_WEEK, VENUS_LOVE, MARS_WORK, JUPITER_LUCK, TOPIC } from "../forecast-texts.js";
-import { $, $$, esc, toast, saved, keepChart, computeChart, lineOf, degTxt, ORDER, placePicker, shareImage, downloadBlob, MONTHS } from "../common.js";
-import { drawWheel, renderCard } from "../wheel.js";
-import { mountSky } from "./ui.js";
+import * as E from "../ephem.js?v=7";
+import { SIGNS, PLANETS, HOUSES, SUN, MOON, ASC, MERCURY, VENUS, MARS, ASPECT_TXT } from "../zodiac.js?v=7";
+import { PROFILE, MC_SIGN, H2_SIGN, H7_SIGN, H4_SIGN, PLANET_DO, HOUSE_AREA } from "../readings.js?v=7";
+import { MOON_HOME, HOME_STYLE, MOON_CARE, H12_SIGN, LEARN, H9_SIGN, H6_SIGN, SPEND, MOON_LOVE } from "../readings2.js?v=7";
+import { SUN_WEEK, VENUS_LOVE, MARS_WORK, JUPITER_LUCK, TOPIC } from "../forecast-texts.js?v=7";
+import { $, $$, esc, toast, saved, keepChart, computeChart, lineOf, degTxt, ORDER, placePicker, shareImage, downloadBlob, MONTHS } from "../common.js?v=7";
+import { drawWheel, renderCard } from "../wheel.js?v=7";
+import { mountSky } from "./ui.js?v=7";
 
 let sky = null, current = null, cat = "ozet", view = "3d";
 mountSky((s) => { sky = s; if (current) paintSky(); });

@@ -1,5 +1,5 @@
-import { $, esc } from "../common.js";
-import { mountSky, nowHtml, loadForecast } from "./ui.js";
+import { $, esc } from "../common.js?v=7";
+import { mountSky, nowHtml, loadForecast } from "./ui.js?v=7";
 
 const now = nowHtml();
 $("#todayTitle").textContent = now.title;

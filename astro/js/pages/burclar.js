@@ -1,8 +1,8 @@
 // Burç profilleri: ?sign=koc gibi; parametre yoksa kendi burcun.
-import { SIGNS, PLANETS } from "../zodiac.js";
-import { PROFILE } from "../readings.js";
-import { $, esc, SLUGS, signBySlug, mySign, shareLink } from "../common.js";
-import { signGridHtml, loadForecast } from "./ui.js";
+import { SIGNS, PLANETS } from "../zodiac.js?v=7";
+import { PROFILE } from "../readings.js?v=7";
+import { $, esc, SLUGS, signBySlug, mySign, shareLink } from "../common.js?v=7";
+import { signGridHtml, loadForecast } from "./ui.js?v=7";
 
 const i = signBySlug(new URLSearchParams(location.search).get("sign")) ?? mySign();
 const s = SIGNS[i], p = PROFILE[i];

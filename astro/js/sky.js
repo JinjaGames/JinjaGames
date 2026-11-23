@@ -1,7 +1,7 @@
 // 3B gökyüzü: yıldızlar, burç kuşağı, gezegenler ve (doğum haritasında) evler ile açılar.
 // Sürükle: döndür · tekerlek ya da iki parmak: yakınlaştır · gezegene dokun: bilgi.
-import { SIGNS, PLANETS } from "./zodiac.js";
-import { signOf, degIn } from "./ephem.js";
+import { SIGNS, PLANETS } from "./zodiac.js?v=7";
+import { signOf, degIn } from "./ephem.js?v=7";
 
 const THREE = window.THREE;
 const RING = 11, PL = 8.2;
