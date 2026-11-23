@@ -113,14 +113,20 @@ export function lineChart({ series, width = 640, height = 220, yFmt = v => v, xF
 
 // Adresler '#' içermez: /football/takim/123. u() uygulama içi yolu tam adrese çevirir.
 export const BASE = '/football';
-export const u = p => BASE + (!p || p === '/' ? '/' : (p[0] === '/' ? p : '/' + p));
+// Görünen adresler İngilizce (/football/team/123); kod içinde Türkçe yollar kullanılır.
+// Eski Türkçe bağlantılar da çalışmaya devam eder.
+const TR_EN = { takim: 'team', takimlar: 'teams', oyuncu: 'player', oyuncular: 'players', lig: 'league', kupa: 'cup', haberler: 'news', hocalar: 'managers', veri: 'data', degistir: 'change', milli: 'national', paylas: 'share', senaryolar: 'scenarios', atolye: 'workshop', yonetim: 'management', kadro: 'squad', mac: 'matches', finans: 'finance', guc: 'strength' };
+const EN_TR = Object.fromEntries(Object.entries(TR_EN).map(([a, b]) => [b, a]));
+const mapPath = (p, dict) => p.replace(/^[^?#]*/, path => path.split('/').map(s => dict[s] || s).join('/'));
+export const toPublic = p => mapPath(p, TR_EN);
+export const u = p => BASE + (!p || p === '/' ? '/' : toPublic(p[0] === '/' ? p : '/' + p));
 export const go = (path, { replace = false, silent = false } = {}) => {
   const url = u(path);
   try { if (replace) history.replaceState(null, '', url); else history.pushState(null, '', url); } catch { location.href = url; return; }
   if (!silent) dispatchEvent(new Event('wif:navigate'));
 };
 /** Uygulama içi yol (BASE olmadan): /takim/123 */
-export const appPath = () => { const p = decodeURIComponent(location.pathname); return (p.startsWith(BASE) ? p.slice(BASE.length) : p) || '/'; };
+export const appPath = () => { const p = decodeURIComponent(location.pathname); return mapPath((p.startsWith(BASE) ? p.slice(BASE.length) : p) || '/', EN_TR); };
 export function setCrumbs(...parts) {
   const t = parts.map(p => (typeof p === 'string' ? p : p?.textContent || '')).filter(Boolean);
   document.title = t.length ? `${t.join(' · ')} — Jinja Football` : 'Jinja Football';

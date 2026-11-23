@@ -67,7 +67,7 @@ Her sayfa kendi CSS ve JS'ini içinde taşır; harici bağımlılık yoktur.
 - `assets/steam.js` — **Locard Steam anahtarı.** Mağaza sayfası açılınca değiştirilecek tek
   yer burası (aşağıya bak). Hem `locard/` hem ana sayfa bunu okur.
 - `daypot/index.html` — DayPot tanıtım sayfası; görseller `daypot/img/`.
-- `daypot/gizlilik/index.html` — DayPot gizlilik politikası (TR + EN), `https://jinjagames.com/daypot/gizlilik/`.
+- `daypot/privacy/index.html` — DayPot gizlilik politikası (TR + EN), `https://jinjagames.com/daypot/privacy/`. Eski `daypot/gizlilik/` yeni adrese yönlendirir.
   Eski `daypot/gizlilik.html` adresi uygulamada/Play Console'da kayıtlı olabileceği için silinmedi;
   yeni adrese yönlendiriyor. Uygulamadaki `privacyPolicyUrl` yeni adrese çevrilebilir.
 - `privacy/index.html` — site gizlilik politikası (jinjagames.com/privacy/). Eski `privacy.html` yönlendirmedir.
@@ -111,7 +111,7 @@ Her sayfa kendi CSS ve JS'ini içinde taşır; harici bağımlılık yoktur.
   GitHub Actions bunu 6 saatte bir çalıştırıp commit'ler. Mod sayfasında "CurseForge yorumları" bölümü olarak görünür.
   Yeni mod eklerken: jar elindeyse `BB_ONLY=<slug> python tools/build_banebender.py` (JARS listesine ekle), yoksa
   `python tools/add_cf_mod.py <slug> <logo>`; sonra metni `banebender/data/mods.js`'e yaz. Sayfadaki mod sayısı veriden gelir.
-- **Adreslerde `.html` yok:** her sayfa klasör adresiyle açılır (`/privacy/`, `/daypot/gizlilik/`).
+- **Adreslerde `.html` yok:** her sayfa klasör adresiyle açılır (`/privacy/`, `/daypot/privacy/`). Adres yolları İngilizce; eski Türkçe yollar yönlendirme olarak durur.
 - `sitemap.xml`, `robots.txt` — yeni sayfa eklenince sitemap da güncellenmeli.
 - `CNAME` — özel domain (`jinjagames.com`); GitHub Pages bunu okur.
 
@@ -381,8 +381,8 @@ Tarayıcıda çalışabilen küçük modeller yeterli kaliteyi vermediği için 
 - Şarkılar Deezer önizlemeleri. Deezer yalnızca JSONP sunduğu için istekler `quiz/catalog.html` içinde, `sandbox="allow-scripts"` bir iframe'de yapılır; sayfaya yalnızca düz JSON gelir (`quiz/js/music.js`, `cdn()` yalnızca `*.dzcdn.net` adreslerine izin verir).
 - Kurucudan gelen oyun durumu `cleanView()` ile, oyuncu kimlikleri `net.js` içinde süzülür; `quiz/index.html` sıkı bir CSP taşır.
 - Topluluk quizleri (`quiz/js/community.js`): imzalı Nostr kaydı (NIP-78, kind 30078, etiket `jinjaquiz`), yazar anahtarı tarayıcıda (`jqNostrKey`). Okurken imza doğrulanır, alanlar süzülür; aynı quizin en yeni sürümü kazanır, kaldırma boş sürüm + NIP-09. İmza: `quiz/vendor/nostr-sign.js` (@noble/curves secp256k1 schnorr, MIT).
-- Trivia (`quiz/js/trivia.js` + `quiz/js/trivia-more.js`): müzik dışı çoktan seçmeli / Doğru-Yanlış sorular. Hazır 63 trivia (12 kategori, ~945 soru); kapaklar kategori rengi ve emojiden üretilir (`TART`); soru biçimi `{ q, a: [doğru, ...yanlışlar] }`, oyunda şıklar karıştırılır. Motor `kind: "trivia"` sette ses hazırlamadan soruyu açar; oyuncuya cevap reveal anına kadar gitmez. Kullanıcılar `/quiz/olustur/?tur=trivia` ile trivia yazar (kart kart ya da toplu yapıştırma, 5-100 soru); topluluk kaydında `kind: "trivia"`, `items`, `cat`, `emoji` alanları, okurken `cleanItems()` ile süzülür.
-- Quiz oluşturma ayrı sayfa: `/quiz/olustur/` (`quiz/js/create.js`), düzenleme `?duzenle=<id>`. Sanatçı ve şarkı araması ayrı; sanatçı sayfasında popüler 100 şarkı ve albümler (Deezer `artist/{id}/top|albums`, `album/{id}/tracks`). Quiz başına en çok 200 şarkı.
+- Trivia (`quiz/js/trivia.js` + `quiz/js/trivia-more.js`): müzik dışı çoktan seçmeli / Doğru-Yanlış sorular. Hazır 63 trivia (12 kategori, ~945 soru); kapaklar kategori rengi ve emojiden üretilir (`TART`); soru biçimi `{ q, a: [doğru, ...yanlışlar] }`, oyunda şıklar karıştırılır. Motor `kind: "trivia"` sette ses hazırlamadan soruyu açar; oyuncuya cevap reveal anına kadar gitmez. Kullanıcılar `/quiz/create/?type=trivia` ile trivia yazar (kart kart ya da toplu yapıştırma, 5-100 soru); topluluk kaydında `kind: "trivia"`, `items`, `cat`, `emoji` alanları, okurken `cleanItems()` ile süzülür.
+- Quiz oluşturma ayrı sayfa: `/quiz/create/` (`quiz/js/create.js`, eski `/quiz/olustur/` yönlendirir), düzenleme `?edit=<id>`. Sanatçı ve şarkı araması ayrı; sanatçı sayfasında popüler 100 şarkı ve albümler (Deezer `artist/{id}/top|albums`, `album/{id}/tracks`). Quiz başına en çok 200 şarkı.
 - Kopya zorlaştırma: kurucu her soruda doğru şarkıyla birlikte diğer şıkların önizlemelerini de karışık sırayla ister; kurucunun oturum kaydı (`jqSession`) karıştırılarak saklanır. Oyunculara cevap, süre dolmadan hiç gönderilmez.
 - Kurucu "Ayrıl" derse oyunculara `bye` gider ve lobi kapanır; sayfayı yenilerse 20 sn beklenir.
 - Lobi akışı: her quizin sıralaması yalnızca o quizin puanı (`round`), genel toplam `score`; son quizden sonra kurucu "Lobiye dön" der, geçmiş ve genel sıralama lobide kalır, oynanan quiz "Tekrar ekle" ile sıraya döner.

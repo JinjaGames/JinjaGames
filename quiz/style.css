@@ -2238,7 +2238,7 @@ body:has(.dock) #toast {
 @media (max-width: 860px) { .revealActs { justify-content: center; } }
 
 /* =====================================================================
-   Quiz oluşturma sayfası (/quiz/olustur/)
+   Quiz oluşturma sayfası (/quiz/create/)
    ===================================================================== */
 .crTitle { font: 800 18px var(--display); letter-spacing: 0.04em; text-transform: uppercase; color: var(--muted); }
 .cr { padding-bottom: 60px; }

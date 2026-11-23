@@ -137,7 +137,9 @@ export function createSky(canvas, { onPick } = {}) {
       }
       const hg = new THREE.BufferGeometry();
       hg.setAttribute("position", new THREE.Float32BufferAttribute(pts, 3));
-      dyn.add(new THREE.LineSegments(hg, new THREE.LineBasicMaterial({ color: 0xa79bff, transparent: true, opacity: 0.25 })));
+      const hl = new THREE.LineSegments(hg, new THREE.LineDashedMaterial({ color: 0xa79bff, transparent: true, opacity: 0.35, dashSize: 0.35, gapSize: 0.25 }));
+      hl.computeLineDistances();
+      dyn.add(hl);
       // Yükselen ve Tepe Noktası eksenleri
       for (const [lon, color, txt] of [[chart.houses.asc, 0xffd36e, "ASC"], [chart.houses.mc, 0xff8fc7, "MC"]]) {
         const l = new THREE.Line(new THREE.BufferGeometry().setFromPoints([at(lon + 180, RING + 0.9), at(lon, RING + 2.4)]), new THREE.LineBasicMaterial({ color, transparent: true, opacity: 0.9 }));
@@ -148,12 +150,19 @@ export function createSky(canvas, { onPick } = {}) {
       }
     }
     if (chart?.aspects) {
-      for (const a of chart.aspects.slice(0, 14)) {
+      // açılar: merkeze doğru hafif kavisli, parlayan ince tüpler; sıkı açılar daha belirgin
+      chart.aspects.slice(0, 14).forEach((a, k) => {
         const A = planets.find((p) => p.userData.body === a.a), B = planets.find((p) => p.userData.body === a.b);
-        if (!A || !B || a.type === "conj") continue;
-        const l = new THREE.Line(new THREE.BufferGeometry().setFromPoints([A.position, B.position]), new THREE.LineBasicMaterial({ color: ASPECT_COLOR[a.type], transparent: true, opacity: 0.55 }));
-        dyn.add(l);
-      }
+        if (!A || !B || a.type === "conj") return;
+        const mid = A.position.clone().add(B.position).multiplyScalar(0.5);
+        mid.multiplyScalar(0.55).add(new THREE.Vector3(0, a.type === "trine" || a.type === "sext" ? 0.9 : -0.6, 0));
+        const curve = new THREE.QuadraticBezierCurve3(A.position.clone(), mid, B.position.clone());
+        const strong = Math.max(0.35, 1 - a.orb / 8);
+        const mat = new THREE.MeshBasicMaterial({ color: ASPECT_COLOR[a.type], transparent: true, opacity: 0.75 * strong, blending: THREE.AdditiveBlending, depthWrite: false });
+        const tube = new THREE.Mesh(new THREE.TubeGeometry(curve, 40, 0.035 + 0.03 * strong, 6), mat);
+        tube.userData.pulse = { base: mat.opacity, ph: k * 0.7 };
+        dyn.add(tube);
+      });
     }
   }
 
@@ -182,6 +191,7 @@ export function createSky(canvas, { onPick } = {}) {
     return hit?.object || null;
   }
   canvas.addEventListener("pointerdown", (e) => {
+    onPick?.(null); // önceki bilgi kutusunu kapat; dokunulan yer gezegense bırakınca yeniden açılır
     drag = { x: e.clientX, y: e.clientY, moved: 0 };
     auto = false;
     canvas.setPointerCapture(e.pointerId);
@@ -228,6 +238,7 @@ export function createSky(canvas, { onPick } = {}) {
     cam.position.set(Math.sin(yaw) * Math.cos(pitch) * dist, Math.sin(pitch) * dist, Math.cos(yaw) * Math.cos(pitch) * dist);
     cam.lookAt(0, 0, 0);
     stars.rotation.y = t * 0.000008;
+    for (const o of dyn.children) if (o.userData.pulse) o.material.opacity = o.userData.pulse.base * (0.7 + 0.3 * Math.sin(t * 0.002 + o.userData.pulse.ph));
     gl.render(scene, cam);
   }
   requestAnimationFrame(frame);

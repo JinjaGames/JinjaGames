@@ -183,6 +183,8 @@ store.subscribe(() => renderNav(appPath()));
   if (r && r.startsWith('/')) { history.replaceState(null, '', BASE + r); return; }
   if (location.hash.startsWith('#/')) history.replaceState(null, '', BASE + location.hash.slice(1));
 })();
+// eski Türkçe adresleri İngilizce karşılığına çevir (sayfa yenilenmeden)
+{ const pub = u(appPath()); if (pub !== location.pathname && location.pathname.startsWith(BASE + '/')) history.replaceState(null, '', pub + location.search + location.hash); }
 let lastPath = location.pathname;
 const navigate = () => { lastPath = location.pathname; route(); };
 addEventListener('popstate', () => { if (location.pathname !== lastPath) navigate(); });

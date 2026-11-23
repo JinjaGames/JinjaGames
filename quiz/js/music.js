@@ -14,7 +14,7 @@ function bridge() {
   if (ready) return ready;
   ready = new Promise((resolve) => {
     frame = document.createElement("iframe");
-    frame.src = new URL("../catalog.html", import.meta.url).href; // /quiz/olustur/ altından da
+    frame.src = new URL("../catalog.html", import.meta.url).href; // /quiz/create/ altından da
     frame.setAttribute("sandbox", "allow-scripts");
     frame.setAttribute("aria-hidden", "true");
     frame.tabIndex = -1;

@@ -3,136 +3,83 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-<title>JinjaAstro · Doğum haritası, yükselen burç ve haftalık yorumlar</title>
-<meta name="description" content="Doğum haritanı 3 boyutlu gökyüzünde gör: güneş, ay ve yükselen burcun, evlerin ve gezegenlerin. Her burç için gökyüzü hareketlerine göre her hafta ve her ay yenilenen yorumlar. Ücretsiz, hesap yok." />
+<title>JinjaAstro · Doğum haritası, yükselen burç ve burç yorumları</title>
+<meta name="description" content="Doğum haritanı 3 boyutlu gökyüzünde gör, yükselen burcunu öğren; her burç için haftalık ve aylık yorumlar, burç uyumu ve detaylı burç profilleri. Ücretsiz, hesap yok." />
 <meta name="theme-color" content="#0d0a22" />
 <link rel="canonical" href="https://jinjagames.com/astro/" />
 <link rel="icon" type="image/svg+xml" href="/assets/img/apps/jinjaastro.svg" />
-<link rel="apple-touch-icon" href="../favicon-j-shuriken-180.png?v=2" />
-<meta property="og:title" content="JinjaAstro · Gökyüzün seni nasıl anlatıyor?" />
-<meta property="og:description" content="3 boyutlu doğum haritası, yükselen burç hesabı ve her hafta yenilenen burç yorumları." />
+<link rel="apple-touch-icon" href="/favicon-j-shuriken-180.png?v=2" />
+<meta property="og:title" content="JinjaAstro · Doğum haritası, yükselen burç ve burç yorumları" />
+<meta property="og:description" content="Doğum haritanı 3 boyutlu gökyüzünde gör, yükselen burcunu öğren; her burç için haftalık ve aylık yorumlar, burç uyumu ve detaylı burç profilleri. Ücretsiz, hesap yok." />
 <meta property="og:type" content="website" />
 <meta property="og:url" content="https://jinjagames.com/astro/" />
 <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self'; connect-src 'self'; object-src 'none'; base-uri 'self'; form-action 'none'" />
 <link rel="stylesheet" href="/assets/fonts.css?v=20261012d" />
-<link rel="stylesheet" href="astro.css?v=1" />
+<link rel="stylesheet" href="/astro/astro.css?v=5" />
 <script src="/assets/vendor/three.min.js" defer></script>
-<script type="module" src="js/app.js?v=1"></script>
+<script type="module" src="/astro/js/pages/home.js?v=5"></script>
 </head>
-<body>
-<a class="skip" href="#harita">İçeriğe geç</a>
+<body class="pg-home">
+<a class="skip" href="#main">İçeriğe geç</a>
 <header class="top">
   <a class="back" href="/" title="JinjaGames ana sayfası" aria-label="JinjaGames ana sayfası"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14.5 5.5L8 12l6.5 6.5"/></svg><img src="/favicon-j-shuriken-32.png" width="20" height="20" alt=""></a>
-  <a class="brand" href="./"><img src="/assets/img/apps/jinjaastro.svg" alt="" width="30" height="30"><b>Jinja</b><i>Astro</i></a>
-  <nav class="tabs" aria-label="Bölümler">
-    <a href="#harita">Haritam</a><a href="#hafta">Haftalık</a><a href="#ay">Aylık</a><a href="#uyum">Uyum</a><a href="#gokyuzu">Bugün</a>
-  </nav>
-  <button class="saved" id="savedBtn" type="button" aria-haspopup="dialog" title="Kayıtlı haritalar"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 3h12v18l-6-4-6 4z"/></svg><span id="savedN">0</span></button>
+  <a class="brand" href="/astro/"><img src="/assets/img/apps/jinjaastro.svg" alt="" width="30" height="30"><b>Jinja</b><i>Astro</i></a>
+  <button class="menuBtn" type="button" aria-expanded="false" aria-controls="nav" aria-label="Menü"><span></span><span></span><span></span></button>
+  <nav class="nav" id="nav" aria-label="JinjaAstro bölümleri"><a href="/astro/" aria-current="page">Ana sayfa</a><a href="/astro/chart/">Doğum haritası</a><a href="/astro/weekly/">Haftalık</a><a href="/astro/monthly/">Aylık</a><a href="/astro/compatibility/">Uyum</a><a href="/astro/signs/">Burçlar</a><a href="/astro/sky/">Gökyüzü</a></nav>
 </header>
-
-<main>
+<main id="main">
   <section class="hero">
-    <canvas id="sky" aria-label="3 boyutlu gökyüzü: burç kuşağı ve gezegenler. Sürükleyerek döndürebilirsin."></canvas>
+    
+    <div class="skyBox" id="skyBox">
+      <canvas class="sky3d" id="sky" aria-label="3 boyutlu gökyüzü: burç kuşağı ve gezegenler. Sürükleyerek döndürebilirsin."></canvas>
+      <div class="skyCtl" aria-label="Gökyüzü kontrolleri">
+        <button type="button" data-sky="in" aria-label="Yakınlaştır">+</button>
+        <button type="button" data-sky="out" aria-label="Uzaklaştır">−</button>
+        <button type="button" data-sky="top" aria-label="Üstten bak">⊙</button>
+        <button type="button" data-sky="reset" aria-label="Başa dön">↺</button>
+      </div>
+      <p class="skyHint">Sürükle, çevir · gezegene dokun</p>
+      <div class="tip" id="skyTip" hidden></div>
+    </div>
     <div class="heroTxt">
       <span class="eyebrow" id="skyMode">Şu an gökyüzü</span>
       <h1>Doğduğun anın <em>gökyüzü.</em></h1>
-      <p>Güneşin, ayın ve yükselenin; on iki evin ve gezegenlerin yerleri. Haritanı çıkar, sonra onu üç boyutta çevirip gez.</p>
-      <div class="cta"><a class="btn gold" href="#harita">Haritamı çıkar</a><a class="btn glass" href="#hafta">Bu haftaki yorumum</a></div>
-    </div>
-    <div class="skyCtl" aria-label="Gökyüzü kontrolleri">
-      <button type="button" data-sky="in" aria-label="Yakınlaştır">+</button>
-      <button type="button" data-sky="out" aria-label="Uzaklaştır">−</button>
-      <button type="button" data-sky="top" aria-label="Üstten bak">⊙</button>
-      <button type="button" data-sky="reset" aria-label="Başa dön">↺</button>
-    </div>
-    <p class="skyHint">Sürükle ve çevir · gezegene dokun</p>
-    <div class="tip" id="skyTip" hidden></div>
-  </section>
-
-  <section class="sec" id="harita">
-    <div class="secHead"><span class="eyebrow">Doğum haritası</span><h2>Seni gökyüzünden okuyalım.</h2><p>Doğum tarihin, saatin ve yerin yeter. Saati ne kadar doğru girersen yükselen burcun ve evlerin o kadar doğru çıkar.</p></div>
-    <form class="birth glass" id="birthForm" autocomplete="off">
-      <label class="f"><span>Adın <small>(görselde görünür)</small></span><input id="fName" maxlength="28" placeholder="Örn. Elif"></label>
-      <label class="f"><span>Doğum tarihi</span><input id="fDate" type="date" required min="1900-01-01" max="2049-12-31"></label>
-      <label class="f"><span>Doğum saati</span><input id="fTime" type="time" value="12:00"></label>
-      <label class="chk"><input type="checkbox" id="fNoTime"> Saatimi bilmiyorum</label>
-      <label class="f wide"><span>Doğum yeri</span><input id="fCity" list="cityList" placeholder="Şehir yaz ve listeden seç (ör. İzmir)" required><datalist id="cityList"></datalist></label>
-      <div class="f wide more" id="manual" hidden>
-        <label><span>Enlem</span><input id="fLat" type="number" step="0.01" min="-89" max="89"></label>
-        <label><span>Boylam</span><input id="fLon" type="number" step="0.01" min="-180" max="180"></label>
-      </div>
-      <label class="f off"><span>UTC farkı <small id="offNote">(otomatik)</small></span><input id="fOff" type="number" step="0.5" min="-12" max="14" value="3"></label>
-      <button class="btn gold big" type="submit">Haritamı çıkar</button>
-    </form>
-
-    <div id="result" hidden>
-      <div class="trio" id="trio"></div>
-      <div class="resGrid">
-        <div class="wheelBox glass">
-          <canvas id="wheel" width="900" height="900" aria-label="Doğum haritası çarkı"></canvas>
-          <div class="save">
-            <button class="btn gold" type="button" data-save="post">Görsel olarak kaydet</button>
-            <button class="btn glass" type="button" data-save="story">Hikâye boyutu</button>
-            <button class="btn glass" type="button" id="keepBtn">Haritamı sakla</button>
-            <button class="btn glass" type="button" id="to3d">3D'de gez</button>
-          </div>
-        </div>
-        <div class="tables">
-          <div class="glass"><h3>Gezegenler</h3><table class="pl" id="plTable"></table></div>
-          <div class="glass" id="houseBox"><h3>Evler</h3><ol class="houses" id="houseList"></ol></div>
-        </div>
-      </div>
-      <div class="reads" id="reads"></div>
+      <p>Güneşin, ayın ve yükselenin; evlerin ve gezegenlerin yerleri. Haritanı çıkar, sonra onu üç boyutta çevirip gez.</p>
+      <div class="cta"><a class="btn gold" href="/astro/chart/">Doğum haritamı çıkar</a><a class="btn glass" id="myWeek" href="/astro/weekly/">Bu haftaki yorumum</a></div>
     </div>
   </section>
-
-  <section class="sec" id="hafta">
-    <div class="secHead"><span class="eyebrow" id="weekTitle">Bu hafta</span><h2>Haftalık burç yorumu</h2><p>Her pazartesi gökyüzündeki hareketlere göre yeniden yazılır.</p></div>
-    <div class="signPick" data-for="week" role="tablist" aria-label="Burç seç"></div>
-    <div class="fc glass" id="weekBox"></div>
-  </section>
-
-  <section class="sec" id="ay">
-    <div class="secHead"><span class="eyebrow" id="monthTitle">Bu ay</span><h2>Aylık burç yorumu</h2><p>Her ayın ilk günü yenilenir.</p></div>
-    <div class="signPick" data-for="month" role="tablist" aria-label="Burç seç"></div>
-    <div class="fc glass" id="monthBox"></div>
-  </section>
-
-  <section class="sec" id="uyum">
-    <div class="secHead"><span class="eyebrow">Uyum</span><h2>İkiniz nasıl anlaşırsınız?</h2><p>İki burç seç ya da kayıtlı haritalarından birini kullan.</p></div>
-    <div class="match glass">
-      <div class="mSide"><label>Sen<select id="m1"></select></label></div>
-      <div class="mScore" id="mScore"><svg viewBox="0 0 120 120"><circle cx="60" cy="60" r="52"/><circle class="arc" id="mArc" cx="60" cy="60" r="52" pathLength="100"/></svg><b id="mNum">0</b><small>%</small></div>
-      <div class="mSide"><label>O<select id="m2"></select></label></div>
-      <div class="mText" id="mText"></div>
+  <section class="sec">
+    <div class="secHead"><span class="eyebrow">Ne öğrenmek istersin?</span><h2>Gökyüzünde nereden başlayalım?</h2></div>
+    <div class="doors">
+      <a class="door d1" href="/astro/chart/"><span class="dIc">✦</span><b>Doğum haritam</b><small>Güneş, ay, yükselen; aşk, kariyer ve para okumaları</small></a>
+      <a class="door d2" href="/astro/weekly/"><span class="dIc">☾</span><b>Haftalık yorum</b><small>Her pazartesi gökyüzüne göre yenilenir</small></a>
+      <a class="door d3" href="/astro/monthly/"><span class="dIc">◐</span><b>Aylık yorum</b><small>Ayın genel havası ve önemli günler</small></a>
+      <a class="door d4" href="/astro/compatibility/"><span class="dIc">♡</span><b>Burç uyumu</b><small>İkiniz aşkta, arkadaşlıkta ve işte nasıl anlaşırsınız?</small></a>
+      <a class="door d5" href="/astro/signs/"><span class="dIc">✧</span><b>Burç profilleri</b><small>Her burcun aşkı, kariyeri, parası ve sağlığı</small></a>
+      <a class="door d6" href="/astro/sky/"><span class="dIc">☉</span><b>Bugün gökyüzü</b><small>Gezegenler şu an nerede, ay hangi evrede?</small></a>
     </div>
   </section>
-
-  <section class="sec" id="gokyuzu">
-    <div class="secHead"><span class="eyebrow" id="nowTitle">Bugün</span><h2>Gökyüzü şu an</h2><p>Gezegenlerin şu anki yerleri, ayın evresi ve bu haftanın önemli anları.</p></div>
+  <section class="sec">
+    <div class="secHead"><span class="eyebrow">Burcunu seç</span><h2>Burçlar</h2></div>
+    <div class="signGrid" id="signGrid"></div>
+  </section>
+  <section class="sec">
+    <div class="secHead"><span class="eyebrow" id="todayTitle">Bugün</span><h2>Gökyüzü şu an</h2></div>
     <div class="now" id="nowGrid"></div>
-    <div class="glass skyNotes"><h3>Bu haftanın gökyüzü</h3><ul id="weekSky"></ul></div>
+    <p class="more"><a class="btn glass" href="/astro/sky/">Gökyüzünün tamamı ve takvim →</a></p>
   </section>
-
-  <section class="sec notes">
-    <div class="glass">
-      <h3>Bilmen gerekenler</h3>
-      <ul>
-        <li><b>Eğlence ve kendini tanıma amaçlıdır.</b> Buradaki yorumlar sağlık, para ya da hukuk konularında karar vermek için bir dayanak değildir.</li>
-        <li><b>Hesaplar gerçek gökyüzü verisiyle yapılır.</b> Tropikal zodyak ve Placidus ev sistemi kullanılır; kutup bölgelerine yakın doğumlarda eşit evlere geçilir.</li>
-        <li><b>Doğum saati önemli.</b> Yükselen burç yaklaşık iki saatte bir değişir. Saatin yoksa güneş ve ay burcun yine doğru çıkar, yükselen ve evler gösterilmez.</li>
-        <li><b>Saat dilimi otomatik tahmin edilir.</b> Türkiye ve listedeki şehirler için yaz saati dikkate alınır; eski yıllarda uygulamalar değiştiği için gerekirse UTC farkını elle düzelt.</li>
-        <li><b>Bilgilerin cihazından çıkmaz.</b> Hesaplar tarayıcında yapılır; kaydettiğin haritalar yalnızca bu cihazda saklanır, hiçbir sunucuya gönderilmez.</li>
-      </ul>
-    </div>
-  </section>
+  <section class="sec">
+<details class="notes glass">
+  <summary>Bilmen gerekenler</summary>
+  <ul>
+    <li><b>Eğlence ve kendini tanıma amaçlıdır.</b> Buradaki yorumlar sağlık, para ya da hukuk konularında karar vermek için bir dayanak değildir.</li>
+    <li><b>Hesaplar gerçek gökyüzü verisiyle yapılır.</b> Tropikal zodyak ve Placidus ev sistemi kullanılır; kutup bölgelerine yakın doğumlarda eşit evlere geçilir.</li>
+    <li><b>Doğum saati önemli.</b> Yükselen burç yaklaşık iki saatte bir değişir. Saatin yoksa güneş ve ay burcun yine doğru çıkar, yükselen ve evler gösterilmez.</li>
+    <li><b>Saat dilimi otomatik hesaplanır.</b> Seçtiğin ülke ve tarihe göre yaz saati de dikkate alınır; çok eski tarihlerde gerekirse elle düzeltebilirsin.</li>
+    <li><b>Bilgilerin cihazından çıkmaz.</b> Hesaplar tarayıcında yapılır; kaydettiğin haritalar yalnızca bu cihazda saklanır.</li>
+  </ul>
+</details></section>
 </main>
-
-<footer class="foot"><a href="/">JinjaGames</a> · <a href="/apps/">Diğer web uygulamaları</a> · <a href="/privacy/">Gizlilik</a></footer>
-
-<dialog id="savedDlg" aria-labelledby="savedTitle">
-  <div class="dlg"><div class="dlgHead"><h3 id="savedTitle">Kayıtlı haritalar</h3><button type="button" data-close aria-label="Kapat">✕</button></div><ul id="savedList"></ul><p class="muted">Haritaların yalnızca bu cihazda saklanır.</p></div>
-</dialog>
-<div class="toast" id="toast" role="status" aria-live="polite"></div>
+<footer class="foot"><a href="/astro/">JinjaAstro</a> · <a href="/">JinjaGames</a> · <a href="/apps/">Diğer web uygulamaları</a> · <a href="/privacy/">Gizlilik</a></footer>
 </body>
 </html>

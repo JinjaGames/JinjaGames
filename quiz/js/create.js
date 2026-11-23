@@ -1,4 +1,4 @@
-// JinjaQuiz: quiz oluşturma sayfası (/quiz/olustur/). Sanatçı ve şarkı araması ayrı sekmelerde;
+// JinjaQuiz: quiz oluşturma sayfası (/quiz/create/). Sanatçı ve şarkı araması ayrı sekmelerde;
 // sanatçının popüler şarkıları ve tüm albümleri tek tek ya da topluca eklenebilir.
 import { searchArtists, searchTracks, artistInfo, artistTop, artistAlbums, albumTracks, ownTracks, isAlternate, customLists, saveCustom, removeCustom, cleanTracks, fold, cdn } from "./music.js";
 import { fetchCommunity, publishQuiz, removeQuiz, myPubkey, MIN_TRACKS, MAX_TRACKS } from "./community.js";
@@ -504,8 +504,8 @@ addEventListener("beforeunload", (e) => {
 // ---- açılış: ?duzenle=<id> ----
 (async function boot() {
   const params = new URLSearchParams(location.search);
-  const id = params.get("duzenle") || "";
-  if (params.get("tur") === "trivia" && !id) { st.kind = "trivia"; st.items = [blank()]; }
+  const id = (params.get("edit") || params.get("duzenle")) || "";
+  if ((params.get("type") || params.get("tur")) === "trivia" && !id) { st.kind = "trivia"; st.items = [blank()]; }
   drawAll();
   if (!id) return (st.kind === "trivia" ? $("#qName") : $("#crq")).focus();
   const localT = customLists().find((l) => l.id === id && l.kind === "trivia" && l.items?.length);

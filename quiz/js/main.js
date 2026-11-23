@@ -368,7 +368,7 @@ function inviteLink() {
   const u = new URL(location.href);
   u.search = "";
   u.hash = "";
-  u.searchParams.set("oda", mode.code);
+  u.searchParams.set("room", mode.code);
   return u.href;
 }
 async function copy(text, msg) {
@@ -427,7 +427,7 @@ function renderHome() {
   const comm = ui.community || [];
   const tab = TABS.find((t) => t[0] === ui.genre) || TABS[0];
   const pics = PRESETS.map((p) => realPic(p.picture)).filter(Boolean);
-  const inviteCode = esc(new URLSearchParams(location.search).get("oda") || "");
+  const inviteCode = esc((new URLSearchParams(location.search).get("room") || new URLSearchParams(location.search).get("oda")) || "");
   app.innerHTML = `
   <section class="hm-hero">
     <div class="hm-bg" aria-hidden="true"><i class="b1"></i><i class="b2"></i><i class="b3"></i>
@@ -500,7 +500,7 @@ function renderHome() {
     <div class="hm-makeArt" aria-hidden="true">${pics.length >= 3 ? pics.slice(0, 5).map((u, k) => `<img src="${esc(u)}" alt="" style="--k:${k}">`).join("") : TRIVIA.slice(0, 5).map((t, k) => `<span class="mkEmo" style="--k:${k};--h:${hue(t.name)}">${t.emoji}</span>`).join("")}</div>
     <div><span class="kicker">${ic("sparkles")} Kendi quizin</span><h2>Kendi quizini yap, herkes oynasın.</h2>
       <p>Bir sanatçının albümlerinden şarkı quizi ya da kendi sorularınla trivia yap. Herkese açık yayınlarsan Topluluk'ta herkes görür.</p>
-      <div class="hm-actions"><a class="btn primary lg" href="olustur/">${ic("music")}Şarkı quizi oluştur</a><a class="btn light lg" href="olustur/?tur=trivia">${ic("circle-help")}Trivia oluştur</a></div></div>
+      <div class="hm-actions"><a class="btn primary lg" href="create/">${ic("music")}Şarkı quizi oluştur</a><a class="btn light lg" href="create/?type=trivia">${ic("circle-help")}Trivia oluştur</a></div></div>
   </section>
   <footer><a href="/">JinjaGames</a> · <a href="/apps/">Diğer web uygulamaları</a> · <a href="/privacy/">Gizlilik</a></footer>`;
   keepVisible('.subChips [aria-pressed="true"]');
@@ -645,7 +645,7 @@ function rail(title, icon, inner, more, cls = "") {
 function communityState() {
   if (ui.community === null) return `<p class="hm-empty">${spinner()} Topluluk quizleri yükleniyor…</p>`;
   if (ui.communityErr) return `<p class="hm-empty">Topluluk quizlerine şu an ulaşılamadı. Biraz sonra tekrar dene.</p>`;
-  if (!ui.community.length) return `<a class="hm-empty cta" href="olustur/">${ic("plus")}<span><b>Henüz topluluk quizi yok.</b> İlkini sen oluştur!</span></a>`;
+  if (!ui.community.length) return `<a class="hm-empty cta" href="create/">${ic("plus")}<span><b>Henüz topluluk quizi yok.</b> İlkini sen oluştur!</span></a>`;
   return "";
 }
 function qcard(l, k = 0) {
@@ -1696,7 +1696,7 @@ document.addEventListener("click", async (e) => {
     }
     if (d.requeue) return act({ type: "requeue", id: d.requeue });
     if (d.edit) {
-      location.href = "olustur/?duzenle=" + encodeURIComponent(d.edit);
+      location.href = "create/?edit=" + encodeURIComponent(d.edit);
       return;
     }
     if (d.unpublish) {
@@ -1862,7 +1862,7 @@ function boot() {
     if (screen === "home" && !mode) renderHome();
   });
   const saved = store.get("jqSession", null, sessionStorage);
-  const invite = (new URLSearchParams(location.search).get("oda") || "").toUpperCase();
+  const invite = ((new URLSearchParams(location.search).get("room") || new URLSearchParams(location.search).get("oda")) || "").toUpperCase();
   if (saved?.role === "host" && saved.game) {
     try {
       startHost({ restore: typeof saved.game === "string" ? unseal(saved.game) : saved.game });
