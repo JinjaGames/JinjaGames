@@ -23,7 +23,7 @@
     ['jellyslide', '../jellyslide/img/banner.webp', '--w-slide'],
     ['daypot', '../daypot/img/kitchen.webp', '--w-warm']
   ];
-  var W = 3.0, H = 1.46, R = 4.5;
+  var W = 2.9, H = 1.41, R = 6.6;
   var scene = new THREE.Scene();
   var camera = new THREE.PerspectiveCamera(34, 1, .1, 100);
   var ring = new THREE.Group(); scene.add(ring);
@@ -55,7 +55,7 @@
   function size() {
     var w = canvas.clientWidth, h = canvas.clientHeight; if (!w || !h) return;
     gl.setSize(w, h, false); camera.aspect = w / h;
-    var narrow = w < 560; camera.position.set(0, narrow ? 3.4 : 3, narrow ? 17.5 : 14.8); camera.lookAt(0, -.4, 0); camera.updateProjectionMatrix();
+    var narrow = w < 560; camera.position.set(0, narrow ? 3.8 : 3.2, narrow ? 21 : 16.4); camera.lookAt(0, -.5, 0); camera.updateProjectionMatrix();
   }
   size(); window.addEventListener('resize', size);
   canvas.addEventListener('pointermove', function (e) {

@@ -9,8 +9,8 @@ if ((location.protocol === 'https:' || location.protocol === 'http:') && locatio
 }
 </script>
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-<title>Web Apps | JinjaGames: Jinja Football, JinjaPeer and JinjaQuiz in your browser</title>
-<meta name="description" content="JinjaGames web apps run right in your browser: Jinja Football, the football what-if machine, JinjaPeer, end-to-end encrypted device-to-device file transfer, and JinjaQuiz, a music quiz to play with friends. Free, no account, no tracking." />
+<title>Web Apps | JinjaGames: JinjaQuiz, JinjaAstro, Jinja Football and JinjaPeer in your browser</title>
+<meta name="description" content="JinjaGames web apps run right in your browser: JinjaAstro, a 3D birth chart with weekly horoscopes, Jinja Football, the football what-if machine, JinjaPeer, end-to-end encrypted device-to-device file transfer, and JinjaQuiz, a music quiz to play with friends. Free, no account, no tracking." />
 <meta name="robots" content="index,follow" />
 <link rel="canonical" href="https://jinjagames.com/apps/" />
 <meta name="theme-color" content="#FCFAF8" media="(prefers-color-scheme: light)" />
@@ -203,7 +203,7 @@ footer{border-top:1px solid var(--line);padding:40px 0}
 /* WEB APPS */
 .hero{padding-bottom:30px}
 .hero h1 .hl{color:var(--brand)}
-.quick{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px;margin-top:34px}
+.quick{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:14px;margin-top:34px}
 .qk{--a:var(--brand);display:grid;grid-template-columns:48px 1fr auto;align-items:center;gap:14px;padding:16px 18px;border-radius:18px;background:var(--surface);border:1px solid var(--line);color:var(--ink);text-decoration:none;transition:transform .25s var(--ease),border-color .2s,background .2s,box-shadow .25s}
 .qk:hover,.qk:focus-visible{transform:translateY(-3px);border-color:color-mix(in srgb,var(--a) 50%,transparent);background:color-mix(in srgb,var(--a) 8%,var(--surface));box-shadow:0 16px 36px -18px color-mix(in srgb,var(--a) 70%,transparent);outline:none}
 .qk img{width:48px;height:48px;border-radius:13px}
@@ -212,7 +212,16 @@ footer{border-top:1px solid var(--line);padding:40px 0}
 .qk i{font-style:normal;color:var(--ink-3);font-size:18px;transition:transform .2s,color .2s}
 .qk:hover i{transform:translateX(4px);color:var(--a)}
 .app{scroll-margin-top:90px}
-@media(max-width:820px){.quick{grid-template-columns:1fr}.qk{padding:14px 16px}}
+@media(max-width:1100px){.quick{grid-template-columns:1fr 1fr}}@media(max-width:620px){.quick{grid-template-columns:1fr}.qk{padding:14px 16px}}
+.as{background:radial-gradient(90% 90% at 50% 40%,#3b1f86,#120a2e 70%);display:grid;place-items:center}
+.as-ring{position:relative;width:62%;aspect-ratio:1;border-radius:50%;border:1px solid #ffffff2a;animation:asSpin 40s linear infinite}
+.as-ring i{position:absolute;left:50%;top:50%;font:600 clamp(14px,2vw,22px) 'Segoe UI Symbol',sans-serif;font-style:normal;color:#e6d9ff;transform:rotate(calc(var(--k)*30deg)) translateY(-118%) rotate(calc(var(--k)*-30deg));translate:-50% -50%}
+.as-core{position:absolute;display:grid;justify-items:center;gap:4px;color:#f5c66b;font-size:13px;letter-spacing:.06em}
+.as-core b{font:600 44px 'Segoe UI Symbol',sans-serif;color:#ffd98a;text-shadow:0 0 24px #f5c66b}
+.as-p{position:absolute;width:10px;height:10px;border-radius:50%;box-shadow:0 0 16px currentColor;background:currentColor}
+.as-p.p1{color:#ff9ccf;left:24%;top:30%}.as-p.p2{color:#7ff0e3;right:22%;top:58%}.as-p.p3{color:#ffb873;left:40%;bottom:16%}
+@keyframes asSpin{to{rotate:360deg}}
+@media(prefers-reduced-motion:reduce){.as-ring{animation:none}}
 .apps{display:grid;gap:34px;padding-bottom:110px}
 .app{display:grid;grid-template-columns:minmax(0,1.05fr) minmax(0,1fr);gap:clamp(28px,4vw,56px);align-items:center;padding:34px 0;border-top:1px solid var(--line)}
 .app.flip .app-media{order:2}
@@ -298,6 +307,7 @@ html[data-theme="dark"] .app .btn.p{color:#fff}
           <div class="apps-pop" id="apps-pop">
             <div class="apps-pop-title"><span class="en i">Open in your browser, nothing to install</span><span class="tr i">Tarayıcıda aç, kurulum yok</span></div>
             <a class="app-item feat" href="/quiz/" style="--a:#ff5b3a"><img src="/assets/img/apps/jinjaquiz.svg" alt="" width="52" height="52"><span><b>JinjaQuiz <em class="tag"><span class="en i">New</span><span class="tr i">Yeni</span></em></b><small class="en i">Song and trivia quizzes, solo or in a lobby with friends</small><small class="tr i">Şarkı ve trivia quizleri; tek başına ya da arkadaşlarınla lobide</small></span><i class="go" aria-hidden="true">&rarr;</i></a>
+            <a class="app-item" href="/astro/" style="--a:#a77bff"><img src="/assets/img/apps/jinjaastro.svg" alt="" width="44" height="44"><span><b>JinjaAstro <em class="tag"><span class="en i">New</span><span class="tr i">Yeni</span></em></b><small class="en i">Your birth chart in 3D, rising sign and weekly horoscopes</small><small class="tr i">3D doğum haritası, yükselen burç ve haftalık yorumlar</small></span><i class="go" aria-hidden="true">&rarr;</i></a>
             <a class="app-item" href="/football/" style="--a:#3ddc84"><img src="/assets/img/apps/football.svg" alt="" width="44" height="44"><span><b>Jinja Football <em class="tag live"><span class="en i">Live</span><span class="tr i">Canlı</span></em></b><small class="en i">Change a match, a transfer or a penalty in football history</small><small class="tr i">Futbol tarihinde bir maçı, transferi ya da penaltıyı değiştir</small></span><i class="go" aria-hidden="true">&rarr;</i></a>
             <a class="app-item" href="/peer/" style="--a:#5aa0ff"><img src="/assets/img/apps/jinjapeer.svg" alt="" width="44" height="44"><span><b>JinjaPeer</b><small class="en i">Send files straight to another device, encrypted</small><small class="tr i">Dosyaları şifreli olarak doğrudan başka cihaza gönder</small></span><i class="go" aria-hidden="true">&rarr;</i></a>
             <a class="apps-all" href="/apps/"><span class="en i">All web apps</span><span class="tr i">Tüm web uygulamaları</span><span aria-hidden="true">&rarr;</span></a>
@@ -335,6 +345,7 @@ html[data-theme="dark"] .app .btn.p{color:#fff}
       <p class="lede tr">Tarayıcıda, her cihazda çalışan araçlar. Ücretsizler; hesap, reklam ya da izleme yok. Birine dokun, hemen başla.</p>
       <div class="quick">
         <a class="qk" href="/quiz/" style="--a:#ff5b3a"><img src="/assets/img/apps/jinjaquiz.svg" alt="" width="48" height="48"><span><b>JinjaQuiz</b><small class="en i">Song &amp; trivia quizzes</small><small class="tr i">Şarkı ve trivia quizleri</small></span><i aria-hidden="true">&rarr;</i></a>
+        <a class="qk" href="/astro/" style="--a:#a77bff"><img src="/assets/img/apps/jinjaastro.svg" alt="" width="48" height="48"><span><b>JinjaAstro</b><small class="en i">3D birth chart &amp; horoscopes</small><small class="tr i">3D harita ve burç yorumları</small></span><i aria-hidden="true">&rarr;</i></a>
         <a class="qk" href="/football/" style="--a:#3ddc84"><img src="/assets/img/apps/football.svg" alt="" width="48" height="48"><span><b>Jinja Football</b><small class="en i">Rewrite football history</small><small class="tr i">Futbol tarihini değiştir</small></span><i aria-hidden="true">&rarr;</i></a>
         <a class="qk" href="/peer/" style="--a:#5aa0ff"><img src="/assets/img/apps/jinjapeer.svg" alt="" width="48" height="48"><span><b>JinjaPeer</b><small class="en i">Encrypted file transfer</small><small class="tr i">Şifreli dosya gönderimi</small></span><i aria-hidden="true">&rarr;</i></a>
       </div>
@@ -362,7 +373,26 @@ html[data-theme="dark"] .app .btn.p{color:#fff}
       </div>
     </article>
 
-    <article class="app rv flip" id="football" style="--accent:#0b8a4a;--glow:200,255,90">
+    <article class="app rv flip" id="astro" style="--accent:#8a5cff">
+      <a class="app-media as" href="/astro/" tabindex="-1" aria-hidden="true">
+        <div class="as-ring"><i style="--k:0">♈&#xFE0E;</i><i style="--k:1">♉&#xFE0E;</i><i style="--k:2">♊&#xFE0E;</i><i style="--k:3">♋&#xFE0E;</i><i style="--k:4">♌&#xFE0E;</i><i style="--k:5">♍&#xFE0E;</i><i style="--k:6">♎&#xFE0E;</i><i style="--k:7">♏&#xFE0E;</i><i style="--k:8">♐&#xFE0E;</i><i style="--k:9">♑&#xFE0E;</i><i style="--k:10">♒&#xFE0E;</i><i style="--k:11">♓&#xFE0E;</i></div>
+        <div class="as-core"><b>☉&#xFE0E;</b><span class="en i">Sun · Moon · Rising</span><span class="tr i">Güneş · Ay · Yükselen</span></div>
+        <span class="as-p p1"></span><span class="as-p p2"></span><span class="as-p p3"></span>
+      </a>
+      <div class="app-body">
+        <div class="app-head"><img src="/assets/img/apps/jinjaastro.svg" alt="" width="52" height="52"><div><span class="kind"><span class="en i">Astrology · 3D sky</span><span class="tr i">Astroloji · 3D gökyüzü</span></span><h2>JinjaAstro</h2></div><span class="badge new">New</span></div>
+        <p class="en">Enter your birth date, time and place and see the sky you were born under, in 3D. Your sun, moon and rising sign, all twelve houses, the planets and their aspects, plus horoscopes for every sign that rewrite themselves each week and each month from the real movement of the sky.</p>
+        <p class="tr">Doğum tarihini, saatini ve yerini gir; doğduğun anın gökyüzünü üç boyutlu olarak gör. Güneş, ay ve yükselen burcun, on iki ev, gezegenler ve aralarındaki açılar. Üstüne her burç için gökyüzünün gerçek hareketlerine göre her hafta ve her ay yeniden yazılan yorumlar.</p>
+        <ul class="feat">
+          <li><span class="en i">Drag the zodiac and planets around in 3D, tap a planet for details</span><span class="tr i">Burç kuşağını ve gezegenleri 3D'de çevir, gezegene dokun, ayrıntısını gör</span></li>
+          <li><span class="en i">Save your chart as a post or story sized image</span><span class="tr i">Haritanı gönderi ya da hikâye boyutunda görsel olarak kaydet</span></li>
+          <li><span class="en i">Everything is calculated on your device; nothing is uploaded</span><span class="tr i">Her şey cihazında hesaplanır, hiçbir bilgin bir yere gönderilmez</span></li>
+        </ul>
+        <div class="acts"><a class="btn p" href="/astro/"><span class="en i">Open JinjaAstro</span><span class="tr i">JinjaAstro'yu aç</span> <span class="arw">&rarr;</span></a><span class="note"><span class="en i">Interface in Turkish</span><span class="tr i">Türkçe arayüz</span></span></div>
+      </div>
+    </article>
+
+    <article class="app rv" id="football" style="--accent:#0b8a4a;--glow:200,255,90">
       <a class="app-media fb" href="/football/" tabindex="-1" aria-hidden="true">
         <svg class="pitch" viewBox="0 0 400 250" aria-hidden="true">
           <defs><linearGradient id="fbg" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#0d2a1b"/><stop offset="1" stop-color="#174f31"/></linearGradient></defs>
@@ -378,10 +408,6 @@ html[data-theme="dark"] .app .btn.p{color:#fff}
           <g class="keeper"><rect x="190" y="104" width="20" height="26" rx="8" fill="#ff8a1f"/><circle cx="200" cy="97" r="7" fill="#d6a27c"/><path d="M190 110l-12-12M210 110l12-12" stroke="#ff8a1f" stroke-width="5" stroke-linecap="round"/><circle cx="177" cy="97" r="4" fill="#f4f6f2"/><circle cx="223" cy="97" r="4" fill="#f4f6f2"/><rect x="192" y="129" width="6" height="12" rx="3" fill="#1b1f24"/><rect x="202" y="129" width="6" height="12" rx="3" fill="#1b1f24"/></g>
           <g class="ball"><circle cx="200" cy="214" r="11" fill="#fff"/><path d="M200 207l5 3.6-2 5.8h-6l-2-5.8z" fill="#111"/></g>
         </svg>
-        <div class="chips">
-          <span class="chip-k">Galatasaray 2–1 Fenerbahçe</span>
-          <span class="chip-k on">→ 1–1 <em class="en i">what if?</em><em class="tr i">ya olsaydı?</em></span>
-        </div>
       </a>
       <div class="app-body">
         <div class="app-head"><img src="/assets/img/apps/football.svg" alt="" width="52" height="52"><div><span class="kind"><span class="en i">Football · live data</span><span class="tr i">Futbol · güncel veri</span></span><h2>Jinja Football</h2></div><span class="badge live">Live</span></div>
@@ -396,7 +422,7 @@ html[data-theme="dark"] .app .btn.p{color:#fff}
       </div>
     </article>
 
-    <article class="app rv" id="peer" style="--accent:var(--brand)">
+    <article class="app rv flip" id="peer" style="--accent:var(--brand)">
       <a class="app-media pr" href="/peer/" tabindex="-1" aria-hidden="true">
         <div class="pr-row">
           <div class="dev"><svg viewBox="0 0 32 24"><rect x="1" y="1" width="30" height="18" rx="2.5"/><path d="M11 23h10M16 19v4"/></svg><b>Windows</b><span>photo.heic · 18 MB</span></div>
