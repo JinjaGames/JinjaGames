@@ -1,9 +1,9 @@
 // JinjaFC ana sayfası: canlı kartlar, sayaçlar, otomatik en iyi 11, mevki sıralamaları
 import { loadDB, POS_TR, crest } from "./db.js?v=3";
 import { cardHtml } from "./fccard.js?v=3";
-import { metaAt, bestRole, squadMeta, autoBuild } from "./meta.js?v=1";
+import { metaAt, bestRole, squadMeta, autoBuild } from "./meta.js?v=2";
 import { FORMATIONS } from "./formations.js?v=2";
-import { chemistry } from "./chem.js?v=2";
+import { chemistry } from "./chem.js?v=3";
 import { esc } from "./util.js";
 
 const $ = (s) => document.querySelector(s);

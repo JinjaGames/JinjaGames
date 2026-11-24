@@ -1,7 +1,7 @@
 // Meta Rating: oyuncunun belirli bir mevkide oyunda ne kadar etkili olacağını tahmin eden kendi puanımız.
 // Mevkiye göre ağırlıklandırılmış ayrıntılı özellikler + zayıf ayak, yetenek hareketleri, PlayStyle+ ve boy bonusları.
 // Ayrıca: seçilen filtrelere göre en iyi kadroları kuran otomatik kadro kurucu.
-import { chemistry } from "./chem.js";
+import { chemistry, bestManager } from "./chem.js?v=3";
 
 // özellik sırası (players.json "attrs" ile aynı)
 const A = { acc: 0, spr: 1, pos: 2, fin: 3, sp: 4, ls: 5, vol: 6, pen: 7, vis: 8, cro: 9, fk: 10, sps: 11, lps: 12, cur: 13, agi: 14, bal: 15, rea: 16, bc: 17, dri: 18, com: 19,
@@ -67,6 +67,9 @@ export function squadMeta(slots, xi) {
  */
 export async function autoBuild(players, formations, opts = {}) {
   const lambda = opts.want === "chem" ? 0.9 : 0.35;
+  // teknik direktör: "auto" → her kadroya en iyi TD seçilir; { nation, league } → sabit TD; yoksa TD yok
+  const mgrOpt = opts.mgr;
+  const chemOf = (slots, x, fast) => (mgrOpt === "auto" ? bestManager(slots, x, {}, fast) : { ...(mgrOpt || {}), total: chemistry(slots, x, mgrOpt || {}).total });
   const results = [];
   const keys = Object.keys(formations);
   for (let fi = 0; fi < keys.length; fi++) {
@@ -98,7 +101,7 @@ export async function autoBuild(players, formations, opts = {}) {
         if (!best) return null;
         xi[i] = best; used.add(best.id);
       }
-      const score = (x) => squadMeta(slots, x) + lam * chemistry(slots, x).total;
+      const score = (x) => squadMeta(slots, x) + lam * chemOf(slots, x, true).total;
       let cur = score(xi);
       // yerel iyileştirme: her mevkide adayları dene, iyileştiren değişikliği kabul et
       for (let pass = 0; pass < 3; pass++) {
@@ -121,7 +124,8 @@ export async function autoBuild(players, formations, opts = {}) {
       if (!xi) return;
       const sig = xi.map((p) => p.id).sort().join(".");
       if (results.some((r) => r.sig === sig)) return;
-      results.push({ f: fk, xi: xi.slice(), chem: chemistry(slots, xi).total, meta: squadMeta(slots, xi), sig });
+      const m = chemOf(slots, xi, false);
+      results.push({ f: fk, xi: xi.slice(), chem: m.total, mgr: { nation: m.nation || "", league: m.league || "" }, meta: squadMeta(slots, xi), sig });
     };
     const none = new Set();
     for (const seed of seeds) for (const lam of [lambda, lambda * 2.2, lambda * 0.4]) add(run(seed, lam, none));

@@ -273,8 +273,16 @@ function startHost({ solo = false, restore = null } = {}) {
     ? Game.restore(restore, onGame)
     : new Game({ code, solo, host: { pid, profile }, onChange: onGame });
   mode = { role: solo ? "solo" : "host", game, code };
-  if (!solo) {
-    mode.net = hostRoom(code, {
+  if (!solo) attachHost();
+  screen = "room";
+  onGame(game);
+  return game;
+}
+// Kurucunun ağ bağlantısı. Telefon arka plana düşünce (ör. kodu WhatsApp'tan paylaşırken) tarayıcı
+// röle ve eş bağlantılarını kapatabilir; sayfa öne gelince bu fonksiyonla yeniden kurulur.
+function attachHost() {
+  const { game, code } = mode;
+  mode.net = hostRoom(code, {
       onHello(p, prof) {
         try {
           game.join(p, prof);
@@ -293,11 +301,21 @@ function startHost({ solo = false, restore = null } = {}) {
         if (screen !== "room" && hostAlone()) leaveRoom();
       },
     });
-  }
-  screen = "room";
-  onGame(game);
-  return game;
 }
+let hiddenAt = 0;
+document.addEventListener("visibilitychange", () => {
+  if (document.hidden) { hiddenAt = Date.now(); return; }
+  if (!mode || mode.role === "solo" || !hiddenAt || Date.now() - hiddenAt < 2500) return;
+  hiddenAt = 0;
+  try {
+    if (mode.role === "host") {
+      mode.net?.close({ quiet: true });
+      attachHost();
+    } else if (mode.role === "guest" && !mode.net?.connected) {
+      startGuest(mode.code);
+    }
+  } catch {}
+});
 function startGuest(code) {
   if (!profile) return openSheet("profile", { then: () => startGuest(code) });
   leaveRoom(true);
@@ -1643,15 +1661,8 @@ function pickHit(i) {
   openSheet("setup", { list, count: last.count || 10, mode: last.mode || "choice", clip: last.clip || 3 });
 }
 
-document.addEventListener("pointerdown", (e) => {
-  if (e.button !== 0) return;
-  const b = e.target.closest?.("[data-ans], #disc");
-  if (!b || b.disabled) return;
-  b.dataset.pressed = "1";
-  if (b.id === "disc") return listen();
-  const q = view?.question;
-  if (q) act({ type: "answer", q: q.id, answer: q.options[Number(b.dataset.ans)] });
-});
+// Şıklar ve plak normal "click" ile işlenir: basıp parmağını / fareyi şıkkın dışına kaydırıp
+// bırakırsan seçilmiş sayılmaz (telefonda kaydırırken yanlışlıkla cevap vermeyi önler).
 document.addEventListener("click", async (e) => {
   const b = e.target.closest("button, [data-close]");
   if (!b || b.disabled) return;

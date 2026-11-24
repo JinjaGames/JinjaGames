@@ -1,7 +1,7 @@
 // JinjaFC · oyuncu veritabanı listesi
 import { loadDB, fold, POS_TR, STAT_TR, GK_TR, crest, flag } from "./db.js?v=3";
 import { cardHtml } from "./fccard.js?v=3";
-import { bestRole, grade, metaAt } from "./meta.js?v=1";
+import { bestRole, grade, metaAt } from "./meta.js?v=2";
 import { esc } from "./util.js";
 
 const $ = (s) => document.querySelector(s);
