@@ -2930,3 +2930,11 @@ button.hm-cov:hover, button.hm-cov:focus-visible { scale: 1.12; rotate: 0deg; bo
 .nqOver p { color: var(--muted); min-height: 1.4em; }
 .nqBtns { display: flex; gap: 10px; justify-content: center; margin-top: 18px; flex-wrap: wrap; }
 @media (max-width: 700px) { .nqBoard { grid-template-columns: 1fr; grid-template-rows: 1fr 1fr; } .nqSide { padding: 64px 16px 18px; gap: 6px; } .nqSide.s1 { padding-top: 26px; } .nqVs { width: 60px; height: 60px; font-size: 20px; } .nqAsk small { display: none; } }
+/* profil: ad + rastgele ad düğmesi */
+.nameRow { display: flex; gap: 8px; align-items: stretch; }
+.nameRow input { flex: 1; min-width: 0; }
+.nameRow .icon { flex: none; }
+.muted.small { font-size: 12.5px; margin-top: -4px; }
+
+/* 100vw arka plan katmanları kaydırma çubuğu yüzünden taşmasın */
+html { overflow-x: clip; }

@@ -1,5 +1,6 @@
 import { PRESETS, loadTracks, searchArtists, customLists, saveCustom, removeCustom, fold, cdn, realPic, loadPresetPictures } from "./music.js";
 import { sfx, sfxEnabled, setSfx } from "./sfx.js";
+import { randomName } from "./names.js";
 import { fetchCommunity, removeQuiz, hideQuiz, unhideQuiz, hiddenList } from "./community.js";
 import { Game, MAX_PLAYERS } from "./engine.js?v=2";
 import { TRIVIA, TCATS, TART, EMOJIS, cleanItems, IMG, FLAG, flagUrl, cleanEmo } from "./trivia.js";
@@ -1269,15 +1270,33 @@ function openSheet(kind, ctx = {}) {
 function closeSheet() {
   if (sheet.open) sheet.close();
 }
+// Profil seçmeden geçen oyuncuya rastgele ad, simge ve renk ver; bekleyen işi (lobi, oyun) sürdür
+function autoProfile() {
+  if (profile) return closeSheet();
+  const ed = sheetCtx?.ed || {};
+  const rnd = (l) => l[Math.floor(Math.random() * l.length)];
+  profile = { name: ($("#pName")?.value || "").trim() || ed.suggest || randomName(), avatar: ed.avatar || rnd(AVATARS), color: ed.color || rnd(COLORS), photo: ed.photo || "" };
+  store.set("jqProfile", profile);
+  const then = sheetCtx?.then;
+  sheetCtx = {};
+  closeSheet();
+  topbar();
+  toast(`Adın: ${profile.name}. Sağ üstten istediğin zaman değiştirebilirsin.`);
+  then?.();
+}
+sheet.addEventListener("cancel", (e) => { if (sheetCtx?.kind === "profile" && !profile) { e.preventDefault(); autoProfile(); } });
 sheet.addEventListener("click", (e) => {
-  if (e.target === sheet) closeSheet();
+  if (e.target !== sheet) return;
+  if (sheetCtx?.kind === "profile" && !profile) return autoProfile();
+  closeSheet();
 });
 
 function profileSheet() {
   const ed = (sheetCtx.ed ??= { name: "", avatar: "headphones", color: "coral", photo: "", ...(profile || {}) });
-  sheetBody.innerHTML = `<div class="sheetHead"><h2>${profile ? "Profilin" : "Önce adını seç"}</h2>${profile ? `<button class="icon" data-close aria-label="Kapat">${ic("x")}</button>` : ""}</div>
+  sheetBody.innerHTML = `<div class="sheetHead"><h2>${profile ? "Profilin" : "Adını seç"}</h2>${profile ? `<button class="icon" data-close aria-label="Kapat">${ic("x")}</button>` : `<button class="icon" data-do="skipProfile" aria-label="Geç, rastgele bir ad ver" title="Geç (rastgele ad)">${ic("x")}</button>`}</div>
     <div class="profPreview">${avatar(ed, "xl")}</div>
-    <label class="field"><span>Oyuncu adı</span><input id="pName" maxlength="20" value="${esc(ed.name)}" placeholder="Takma adın" autocomplete="nickname"></label>
+    <label class="field"><span>Oyuncu adı</span><span class="nameRow"><input id="pName" maxlength="20" value="${esc(ed.name)}" placeholder="${esc(ed.suggest ??= randomName())}" autocomplete="nickname"><button type="button" class="icon soft" data-do="rollName" aria-label="Rastgele ad" title="Rastgele ad">${ic("dices")}</button></span></label>
+    ${profile ? "" : `<p class="muted small">Boş bırakırsan ya da geçersen sana rastgele bir ad verilir; sonra istediğin zaman değiştirebilirsin.</p>`}
     <div class="field"><span>Simge</span><div class="pick">${AVATARS.map((a) => `<button data-pav="${a}" aria-pressed="${!ed.photo && ed.avatar === a}">${avatar({ ...ed, avatar: a, photo: "" })}</button>`).join("")}
       <label class="upload" title="Fotoğraf yükle">${ed.photo ? avatar(ed) : ic("plus")}<input type="file" id="pPhoto" accept="image/*" hidden></label></div></div>
     <div class="field"><span>Renk</span><div class="pick colors">${COLORS.map((c) => `<button data-pcol="${c}" class="sw ${c}" aria-pressed="${ed.color === c}" aria-label="${c}"></button>`).join("")}</div></div>
@@ -1625,13 +1644,17 @@ async function doAction(a, el) {
     case "listen":
       if (el.dataset.pressed) return;
       return listen();
+    case "rollName": {
+      const inp = $("#pName");
+      inp.value = randomName();
+      sheetCtx.ed.name = inp.value;
+      return;
+    }
+    case "skipProfile":
+      return autoProfile();
     case "saveProfile": {
       const ed = sheetCtx.ed;
-      ed.name = $("#pName").value.trim();
-      if (!ed.name) {
-        $("#pName").focus();
-        return toast("Bir ad yaz.", "bad");
-      }
+      ed.name = $("#pName").value.trim() || ed.suggest || randomName();
       profile = { name: ed.name, avatar: ed.avatar, color: ed.color, photo: ed.photo };
       store.set("jqProfile", profile);
       const then = sheetCtx.then;

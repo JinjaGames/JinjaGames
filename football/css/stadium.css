@@ -248,3 +248,6 @@ a.ph:hover { border-color: var(--brand); }
   .icon-btn { width: 36px; height: 36px; }
   .jg-home { height: 34px; }
 }
+
+/* 100vw sahne kaydırma çubuğu yüzünden yatay kaydırma açmasın */
+html { overflow-x: clip; }
