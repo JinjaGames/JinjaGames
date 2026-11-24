@@ -52,11 +52,13 @@
 html[data-theme="dark"] .st.live { color: #6fe0a6; } html[data-theme="dark"] .st.ea { color: #4FD0E4; } html[data-theme="dark"] .st.dev { color: #FFB45E; }
 .assets { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 16px; margin-top: 26px; }
 .asset { border: 1px solid var(--line); border-radius: 16px; overflow: hidden; background: var(--surface); display: flex; flex-direction: column; }
-.asset .pv { aspect-ratio: 16 / 10; display: grid; place-items: center; background: var(--bg-soft); padding: 18px; }
+.asset .pv { position: relative; aspect-ratio: 16 / 10; background: var(--bg-soft); overflow: hidden; }
+.assets { align-items: start; }
 .asset .pv.dark { background: #171416; }
-.asset .pv img { max-height: 100%; width: auto; object-fit: contain; }
-.asset .pv.cover { padding: 0; } .asset .pv.cover img { width: 100%; height: 100%; object-fit: cover; }
-.asset div.m { padding: 12px 14px; display: flex; justify-content: space-between; align-items: center; gap: 10px; font-size: 14px; }
+.asset .pv img { position: absolute; left: 12%; top: 12%; width: 76%; height: 76%; max-width: none; object-fit: contain; }
+.asset .pv.cover img { left: 0; top: 0; width: 100%; height: 100%; object-fit: cover; }
+.asset .pv.white { background: #fff; } .asset .pv.white img { object-fit: contain; }
+.asset div.m { padding: 13px 16px; border-top: 1px solid var(--line); display: flex; justify-content: space-between; align-items: center; gap: 10px; font-size: 14px; }
 .asset div.m a { color: var(--brand); font-weight: 700; white-space: nowrap; }
 .copy { position: relative; margin-top: 10px; padding: 16px 18px; border: 1px dashed var(--line-2); border-radius: 12px; color: var(--ink-2); font-size: 15px; background: var(--surface-2); }
 .copy button { position: absolute; top: 10px; right: 10px; padding: 5px 10px; border-radius: 8px; border: 1px solid var(--line-2); background: var(--surface); font-size: 12.5px; font-weight: 700; cursor: pointer; }

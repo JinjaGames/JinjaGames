@@ -53,7 +53,6 @@ PAGES = [
     ("press", "Press kit", "Basın kiti"),
     ("publishers", "For publishers", "Yayıncılar için"),
     ("roadmap", "Roadmap", "Yol haritası"),
-    ("careers", "Careers", "Kariyer"),
 ]
 
 
@@ -70,7 +69,7 @@ def page(slug, title_en, title_tr, desc, body):
     top = re.sub(r'<meta property="og:title" content="[^"]*" />', f'<meta property="og:title" content="{title_en} · JinjaGames" />', top, count=1)
     top = re.sub(r'<meta property="og:description" content="[^"]*" />', f'<meta property="og:description" content="{desc}" />', top, count=1)
     top = re.sub(r'<meta property="og:url" content="[^"]*" />', f'<meta property="og:url" content="https://jinjagames.com/{slug}/" />', top, count=1)
-    top = top.replace("</head>", '<link rel="stylesheet" href="/assets/company.css?v=1">\n</head>', 1)
+    top = top.replace("</head>", '<link rel="stylesheet" href="/assets/company.css?v=3">\n</head>', 1)
     html = top + f'<main id="top" class="cpage"><span id="content"></span><div class="wrap">{body}</div></main>' + BOTTOM
     out = ROOT / slug / "index.html"
     out.parent.mkdir(exist_ok=True)
@@ -133,8 +132,8 @@ about += f'''
 <section class="csec"><span class="label">{t("Studio milestones", "Kilometre taşları")}</span>
   {h("h2", "How we got here", "Buraya nasıl geldik")}
   <ol class="tl">
-    <li><time>2023</time><h4>{t("First games", "İlk oyunlar")}</h4>{p("Eren starts building games on his own and learns the whole pipeline: design, code, art and release.", "Eren tek başına oyun geliştirmeye başlar ve işin tamamını öğrenir: tasarım, kod, görseller ve yayın.")}</li>
-    <li><time>2026 · Q3</time><h4>{t("The JinjaGames name", "JinjaGames adı")}</h4>{p("All projects come together under one studio name and one website.", "Tüm projeler tek bir stüdyo adı ve tek bir web sitesi altında toplanır.")}</li>
+    <li><time>2023</time><h4>{t("First games", "İlk oyunlar")}</h4>{p("I started making games and learned every part of the job: design, code, art and release.", "Oyun geliştirmeye başladım ve işin her adımını öğrendim: tasarım, kod, görseller ve yayın.")}</li>
+    <li><time>2026 · Q3</time><h4>{t("The JinjaGames name", "JinjaGames adı")}</h4>{p("I brought all my projects together under one studio name and one website.", "Tüm projelerimi tek bir stüdyo adı ve tek bir web sitesi altında topladım.")}</li>
     <li><time>2026</time><h4>Cyber Academy · Steam {t("Early Access", "Erken Erişim")}</h4>{p("A cyber security game played inside a virtual operating system, in 25 languages.", "Sanal bir işletim sisteminin içinde oynanan, 25 dilde bir siber güvenlik oyunu.")}</li>
     <li><time>2026</time><h4>{t("The Jelly family on Google Play", "Jelly ailesi Google Play'de")}</h4>{p("Eight calm puzzle games for Android, each with 500 levels.", "Android için sekiz sakin bulmaca oyunu, her birinde 500 bölüm.")}</li>
     <li><time>{t("Oct – Nov 2026", "Ekim – Kasım 2026")}</time><h4>{t("Web apps", "Web uygulamaları")}</h4>{p("Jinja Football, JinjaPeer, JinjaQuiz, JinjaAstro and JinjaFC: free tools that open in the browser.", "Jinja Football, JinjaPeer, JinjaQuiz, JinjaAstro ve JinjaFC: tarayıcıda açılan ücretsiz araçlar.")}</li>
@@ -142,11 +141,11 @@ about += f'''
   </ol>
   <p style="margin-top:22px"><a class="btn g" href="/roadmap/">{t("See the full roadmap", "Yol haritasının tamamı")} <span aria-hidden="true">&rarr;</span></a></p>
 </section>
-<section class="csec"><span class="label">{t("Team and collaborators", "Ekip ve iş birlikleri")}</span>
-  {h("h2", "Small team, open doors", "Küçük ekip, açık kapı")}
+<section class="csec"><span class="label">{t("Team and partners", "Ekip ve iş birlikleri")}</span>
+  {h("h2", "Who is behind it", "Arkasında kim var")}
   <div class="cgrid two">
     <div class="ccard"><span class="k">{t("Founder · Developer", "Kurucu · Geliştirici")}</span><h3>Eren Oğur</h3>{p("Design, code, art and release of every JinjaGames product. Based in Ankara.", "JinjaGames ürünlerinin tasarımı, kodu, görselleri ve yayını. Ankara'da.")}<a class="btn g" href="https://www.linkedin.com/company/jinjagamesofficial" target="_blank" rel="noopener">LinkedIn</a></div>
-    <div class="ccard"><span class="k">{t("Collaborators", "İş birlikleri")}</span><h3>{t("Work with us", "Birlikte çalışalım")}</h3>{p("We work with freelance artists, composers, translators and testers project by project. If you would like to be on that list, send us your portfolio.", "Proje bazında serbest çalışan sanatçılar, müzisyenler, çevirmenler ve test uzmanlarıyla çalışıyoruz. Bu listede olmak istersen portfolyonu gönder.")}<a class="btn g" href="/careers/">{t("Careers", "Kariyer")} <span aria-hidden="true">&rarr;</span></a></div>
+    <div class="ccard"><span class="k">{t("Partners", "Ortaklar")}</span><h3>{t("Open to partnerships", "İş birliklerine açık")}</h3>{p("Publishing, education, brand and co-development partnerships are always welcome.", "Yayıncılık, eğitim, marka ve ortak geliştirme iş birliklerine her zaman açığım.")}<a class="btn g" href="/business/">{t("Business", "İş birliği")} <span aria-hidden="true">&rarr;</span></a></div>
   </div>
 </section>
 ''' + cta("Want to work with us?", "Birlikte bir şey yapalım mı?", "Partnerships, publishing, press or a simple question.", "İş birliği, yayıncılık, basın ya da basit bir soru.", "JinjaGames: Hello")
@@ -176,7 +175,7 @@ biz += f'''
     <div class="ccard"><span class="k">02</span>{h("h3", "Education and training", "Eğitim")}{p("Cyber Academy teaches real security concepts through play. We are open to school, university and company training programs.", "Cyber Academy gerçek güvenlik kavramlarını oyunla öğretiyor. Okul, üniversite ve şirket eğitim programlarına açığız.")}</div>
     <div class="ccard"><span class="k">03</span>{h("h3", "Brands and sponsorship", "Markalar ve sponsorluk")}{p("Themed quizzes, custom puzzle packs or tools built around your community, without tracking your users.", "Topluluğuna özel quizler, bulmaca paketleri ya da araçlar; kullanıcılarını izlemeden.")}</div>
     <div class="ccard"><span class="k">04</span>{h("h3", "Co-development", "Ortak geliştirme")}{p("Unity and web projects where an extra pair of hands with release experience helps.", "Yayın deneyimi olan bir el daha gereken Unity ve web projeleri.")}</div>
-    <div class="ccard"><span class="k">05</span>{h("h3", "Localization and QA partners", "Yerelleştirme ve test ortakları")}{p("Translators and testers for upcoming languages and platforms.", "Yeni diller ve platformlar için çevirmenler ve test uzmanları.")}</div>
+    <div class="ccard"><span class="k">05</span>{h("h3", "Localization and QA partners", "Yerelleştirme ve test ortakları")}{p("Localization and QA companies that want to work on upcoming languages and platforms.", "Yeni diller ve platformlar için çalışmak isteyen yerelleştirme ve test şirketleri.")}</div>
     <div class="ccard"><span class="k">06</span>{h("h3", "Open source", "Açık kaynak")}{p("Our developer tools are on GitHub under the MIT license. Contributions and forks are welcome.", "Geliştirici araçlarımız GitHub'da, MIT lisansıyla. Katkılara ve çatallamaya açık.")}<a class="btn g" href="https://github.com/JinjaGames" target="_blank" rel="noopener">GitHub</a></div>
   </div>
   <p class="note">{t("Writing to us? A short note about who you are, what you have in mind and a rough timeline helps us reply with something useful.", "Bize yazarken kim olduğunu, aklındaki fikri ve kabaca zaman planını kısaca anlatırsan işe yarar bir cevap verebiliriz.")}</p>
@@ -187,7 +186,9 @@ page("business", "Business, press and support", "İş, basın ve destek", "Busin
 # ================= BASIN KİTİ =================
 def asset(img, name, href, dark=False, cover=False):
     cls = "pv" + (" dark" if dark else "") + (" cover" if cover else "")
-    return f'<div class="asset"><div class="{cls}"><img src="{img}" alt="{name}" loading="lazy"></div><div class="m"><span>{name}</span><a href="{href}" download>{t("Download", "İndir")}</a></div></div>'
+    m = re.search(r'<span class="en i">(.*?)</span>', name)
+    alt = (m.group(1) if m else name).replace('"', "")
+    return f'<div class="asset"><div class="{cls}"><img src="{img}" alt="{alt}" loading="lazy"></div><div class="m"><span>{name}</span><a href="{href}" download>{t("Download", "İndir")}</a></div></div>'
 
 
 def copyblock(en, tr):
@@ -222,7 +223,7 @@ press += f'''
     {asset("/logo-512.png", "Logo 512", "/logo-512.png")}
     {asset("/logo.png", t("Logo (large)", "Logo (büyük)"), "/logo.png", dark=True)}
     {asset("/brand-mark.png", t("Brand mark", "Marka işareti"), "/brand-mark.png")}
-    {asset("/JinjaGamesBanner.png", t("Banner", "Afiş"), "/JinjaGamesBanner.png", cover=True)}
+    {asset("/JinjaGamesBanner.png", t("Banner", "Afiş"), "/JinjaGamesBanner.png")}
   </div>
   <p class="note">{t("Please do not stretch, recolor or redraw the logo. Leave some empty space around it.", "Lütfen logoyu esnetme, rengini değiştirme ya da yeniden çizme; etrafında biraz boşluk bırak.")}</p>
 </section>
@@ -311,23 +312,3 @@ rm += f'''
 </section>
 ''' + cta("Have an idea for us?", "Bize bir fikrin mi var?", "Feature requests and feedback shape this roadmap.", "Özellik istekleri ve geri bildirimler bu yol haritasını şekillendiriyor.", "Roadmap feedback", "Send feedback", "Geri bildirim gönder")
 page("roadmap", "Roadmap", "Yol haritası", "JinjaGames roadmap: the current state of our games and web apps and what comes next.", rm)
-
-# ================= KARİYER =================
-car = hero("careers", "Careers", "Kariyer",
-           "Grow with <span class=\"hl\">JinjaGames.</span>", "<span class=\"hl\">JinjaGames</span> ile büyü.",
-           "There are no open full time positions right now. We work with freelancers project by project and keep a list of people we would love to work with as the studio grows.",
-           "Şu an açık tam zamanlı bir pozisyon yok. Proje bazında serbest çalışanlarla çalışıyoruz ve stüdyo büyüdükçe birlikte çalışmak istediğimiz insanların bir listesini tutuyoruz.")
-car += f'''
-<section class="csec"><span class="label">{t("Who we look for", "Kimleri arıyoruz")}</span>
-  <div class="cgrid">
-    <div class="ccard">{h("h3", "2D and 3D artists", "2D ve 3D sanatçılar")}{p("Characters, environments, UI and store art.", "Karakter, mekân, arayüz ve mağaza görselleri.")}</div>
-    <div class="ccard">{h("h3", "Composers and sound designers", "Besteciler ve ses tasarımcıları")}{p("Music and sound effects for PC and mobile games.", "PC ve mobil oyunlar için müzik ve ses efektleri.")}</div>
-    <div class="ccard">{h("h3", "Translators", "Çevirmenler")}{p("Game localization; native speakers who also play.", "Oyun yerelleştirme; o dili ana dili olarak konuşan ve oyun oynayanlar.")}</div>
-    <div class="ccard">{h("h3", "Testers", "Test uzmanları")}{p("Careful players who enjoy breaking things and writing clear reports.", "Bir şeyleri bozmaktan ve net rapor yazmaktan keyif alan dikkatli oyuncular.")}</div>
-    <div class="ccard">{h("h3", "Unity and web developers", "Unity ve web geliştiriciler")}{p("For specific features or ports, as the need comes up.", "İhtiyaç oldukça belirli özellikler ya da portlar için.")}</div>
-    <div class="ccard">{h("h3", "Community and marketing", "Topluluk ve pazarlama")}{p("People who know how to talk to players on social media and Steam.", "Sosyal medyada ve Steam'de oyuncularla konuşmayı bilenler.")}</div>
-  </div>
-  <p class="note">{t("Send a short introduction, your portfolio and the kind of work you are interested in. We read every message, and we will reach out when a project fits.", "Kısa bir tanıtım, portfolyonu ve ilgilendiğin iş türünü gönder. Her mesajı okuyoruz; uygun bir proje olduğunda sana ulaşırız.")}</p>
-</section>
-''' + cta("Introduce yourself", "Kendini tanıt", "Portfolio links are better than attachments.", "Ek yerine portfolyo bağlantısı daha iyi.", "Careers: ", "Send portfolio", "Portfolyo gönder")
-page("careers", "Careers", "Kariyer", "Careers at JinjaGames: the freelancers and collaborators we work with and how to get in touch.", car)
