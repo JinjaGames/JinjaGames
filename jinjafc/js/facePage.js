@@ -1,6 +1,6 @@
 // JinjaFC · Pro Clubs yüzü sayfası
 import { analyze, loadModel, grouped, EYE_NAMES, HAIR_NAMES } from "./face.js?v=2";
-import { headPreview } from "./head3d.js";
+import { headPreview } from "./head3d.js?v=2";
 import { toast, shareOrDownload, esc } from "./util.js";
 
 const $ = (s) => document.querySelector(s);
@@ -75,11 +75,31 @@ function drawPhoto() {
 $("#togglePts").addEventListener("click", (e) => { showPts = !showPts; e.target.textContent = showPts ? "Noktaları gizle" : "Noktaları göster"; drawPhoto(); });
 new ResizeObserver(() => current && drawPhoto()).observe($("#photo"));
 
-const slHtml = (s) => {
-  const pct = s.value, changed = s.value !== s.neutral;
-  return `<div class="sl${changed ? " chg" : ""}"><div class="ends"><span>${s.left}</span><span>${s.right}</span></div><span class="val">${s.value}</span>
-    <div class="bar"><i style="width:${pct}%"></i><u style="left:${s.neutral}%"></u><em style="left:${pct}%"></em></div><small>${esc(s.why)}</small></div>`;
-};
+// oyundaki gibi sürüklenebilir kaydırıcı; oynatınca 3D yüz canlı değişir
+const keyOf = (s) => `${s.sub} ${s.type}`;
+const slHtml = (s, i) => `<label class="sl live${s.value !== s.rec ? " moved" : ""}" data-i="${i}"><span class="ends"><span>${s.left}</span><span>${s.right}</span></span><span class="val">${s.value}</span>
+    <input type="range" min="0" max="100" step="1" value="${s.value}" aria-label="${esc(s.sub)}: ${s.left} – ${s.right}" style="--v:${s.value}%"><small>${esc(s.why)}${s.value !== s.rec ? ` · önerilen ${s.rec}` : ""}</small></label>`;
+function renderSliders(r) {
+  const groups = grouped(r.sliders);
+  $("#edList").innerHTML = groups.map((L) => `<div class="layer"><h4>${L.layer} <small>${L.tr}</small></h4>${L.regions.map((R) => `
+    <div class="region"><h5>${R.region}<small>${R.tr}</small></h5>${Object.entries(R.subs).map(([sub, list]) => `<div class="sub"><b>${sub}</b>${list.map((sl) => slHtml(sl, r.sliders.indexOf(sl))).join("")}</div>`).join("")}</div>`).join("")}</div>`).join("");
+}
+$("#edList").addEventListener("input", (e) => {
+  const inp = e.target.closest("input[type=range]");
+  if (!inp || !current) return;
+  const lab = inp.closest(".sl"), s = current.sliders[Number(lab.dataset.i)];
+  s.value = Number(inp.value);
+  inp.style.setProperty("--v", s.value + "%");
+  lab.querySelector(".val").textContent = s.value;
+  lab.classList.toggle("moved", s.value !== s.rec);
+  lab.querySelector("small").textContent = s.why + (s.value !== s.rec ? ` · önerilen ${s.rec}` : "");
+  preview?.set(keyOf(s), s.rec, s.value);
+});
+$("#resetSl").addEventListener("click", () => {
+  if (!current) return;
+  for (const s of current.sliders) { s.value = s.rec; preview?.set(keyOf(s), s.rec, s.rec); }
+  renderSliders(current);
+});
 function skinPalette(step) {
   const cols = ["#f6dcc8", "#f0cfb3", "#e7bf9d", "#dcae86", "#c99670", "#b47f59", "#9a6646", "#7f5136", "#623d28", "#46291b"];
   return `<div class="palette" aria-label="Ten paletinde konum: ${step}/10">${cols.map((c, i) => `<i class="${i + 1 === step ? "on" : ""}" style="background:${c}" title="${i + 1}"></i>`).join("")}</div>`;
@@ -87,6 +107,8 @@ function skinPalette(step) {
 
 function render(r) {
   $("#result").hidden = false;
+  for (const s of r.sliders) s.rec = s.value;
+  renderSliders(r);
   paint(r);
   finish(r);
 }
@@ -100,16 +122,7 @@ function paint(r) {
     <div class="card sum"><small>Saç rengi</small><label class="pickC"><i class="sw" style="background:${r.hair.hex}"></i><select id="hairSel" aria-label="Saç rengi">${HAIR_NAMES.map((n) => `<option${n === (r.hair.bald ? "Saç yok / çok kısa" : r.hair.name) ? " selected" : ""}>${n}</option>`).join("")}</select></label><span>${r.hair.name === r.hair.guess || r.hair.bald ? "Tahmin; yanlışsa değiştir" : "Senin seçimin"}</span></div>`;
   $("#eyeSel").addEventListener("change", (e) => { r.eye.name = e.target.value; paint(r); });
   $("#hairSel").addEventListener("change", (e) => { const v = e.target.value; r.hair.bald = v === "Saç yok / çok kısa"; r.hair.name = r.hair.bald ? "Saç görünmüyor" : v; paint(r); });
-  const groups = grouped(r.sliders);
-  const changed = r.sliders.filter((s) => s.value !== s.neutral).length;
   $("#steps").innerHTML = `
-    <section class="card step"><h3><i>1</i>Hazır yüzle başla</h3>
-      <p>Oyuncu oluşturucuda <b>Head</b> bölümüne gir, hazır yüzler (preset) arasından <b>${esc(r.shape.toLocaleLowerCase("tr"))}</b> yüzlü ve ten rengi <b>${esc(r.skin.name.toLocaleLowerCase("tr"))}</b> olan birini seç. Sonra <b>Sculpt</b> menüsünü aç; <b>Shape</b> sekmesinde ve <b>Symmetry</b> açıkken aşağıdaki ayarları sırayla yap.</p></section>
-    <section class="card step"><h3><i>2</i>Sculpt › Shape ayarları</h3>
-      <p>${changed} kaydırıcıyı değiştireceksin (yeşil olanlar). Önce katmanı (en üstteki kutu), sonra bölgeyi, sonra alt bölgeyi seç. Çizgi, kaydırıcının başlangıç (nötr) noktasını gösterir.</p>
-      ${groups.map((L) => `<div class="layer"><h4>${L.layer} <small>${L.tr}</small></h4><div class="regions">${L.regions.map((R) => `
-        <div class="region"><h5>${R.region}<small>${R.tr}</small></h5>${Object.entries(R.subs).map(([sub, list]) => `<div class="sub"><b>${sub}</b>${list.map(slHtml).join("")}</div>`).join("")}</div>`).join("")}</div></div>`).join("")}
-    </section>
     <section class="card step"><h3><i>3</i>Ten rengi</h3>
       <p><b>Skin</b> bölümünde ten tonunu paletin açıktan koyuya <b>${r.skin.step}. ton</b> civarına getir. Alt tonun <b>${esc(r.skin.under)}</b>; seçenek varsa ona yakın olanı al. Cilt dokusu ve çilleri az kullanmak daha gerçekçi görünür.</p>
       ${skinPalette(r.skin.step)}</section>
@@ -129,12 +142,18 @@ function finish(r) {
   drawPhoto();
   preview?.stop();
   preview = null;
-  const go = () => { if (!window.THREE) return setTimeout(go, 80); preview = headPreview($("#head"), img, r); if (!preview) $("#head").parentElement.querySelector(".disc").textContent = "Bu cihazda 3D önizleme açılamadı."; };
+  const go = () => {
+    if (!window.THREE) return setTimeout(go, 80);
+    preview = headPreview($("#head"), img, r);
+    if (!preview) { $("#head").parentElement.querySelector(".disc").textContent = "Bu cihazda 3D önizleme açılamadı."; return; }
+    for (const s of r.sliders) preview.set(keyOf(s), s.rec, s.value);
+  };
   go();
   $("#result").scrollIntoView({ behavior: "smooth", block: "start" });
 }
 $("#front").addEventListener("click", () => preview?.front());
 $("#spinBtn").addEventListener("click", () => preview?.spin());
+$("#sideBtn").addEventListener("click", () => preview?.side());
 $("#again").addEventListener("click", () => { $("#result").hidden = true; current = null; preview?.stop(); preview = null; img = null; scrollTo({ top: 0, behavior: "smooth" }); });
 
 // --- dışa aktarma ---

@@ -11,15 +11,15 @@
 <meta name="referrer" content="no-referrer">
 <link rel="icon" href="/jinjafc/logo.svg" type="image/svg+xml">
 <link rel="stylesheet" href="/assets/fonts.css">
-<link rel="stylesheet" href="/jinjafc/jinjafc.css?v=1">
+<link rel="stylesheet" href="/jinjafc/jinjafc.css?v=3">
 <script src="/assets/vendor/three.min.js" defer></script>
-<script type="module" src="/jinjafc/js/facePage.js?v=2"></script>
+<script type="module" src="/jinjafc/js/facePage.js?v=3"></script>
 </head>
 <body>
 <header class="top">
   <a class="back" href="/apps/" aria-label="Web uygulamalarına dön"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m15 18-6-6 6-6"/></svg></a>
   <a class="brand" href="/jinjafc/"><img src="/jinjafc/logo.svg" alt="" width="32" height="32">Jinja<b>FC</b></a>
-  <nav class="nav" aria-label="JinjaFC"><a href="/jinjafc/">Ana sayfa</a><a href="/jinjafc/face/" aria-current="page">Pro Clubs yüzü</a><a href="/jinjafc/squad/">Kadro kurucu</a></nav>
+  <nav class="nav" aria-label="JinjaFC"><a href="/jinjafc/">Ana sayfa</a><a href="/jinjafc/squad/">Kadro kurucu</a><a href="/jinjafc/players/">Oyuncular</a><a href="/jinjafc/face/" aria-current="page">Pro Clubs yüzü</a></nav>
 </header>
 <main class="wrap">
   <section class="head">
@@ -57,9 +57,6 @@
     <div class="views">
       <div class="view"><span class="lbl">Ölçülen noktalar</span><canvas id="photo" aria-label="Fotoğraf ve ölçüm noktaları"></canvas>
         <div class="ctl"><button type="button" id="togglePts">Noktaları gizle</button></div></div>
-      <div class="view d3"><span class="lbl">3D önizleme</span><canvas id="head" aria-label="3D kafa önizlemesi"></canvas>
-        <span class="disc">Fotoğrafından oluşturulan önizleme; oyundaki yüz bununla birebir aynı olmaz.</span>
-        <div class="ctl"><button type="button" id="front">Önden</button><button type="button" id="spinBtn">Döndür</button></div></div>
     </div>
     <div class="summary" id="summary"></div>
     <div class="card" style="padding:16px">
@@ -70,6 +67,17 @@
         <button type="button" class="btn ghost" id="again"><svg viewBox="0 0 24 24"><path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5"/></svg>Yeni fotoğraf</button>
       </div>
     </div>
+    <section class="card step editor" id="editor">
+      <h3><i>2</i>Sculpt › Shape: canlı editör</h3>
+      <p>Önce oyuncu oluşturucuda <b>Head</b> bölümünden yüz şekline ve tenine yakın bir hazır yüz seç, sonra <b>Sculpt › Shape</b> sekmesinde (Symmetry açık) aşağıdaki ayarları yap. Kaydırıcıları burada da oynatabilirsin: 3D yüz anında değişir, böylece hangi ayarın yüzünü nasıl etkilediğini görürsün.</p>
+      <div class="edGrid">
+        <div class="edView"><div class="view d3"><span class="lbl">3D önizleme</span><canvas id="head" aria-label="3D kafa önizlemesi"></canvas>
+          <span class="disc">Fotoğrafından oluşturuldu; oyundaki yüz bununla birebir aynı olmaz.</span>
+          <div class="ctl"><button type="button" id="front">Önden</button><button type="button" id="sideBtn">Yandan</button><button type="button" id="spinBtn">Döndür</button></div></div>
+          <button type="button" class="btn ghost sm wide" id="resetSl">Önerilen değerlere dön</button></div>
+        <div class="edList" id="edList"></div>
+      </div>
+    </section>
     <div class="steps" id="steps"></div>
   </section>
 

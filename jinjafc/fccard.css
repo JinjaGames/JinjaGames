@@ -1,0 +1,30 @@
+/* JinjaFC oyuncu kartı: özgün tasarım, kart genişliğine göre ölçeklenir */
+.fcc { --a: #f7dd85; --b: #c99a2b; --c: #8a6414; --ink: #241805; position: relative; display: block; width: 100%; aspect-ratio: 0.72; container-type: inline-size; color: var(--ink);
+  clip-path: polygon(14% 0, 86% 0, 100% 7%, 100% 88%, 50% 100%, 0 88%, 0 7%);
+  background: radial-gradient(120% 70% at 75% 10%, #ffffff66, transparent 55%), linear-gradient(165deg, var(--a), var(--b) 55%, var(--c)); }
+.fcc::before { content: ""; position: absolute; inset: 3.5%; clip-path: inherit; border: 0; background: repeating-linear-gradient(135deg, #ffffff10 0 2px, transparent 2px 9px); }
+.fcc::after { content: ""; position: absolute; inset: 0; clip-path: inherit; box-shadow: inset 0 0 0 1.6cqw #ffffff59; pointer-events: none; }
+.fcc.silver { --a: #f3f6f9; --b: #b9c2cc; --c: #7d8794; --ink: #1d2430; }
+.fcc.bronze { --a: #f2c6a0; --b: #c07a48; --c: #7d4421; --ink: #2a1407; }
+.fcc.elite { --a: #b8f3ff; --b: #3f7bff; --c: #1a2f86; --ink: #fff; }
+.fcc.elite::before { background: repeating-linear-gradient(135deg, #ffffff1c 0 2px, transparent 2px 8px), radial-gradient(60% 40% at 20% 80%, #ff7bf24d, transparent); }
+.fcc.out { filter: grayscale(.55) brightness(.8); }
+.fcTop { position: absolute; left: 9%; top: 10%; display: grid; justify-items: center; gap: 1cqw; z-index: 1; }
+.fcR { font: 800 23cqw/0.9 var(--disp); letter-spacing: -.04em; }
+.fcP { font: 800 9.5cqw var(--sans); font-style: normal; letter-spacing: .02em; }
+.fcTop .flag { width: 15cqw; height: auto; border-radius: 1.2cqw; box-shadow: 0 0 0 .5cqw #0002; }
+.fcMono { position: absolute; right: 8%; top: 12%; width: 52%; aspect-ratio: 1; display: grid; place-items: center; border-radius: 50%;
+  background: radial-gradient(circle at 35% 30%, #ffffff8c, #ffffff1f 60%, transparent 70%); font: 800 21cqw var(--disp); opacity: .55; letter-spacing: -.04em; }
+.fcN { position: absolute; left: 6%; right: 6%; top: 58%; text-align: center; font: 800 10.5cqw/1.1 var(--disp); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; letter-spacing: -.01em; z-index: 1; }
+.fcS { position: absolute; left: 8%; right: 8%; top: 70%; display: grid; grid-template-columns: repeat(6, 1fr); text-align: center; font: 800 7.6cqw var(--disp); z-index: 1; }
+.fcS i { font-style: normal; display: grid; line-height: 1.05; }
+.fcS em { font: 700 4.6cqw var(--sans); font-style: normal; opacity: .78; }
+.fcF { position: absolute; left: 22%; right: 22%; top: 82.5%; display: flex; justify-content: center; gap: 4cqw; font: 800 5.6cqw var(--sans); z-index: 1; }
+.fcF i { font-style: normal; white-space: nowrap; }
+.fcc.w .fcF::after { content: "♀"; }
+/* küçük kartlarda istatistikleri gizle */
+.fcc.s .fcS, .fcc.s .fcF { display: none; }
+.fcc.s .fcN { top: 66%; font-size: 12.5cqw; }
+.cpips { display: inline-flex; gap: 3px; }
+.cpips i { width: 7px; height: 7px; transform: rotate(45deg); border-radius: 2px; background: #ffffff26; }
+.cpips i.on { background: #3fe0ff; }

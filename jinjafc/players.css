@@ -1,0 +1,40 @@
+.plHead { padding: 22px 0 14px; background: linear-gradient(180deg, #0c1f18, transparent); border-bottom: 1px solid var(--line); }
+.plHead h1 { font-size: clamp(24px, 4vw, 34px); }
+.plHead p { color: var(--ink2); font-size: 14.5px; margin-top: 4px; }
+.pl { padding-top: 16px; }
+.plBar { display: grid; grid-template-columns: 2fr repeat(5, minmax(0, 1fr)); gap: 8px; position: sticky; top: 64px; z-index: 20; padding: 10px 0; background: #07130fee; backdrop-filter: blur(10px); }
+.plBar input, .plBar select { min-height: 42px; border-radius: 12px; border: 1px solid var(--line2); background: #0b1a15; color: #fff; padding: 0 12px; font-size: 14px; min-width: 0; }
+.plBar select { appearance: none; -webkit-appearance: none; padding-right: 28px; background: #0b1a15 url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%234ef08a' stroke-width='2.5'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E") no-repeat right 8px center / 14px; font-weight: 700; }
+.plBar input:focus, .plBar select:focus { outline: none; border-color: var(--lime); }
+.rcount { font-size: 13px; color: var(--muted); margin: 6px 2px 10px; }
+.plList { display: grid; gap: 10px; }
+.pr { display: grid; grid-template-columns: 72px minmax(0, 1.3fr) minmax(0, 1fr) minmax(0, 1.6fr) 150px; gap: 14px; align-items: center; padding: 12px 14px; border-radius: 18px; background: #0b1a15; border: 1px solid var(--line); }
+.pr:hover { border-color: #4ef08a44; }
+.prName { display: grid; gap: 4px; min-width: 0; }
+.prName b { font: 700 17px var(--disp); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.prName small { color: var(--muted); font-size: 12.5px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.poss { display: flex; gap: 4px; flex-wrap: wrap; }
+.poss i { font-style: normal; font-size: 11px; font-weight: 800; padding: 2px 7px; border-radius: 6px; background: #ffffff12; }
+.prPs { display: flex; flex-wrap: wrap; gap: 4px; min-width: 0; }
+.ps { font-size: 11px; font-weight: 700; padding: 3px 8px; border-radius: 999px; background: #ffffff0d; color: var(--ink2); white-space: nowrap; }
+.ps.plus { background: #ffcf5c24; color: var(--gold); }
+.prStats { display: grid; grid-template-columns: repeat(8, minmax(0, 1fr)); gap: 4px; text-align: center; }
+.prStats span { display: grid; font: 800 17px var(--disp); padding-bottom: 4px; border-bottom: 3px solid #ffffff1a; }
+.prStats em { font: 700 10.5px var(--sans); font-style: normal; color: var(--muted); }
+.prStats .s5 { border-color: #3fe0ff; } .prStats .s4 { border-color: var(--lime); } .prStats .s3 { border-color: var(--gold); } .prStats .s2 { border-color: #ff9f43; } .prStats .s1 { border-color: var(--red); }
+.prBest { display: grid; justify-items: end; gap: 4px; }
+.prBest small { font-size: 12px; color: var(--ink2); font-weight: 700; }
+.prBest .meta { display: inline-flex; align-items: center; gap: 5px; padding: 3px 10px 3px 4px; border-radius: 999px; background: #07130f; border: 1px solid var(--line2); font: 800 15px var(--disp); }
+.prBest .meta i { width: 20px; height: 20px; border-radius: 50%; display: grid; place-items: center; border: 2px solid var(--gold); color: var(--gold); font: 800 10px var(--disp); font-style: normal; }
+.gr { font: 800 12px var(--sans); padding: 2px 8px; border-radius: 6px; background: #ffffff14; }
+.gr.gS { background: #3fe0ff33; color: #3fe0ff; } .gr.gAp, .gr.gA { background: #4ef08a26; color: var(--lime); } .gr.gB { background: #ffcf5c26; color: var(--gold); } .gr.gC { background: #ff6b6b22; color: var(--red); }
+.btn.wide { width: 100%; margin-top: 14px; }
+@media (max-width: 1100px) { .pr { grid-template-columns: 64px minmax(0, 1fr) 130px; } .prPs { grid-column: 2 / 4; } .prStats { grid-column: 1 / -1; } }
+@media (max-width: 760px) {
+  .plBar { grid-template-columns: 1fr 1fr; position: static; }
+  .plBar input { grid-column: 1 / -1; }
+  .pr { grid-template-columns: 58px minmax(0, 1fr) auto; gap: 10px; padding: 10px; }
+  .prName b { font-size: 15px; }
+  .prStats { grid-template-columns: repeat(4, minmax(0, 1fr)); row-gap: 8px; }
+  .prStats span { font-size: 15px; }
+}
