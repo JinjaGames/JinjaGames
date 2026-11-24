@@ -3,9 +3,11 @@
    - "Do Not Track" ya da Global Privacy Control açık olan tarayıcılar sayılmaz.
    - Ziyaretçi /privacy/ sayfasından bu cihazda saymayı kapatabilir (localStorage "jg_noanalytics").
    - Steam, Google Play, GitHub ve e-posta bağlantılarına tıklamalar olay olarak sayılır (hangi ürüne gidildiği).
+   - Site içi bağlantı tıklamaları ("nav:/nereden>/nereye") ve sayfada kalma süresi ("time:/sayfa|kova", ör. 1-3m) da olay olarak sayılır.
+     Süre kişiye bağlanmaz; yalnızca kaba bir aralık gönderilir. JinjaDashboard bu olayları okur.
    CODE boşken hiçbir şey yapmaz. */
 (function () {
-  var CODE = ""; // GoatCounter kod adı, ör. "jinjagames" → https://jinjagames.goatcounter.com
+  var CODE = "jinjagames"; // GoatCounter kod adı, ör. "jinjagames" → https://jinjagames.goatcounter.com
   if (!CODE || !/^[a-z0-9-]+$/.test(CODE)) return;
   try {
     if (localStorage.getItem("jg_noanalytics") === "1") return;
@@ -37,5 +39,24 @@
     else if (/^mailto:/.test(h)) name = "email/" + (decodeURIComponent((h.split("subject=")[1] || "").split("&")[0]) || "contact").slice(0, 40);
     else if (/curseforge\.com/.test(h)) name = "curseforge";
     if (name) send("out/" + name, "Çıkış: " + name + " (" + location.pathname + ")", location.pathname, true);
+    else if (a.origin === location.origin && a.pathname !== location.pathname) // site içi geçiş: nereden > nereye
+      send("nav:" + location.pathname + ">" + a.pathname, "Site içi: " + location.pathname + " → " + a.pathname, location.pathname, true);
   }, true);
+  // sayfada kalma süresi: yalnız sekme görünürken geçen süre, sayfadan ayrılırken bir kez ve kova olarak gönderilir
+  var shown = document.visibilityState === "visible" ? Date.now() : 0, spent = 0, sentTime = false;
+  function bucket(s) { return s < 10 ? "0-10s" : s < 30 ? "10-30s" : s < 60 ? "30-60s" : s < 180 ? "1-3m" : s < 600 ? "3-10m" : "10m+"; }
+  function flushTime() {
+    if (shown) { spent += Date.now() - shown; shown = 0; }
+    if (sentTime || spent < 1000) return;
+    sentTime = true;
+    var p = "time:" + location.pathname + "|" + bucket(spent / 1000);
+    var q = "p=" + encodeURIComponent(p) + "&t=" + encodeURIComponent("Süre: " + location.pathname) + "&e=true&rnd=" + Math.random().toString(36).slice(2);
+    try { if (navigator.sendBeacon && navigator.sendBeacon(END + "?" + q)) return; } catch (e) {}
+    send(p, "Süre: " + location.pathname, location.pathname, true);
+  }
+  document.addEventListener("visibilitychange", function () {
+    if (document.visibilityState === "visible") { if (!sentTime) shown = Date.now(); }
+    else flushTime();
+  });
+  window.addEventListener("pagehide", flushTime);
 })();
