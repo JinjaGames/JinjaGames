@@ -143,7 +143,7 @@ function renderNav(path) {
   const TOP = NAV.slice(1); // marka zaten ana sayfaya gider
   const nav = h('nav', { class: 'nav', 'aria-label': t('Ana gezinti') }, TOP.map(link));
   $('#topbar').replaceChildren(
-    h('a', { class: 'jg-home', href: '/', title: t('JinjaGames ana sayfasına dön'), 'aria-label': t('JinjaGames ana sayfasına dön'), html: `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14.5 5.5L8 12l6.5 6.5"/></svg>${JG_MARK}` }),
+    path === '/' ? h('a', { class: 'jg-home', href: '/', title: t('JinjaGames ana sayfasına dön'), 'aria-label': t('JinjaGames ana sayfasına dön'), html: `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14.5 5.5L8 12l6.5 6.5"/></svg>${JG_MARK}` }) : h('a', { class: 'jg-home', href: u('/'), title: t('Jinja Football ana sayfasına dön'), 'aria-label': t('Jinja Football ana sayfasına dön'), html: `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14.5 5.5L8 12l6.5 6.5"/></svg>${JG_MARK}` }),
     h('a', { class: 'brand', href: u('/'), 'aria-label': t('Jinja Football ana sayfa'), html: `${logoSvg()}<span lang="en">Jinja <b>Football</b></span>`, onmouseenter: e => { if (introDone) e.currentTarget.querySelector('.jf-logo')?.classList.add('hov'); }, onanimationend: e => e.target.closest?.('.jf-logo')?.classList.remove('hov', 'kick', 'intro') }),
 
     h('div', { class: 'nav-wrap' }, nav, more),

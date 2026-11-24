@@ -1,13 +1,13 @@
 // Uyum sayfası, "Doğum haritalarıyla" bölümü: iki kişinin haritası girilir ya da kayıtlılardan seçilir,
 // gezegenler arası açılar, ev yerleşimleri ve alt puanlarla ayrıntılı karşılaştırma gösterilir.
-import * as E from "../ephem.js?v=13";
-import { SIGNS, PLANETS, MATCH } from "../zodiac.js?v=13";
-import { ELEMENT_PAIR } from "../readings.js?v=13";
-import { $, $$, esc, toast, saved, keepChart, computeChart, placePicker } from "../common.js?v=13";
-import { shareBar } from "../card.js?v=13";
-import { secNav } from "./ui.js?v=13";
-import { enhanceFields } from "../datefield.js?v=13";
-import { compare, overlays, PAIR, BODY_NAME, HOUSE_N, OVERLAY } from "../synastry.js?v=13";
+import * as E from "../ephem.js?v=14";
+import { SIGNS, PLANETS, MATCH } from "../zodiac.js?v=14";
+import { ELEMENT_PAIR } from "../readings.js?v=14";
+import { $, $$, esc, toast, saved, keepChart, computeChart, placePicker } from "../common.js?v=14";
+import { shareBar } from "../card.js?v=14";
+import { secNav } from "./ui.js?v=14";
+import { enhanceFields } from "../datefield.js?v=14";
+import { compare, overlays, PAIR, BODY_NAME, HOUSE_N, OVERLAY } from "../synastry.js?v=14";
 
 // Türkçe ilgi eki: Eren'in, Elif'in, Ali'nin, Ayşe'nin
 export function gen(name) {

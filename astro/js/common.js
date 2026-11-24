@@ -1,8 +1,8 @@
 // JinjaAstro sayfalarının ortak parçaları: yardımcılar, kayıtlı haritalar, ülke→şehir seçici, paylaşma.
-import * as E from "./ephem.js?v=13";
-import { SIGNS } from "./zodiac.js?v=13";
-import { COUNTRIES } from "./places.js?v=13";
-import { utcOffset } from "./cities.js?v=13";
+import * as E from "./ephem.js?v=14";
+import { SIGNS } from "./zodiac.js?v=14";
+import { COUNTRIES } from "./places.js?v=14";
+import { utcOffset } from "./cities.js?v=14";
 
 export const $ = (s, r = document) => r.querySelector(s);
 export const $$ = (s, r = document) => [...r.querySelectorAll(s)];

@@ -1,13 +1,13 @@
 // Uyum sayfası: iki burç ya da iki kayıtlı harita; ayrıntılı bölümler ve harita karşılaştırması.
-import * as E from "../ephem.js?v=13";
-import { SIGNS, PLANETS, MATCH } from "../zodiac.js?v=13";
-import { PROFILE, ELEMENT_PAIR, MOD_PAIR, REL } from "../readings.js?v=13";
-import { $, $$, esc, SLUGS, signBySlug, saved, computeChart, combo } from "../common.js?v=13";
-import { mountCharts } from "./uyumHarita.js?v=13";
-import { shareBar } from "../card.js?v=13";
-import { MOON_LOVE, LEARN, SPEND, HOME_STYLE } from "../readings2.js?v=13";
-import { TIP } from "../forecast-texts.js?v=13";
-import { secNav } from "./ui.js?v=13";
+import * as E from "../ephem.js?v=14";
+import { SIGNS, PLANETS, MATCH } from "../zodiac.js?v=14";
+import { PROFILE, ELEMENT_PAIR, MOD_PAIR, REL } from "../readings.js?v=14";
+import { $, $$, esc, SLUGS, signBySlug, saved, computeChart, combo } from "../common.js?v=14";
+import { mountCharts } from "./uyumHarita.js?v=14";
+import { shareBar } from "../card.js?v=14";
+import { MOON_LOVE, LEARN, SPEND, HOME_STYLE } from "../readings2.js?v=14";
+import { TIP } from "../forecast-texts.js?v=14";
+import { secNav } from "./ui.js?v=14";
 
 const EL_ORDER = ["Ateş", "Toprak", "Hava", "Su"], MOD_ORDER = ["Öncü", "Sabit", "Değişken"];
 const pairKey = (a, b, order) => [a, b].sort((x, y) => order.indexOf(x) - order.indexOf(y)).join("-");

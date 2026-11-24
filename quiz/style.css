@@ -2096,6 +2096,9 @@ body:has(.dock) #toast {
   color: var(--muted);
   text-decoration: none;
   flex: none;
+  background: transparent;
+  font: inherit;
+  cursor: pointer;
 }
 .jg-back:hover {
   color: var(--ink);

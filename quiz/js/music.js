@@ -202,8 +202,20 @@ export async function searchArtists(q) {
   return (r.data || [])
     .map((a) => ({ id: int(a.id), name: str(a.name, 80), picture: realPic(a.picture_medium), fans: int(a.nb_fan) }))
     .filter((a) => a.id && a.name)
-    .sort((a, b) => b.fans - a.fans)
-    .slice(0, 12);
+    .map((a, i) => ({ ...a, _m: nameMatch(a.name, q), _i: i }))
+    // önce adı aranana en çok uyan (tam aynı > başı aynı > kelimesi aynı > içinde geçen), sonra hayran sayısı
+    .sort((a, b) => b._m - a._m || b.fans - a.fans || a._i - b._i)
+    .slice(0, 12)
+    .map(({ _m, _i, ...a }) => a);
+}
+function nameMatch(name, q) {
+  const n = fold(name).replace(/[^\p{L}\p{N} ]+/gu, " ").replace(/\s+/g, " ").trim();
+  const s = fold(q).replace(/[^\p{L}\p{N} ]+/gu, " ").replace(/\s+/g, " ").trim();
+  if (!s) return 0;
+  if (n === s) return 4;
+  if (n.startsWith(s + " ") || n.startsWith(s)) return 3;
+  if (n.split(" ").includes(s)) return 2;
+  return n.includes(s) ? 1 : 0;
 }
 
 // Önizleme bağlantıları ~15 dakikada sona erer; bu yüzden her soru için tazesi alınır.

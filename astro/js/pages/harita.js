@@ -1,13 +1,13 @@
 // Doğum haritası sayfası: form, sonuçlar, 3D/çark görünümü, kategori kategori okuma, kaydet ve paylaş.
-import * as E from "../ephem.js?v=13";
-import { SIGNS, PLANETS, HOUSES, SUN, MOON, ASC, MERCURY, VENUS, MARS, ASPECT_TXT, ASPECT_SENT, PLANET_MEAN } from "../zodiac.js?v=13";
-import { PROFILE, MC_SIGN, H2_SIGN, H7_SIGN, H4_SIGN, PLANET_IN_HOUSE, HOUSE_TOPIC, HOUSE_LOC } from "../readings.js?v=13";
-import { MOON_HOME, HOME_STYLE, MOON_CARE, H12_SIGN, LEARN, H9_SIGN, H6_SIGN, SPEND, MOON_LOVE } from "../readings2.js?v=13";
-import { SUN_WEEK, VENUS_LOVE, MARS_WORK, JUPITER_LUCK, TOPIC } from "../forecast-texts.js?v=13";
-import { $, $$, esc, toast, saved, keepChart, computeChart, lineOf, degTxt, ORDER, placePicker, shareImage, downloadBlob, MONTHS } from "../common.js?v=13";
-import { drawWheel, renderCard } from "../wheel.js?v=13";
-import { mountSky } from "./ui.js?v=13";
-import { enhanceFields } from "../datefield.js?v=13";
+import * as E from "../ephem.js?v=14";
+import { SIGNS, PLANETS, HOUSES, SUN, MOON, ASC, MERCURY, VENUS, MARS, ASPECT_TXT, ASPECT_SENT, PLANET_MEAN } from "../zodiac.js?v=14";
+import { PROFILE, MC_SIGN, H2_SIGN, H7_SIGN, H4_SIGN, PLANET_IN_HOUSE, HOUSE_TOPIC, HOUSE_LOC } from "../readings.js?v=14";
+import { MOON_HOME, HOME_STYLE, MOON_CARE, H12_SIGN, LEARN, H9_SIGN, H6_SIGN, SPEND, MOON_LOVE } from "../readings2.js?v=14";
+import { SUN_WEEK, VENUS_LOVE, MARS_WORK, JUPITER_LUCK, TOPIC } from "../forecast-texts.js?v=14";
+import { $, $$, esc, toast, saved, keepChart, computeChart, lineOf, degTxt, ORDER, placePicker, shareImage, downloadBlob, MONTHS } from "../common.js?v=14";
+import { drawWheel, renderCard } from "../wheel.js?v=14";
+import { mountSky } from "./ui.js?v=14";
+import { enhanceFields } from "../datefield.js?v=14";
 
 let sky = null, current = null, cat = "ozet", view = "3d";
 enhanceFields($("#form") || document);

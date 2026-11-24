@@ -1,6 +1,6 @@
 // Yorum kartı: haftalık, aylık, uyum ve burç profili için paylaşılabilir görsel (1080×1350 ya da 1080×1920)
 // ve her sayfada aynı görünen paylaş / kaydet çubuğu.
-import { toast, shareImage, downloadBlob, shareLink, waLink } from "./common.js?v=13";
+import { toast, shareImage, downloadBlob, shareLink, waLink } from "./common.js?v=14";
 
 const GLYPH_FONT = "'Segoe UI Symbol','Noto Sans Symbols 2','Apple Symbols',sans-serif";
 

@@ -1,10 +1,10 @@
 // Burç profilleri: ?sign=aries gibi; parametre yoksa kendi burcun (ya da bugünkü güneş burcu).
-import { SIGNS, PLANETS } from "../zodiac.js?v=13";
-import { PROFILE } from "../readings.js?v=13";
-import { HOME_STYLE, SPEND, LEARN } from "../readings2.js?v=13";
-import { $, esc, store, SLUGS, signBySlug, mySign } from "../common.js?v=13";
-import { shareBar } from "../card.js?v=13";
-import { signGridHtml, loadForecast, secNav } from "./ui.js?v=13";
+import { SIGNS, PLANETS } from "../zodiac.js?v=14";
+import { PROFILE } from "../readings.js?v=14";
+import { HOME_STYLE, SPEND, LEARN } from "../readings2.js?v=14";
+import { $, esc, store, SLUGS, signBySlug, mySign } from "../common.js?v=14";
+import { shareBar } from "../card.js?v=14";
+import { signGridHtml, loadForecast, secNav } from "./ui.js?v=14";
 
 const i = signBySlug(new URLSearchParams(location.search).get("sign")) ?? mySign();
 const s = SIGNS[i], p = PROFILE[i];

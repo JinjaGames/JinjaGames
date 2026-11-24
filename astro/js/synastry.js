@@ -1,5 +1,5 @@
 // İki doğum haritasının karşılaştırması (sinastri): açılar, ev yerleşimleri, puanlar ve yorum metinleri.
-import * as E from "./ephem.js?v=13";
+import * as E from "./ephem.js?v=14";
 
 // Çift anahtarı: gezegenler bu sırada dizilir (yükselen en sonda)
 export const BODIES = ["sun", "moon", "mercury", "venus", "mars", "jupiter", "saturn", "asc"];

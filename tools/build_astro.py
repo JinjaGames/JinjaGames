@@ -3,7 +3,7 @@
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent / "astro"
-V = "13"
+V = "14"
 NAV = [("", "Ana sayfa"), ("chart/", "Doğum haritası"), ("weekly/", "Haftalık"), ("monthly/", "Aylık"), ("compatibility/", "Uyum"), ("signs/", "Burçlar"), ("sky/", "Gökyüzü")]
 
 NOTES = """
@@ -196,7 +196,7 @@ TEMPLATE = """<!DOCTYPE html>
 <body class="pg-{js}">
 <a class="skip" href="#main">İçeriğe geç</a>
 <header class="top">
-  <a class="back" href="/" title="JinjaGames ana sayfası" aria-label="JinjaGames ana sayfası"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14.5 5.5L8 12l6.5 6.5"/></svg><img src="/favicon-j-shuriken-32.png" width="20" height="20" alt=""></a>
+  <a class="back" href="{back_href}" title="{back_title}" aria-label="{back_title}"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14.5 5.5L8 12l6.5 6.5"/></svg><img src="/favicon-j-shuriken-32.png" width="20" height="20" alt=""></a>
   <a class="brand" href="/astro/"><img src="/assets/img/apps/jinjaastro.svg" alt="" width="30" height="30"><b>Jinja</b><i>Astro</i></a>
   <button class="menuBtn" type="button" aria-expanded="false" aria-controls="nav" aria-label="Menü"><span></span><span></span><span></span></button>
   <nav class="nav" id="nav" aria-label="JinjaAstro bölümleri">{nav}</nav>
@@ -212,7 +212,9 @@ for path, p in PAGES.items():
     cur = ' aria-current="page"'
     nav = "".join(f'<a href="/astro/{h}"{cur if h == path else ""}>{t}</a>' for h, t in NAV)
     three = '<script src="/assets/vendor/three.min.js" defer></script>\n' if "sky3d" in p["body"] else ""
-    html = TEMPLATE.format(title=p["title"], desc=p["desc"], path=path, js=p["js"], v=V, nav=nav, body=p["body"], three=three)
+    # geri düğmesi: JinjaAstro ana sayfasında JinjaGames'e, alt sayfalarda JinjaAstro ana sayfasına
+    back_href, back_title = ("/", "JinjaGames ana sayfası") if not path else ("/astro/", "JinjaAstro ana sayfası")
+    html = TEMPLATE.format(title=p["title"], desc=p["desc"], path=path, js=p["js"], v=V, nav=nav, body=p["body"], three=three, back_href=back_href, back_title=back_title)
     out = ROOT / path / "index.html"
     out.parent.mkdir(parents=True, exist_ok=True)
     out.write_text(html, encoding="utf-8")
