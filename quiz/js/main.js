@@ -1,6 +1,7 @@
 import { PRESETS, loadTracks, searchArtists, customLists, saveCustom, removeCustom, fold, cdn, realPic, loadPresetPictures } from "./music.js";
+import { sfx, sfxEnabled, setSfx } from "./sfx.js";
 import { fetchCommunity, removeQuiz, hideQuiz, unhideQuiz, hiddenList } from "./community.js";
-import { Game, MAX_PLAYERS } from "./engine.js";
+import { Game, MAX_PLAYERS } from "./engine.js?v=2";
 import { TRIVIA, TCATS, TART, EMOJIS, cleanItems, IMG, FLAG, flagUrl, cleanEmo } from "./trivia.js";
 import { NUMCATS, fmtNum, farEnough } from "./numdata.js";
 import { hostRoom, guestRoom, newCode, validCode } from "./net.js";
@@ -400,9 +401,27 @@ async function copy(text, msg) {
 
 // ---------- ekranlar ----------
 let screen = "home";
+// ses efektleri: oyun durumundaki değişikliklere göre (quiz açılışı, soru geçişi, doğru/yanlış, bitiş)
+const snd = { q: null, phase: null, done: false };
+function sfxTrack() {
+  const v = view;
+  if (!v) return;
+  const q = v.question;
+  if (v.phase === "question" && q && q.id !== snd.q) {
+    snd.q = q.id;
+    snd.done = false;
+    sfx(num(v.index) === 0 ? "open" : "whoosh");
+  }
+  if (v.phase === "reveal" && q && snd.phase !== "reveal:" + q.id) {
+    snd.phase = "reveal:" + q.id;
+    const r = q.reveal?.results?.[v.me];
+    sfx(r?.correct ? "good" : "bad");
+  }
+  if ((v.phase === "done" || v.phase === "ranking") && !snd.done) { snd.done = true; sfx("end"); }
+}
 function render() {
   topbar();
-  if (screen === "room" && mode) return renderRoom();
+  if (screen === "room" && mode) { const out = renderRoom(); sfxTrack(); return out; }
   if (screen === "detail" && sheetCtx?.list) return renderDetail();
   if (screen === "number") return renderNumber();
   screen = "home";
@@ -905,6 +924,7 @@ function gameHtml(v) {
       <span class="gq">${cover(set, "gImg")}<span><b>${esc(set.name)}</b><small>Soru ${num(v.index) + 1}/${num(set.count)} · ${set.kind === "trivia" ? "Trivia" : `${LEVELS[set.clip] || ""} ${num(set.clip)} sn`}</small></span></span>
       <span class="gEnd">
         <span class="myScore ${myRes?.correct ? "up" : ""}" title="Bu quizdeki puanın"><b>${myPts}</b><small>puan</small>${myRes ? `<i class="plus ${myRes.correct ? "" : "zero"}">+${num(myRes.points)}</i>` : ""}</span>
+        <button class="icon sm sfxBtn" data-do="sfx" aria-pressed="${sfxEnabled()}" aria-label="Ses efektleri ${sfxEnabled() ? "açık" : "kapalı"}" title="Ses efektleri">${ic(sfxEnabled() ? "volume-2" : "volume-x")}</button>
         <span class="mini">${miniHtml(v)}</span>
         <span class="timer ${reveal ? "gone" : ""}" ${reveal ? 'aria-hidden="true"' : 'id="timer"'}><svg viewBox="0 0 36 36"><circle cx="18" cy="18" r="16"/><circle ${reveal ? "" : 'id="timerArc"'} cx="18" cy="18" r="16" pathLength="100"/></svg><b ${reveal ? "" : 'id="timerNum"'}></b></span>
       </span>
@@ -1004,9 +1024,7 @@ function gameHtml(v) {
     ? host && v.solo
       ? `<button class="btn primary lg wide" data-do="next" id="nextBtn">${v.index + 1 >= set.count ? "Sonuçları gör" : "Sonraki soru"} ${ic("chevron-right")}</button>`
       : `<p class="waiting" id="autoInfo">${spinner()} Sıradaki soru birazdan</p>`
-    : `<p class="waiting">${mine ? `${ic("check")} Cevabın kilitlendi · ` : ""}<span id="ansCount">${v.solo ? "" : ansCountText(v)}</span></p>${
-        host && v.solo ? `<button class="btn ghost sm" data-do="skip">${ic("skip-forward")}Pas</button>` : ""
-      }`;
+    : `<p class="waiting">${mine ? `${ic("check")} Cevabın kilitlendi · ` : ""}<span id="ansCount">${v.solo ? "" : ansCountText(v)}</span></p>`;
   return `${mode.lost ? `<div class="banner">${spinner()} Kurucunun bağlantısı koptu, bekleniyor…</div>` : ""}
     <section class="game ${reveal ? "isReveal" : ""}">${head}${stage}${answers}${foot}${intro}</section>
     <div class="dock split">${dock}</div>`;
@@ -1154,12 +1172,16 @@ function paint() {
     }
     const cd = $("#countdown");
     if (cd) {
-      const s = pre ? String(Math.ceil((q.start - now) / 1000)) : "";
-      cd.classList.toggle("on", pre);
+      // ilk soruda önce quiz kartı görünür; sayı yalnızca son 3 saniyede çıkar
+      const cdOn = pre && q.start - now <= 3000;
+      const s = cdOn ? String(Math.ceil((q.start - now) / 1000)) : "";
+      cd.classList.toggle("on", cdOn);
       const n = $("#cdNum");
       const inN = $("#inNum");
       if (inN && inN.textContent !== s) inN.textContent = s;
       if (n && n.textContent !== s) {
+        if (s) sfx("tick");
+        else if (n.textContent && !pre) sfx("go");
         n.textContent = s;
         cd.dataset.s = s;
         // Her yeni saniyede sayı ve dalga animasyonunu yeniden başlat
@@ -1589,6 +1611,10 @@ async function doAction(a, el) {
       return act({ type: "next" });
     case "skip":
       return act({ type: "skip" });
+    case "sfx":
+      setSfx(!sfxEnabled());
+      lastSig = "";
+      return render();
     case "again":
       return act({ type: "again" });
     case "tolobby":
@@ -1745,6 +1771,7 @@ document.addEventListener("click", async (e) => {
     if (d.hit) return pickHit(Number(d.hit));
     if (d.pressed) return; // basıldığı anda işlendi
     if (d.ans !== undefined) {
+      sfx("lock");
       const q = view.question;
       return act({ type: "answer", q: q.id, answer: q.options[Number(d.ans)] });
     }

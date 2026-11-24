@@ -1,6 +1,6 @@
-import * as E from "../ephem.js?v=10";
-import { $, SLUGS, mySign, saved, computeChart } from "../common.js?v=10";
-import { mountSky, signGridHtml, nowHtml } from "./ui.js?v=10";
+import * as E from "../ephem.js?v=13";
+import { $, SLUGS, mySign, saved, computeChart } from "../common.js?v=13";
+import { mountSky, signGridHtml, nowHtml } from "./ui.js?v=13";
 
 $("#signGrid").innerHTML = signGridHtml();
 const now = nowHtml(5);

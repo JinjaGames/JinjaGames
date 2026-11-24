@@ -6,6 +6,7 @@ import { cleanItems, cleanEmoji } from "./trivia.js";
 export const MAX_PLAYERS = 12;
 const PLAYS = 3;
 const COUNTDOWN = 3000;
+const INTRO = 2500;
 const AUTO_NEXT = 3000; // çok oyunculu: sonuç ekranı bu kadar sonra kendiliğinden geçer
 const NEXT_QUIZ = 30000; // çok oyunculu: quiz arası sıralama ekranı bu kadar sonra kendiliğinden geçer
 
@@ -195,7 +196,7 @@ export class Game {
     if (set.kind === "trivia") {
       // Trivia: ses yok, soru hemen açılır. Geri sayım boyunca soru okunur, şıklar sonra açılır.
       const item = set.questions[this.index];
-      const start = Date.now() + COUNTDOWN;
+      const start = Date.now() + this.lead();
       this.question = { id: uid(), item, options: shuffle(item.a), answers: {}, start, end: start + this.seconds * 1000 };
       this.phase = "question";
       this.schedule();
@@ -216,6 +217,10 @@ export class Game {
       tries: 0,
     };
     this.prepare();
+  }
+  // ilk soruda quiz açılış kartı için daha uzun bekleme (2,5 sn tanıtım + 3-2-1), sonrakilerde 3-2-1
+  lead() {
+    return this.index === 0 ? COUNTDOWN + INTRO : COUNTDOWN;
   }
   prepare() {
     const q = this.question;
@@ -239,7 +244,7 @@ export class Game {
         q.cover = pv.cover || q.track.cover;
         q.album = pv.album;
         q.offset = Math.round((4 + Math.random() * (24 - clip)) * 10) / 10;
-        q.start = Date.now() + COUNTDOWN;
+        q.start = Date.now() + this.lead();
         q.end = q.start + this.seconds * 1000;
         this.phase = "question";
         this.schedule();

@@ -11,9 +11,8 @@
 <meta name="referrer" content="no-referrer">
 <link rel="icon" href="/jinjafc/logo.svg" type="image/svg+xml">
 <link rel="stylesheet" href="/assets/fonts.css">
-<link rel="stylesheet" href="/jinjafc/jinjafc.css?v=4">
-<script src="/assets/vendor/three.min.js" defer></script>
-<script type="module" src="/jinjafc/js/facePage.js?v=3"></script>
+<link rel="stylesheet" href="/jinjafc/jinjafc.css?v=6">
+<script type="module" src="/jinjafc/js/facePage.js?v=5"></script>
 </head>
 <body>
 <header class="top">
@@ -69,12 +68,12 @@
     </div>
     <section class="card step editor" id="editor">
       <h3><i>2</i>Sculpt › Shape: canlı editör</h3>
-      <p>Önce oyuncu oluşturucuda <b>Head</b> bölümünden yüz şekline ve tenine yakın bir hazır yüz seç, sonra <b>Sculpt › Shape</b> sekmesinde (Symmetry açık) aşağıdaki ayarları yap. Kaydırıcıları burada da oynatabilirsin: 3D yüz anında değişir, böylece hangi ayarın yüzünü nasıl etkilediğini görürsün.</p>
+      <p>Önce oyuncu oluşturucuda <b>Head</b> bölümünden yüz şekline ve tenine yakın bir hazır yüz seç, sonra <b>Sculpt › Shape</b> sekmesinde (Symmetry açık) aşağıdaki ayarları yap. Kaydırıcıları burada da oynatabilirsin: fotoğrafındaki yüz anında değişir, böylece hangi ayarın yüzünü nasıl etkilediğini görürsün. "Karşılaştır" ile önceki ve sonraki hâl arasında gidip gelir.</p>
       <div class="edGrid">
-        <div class="edView"><div class="view d3"><span class="lbl">3D önizleme</span><canvas id="head" aria-label="3D kafa önizlemesi"></canvas>
-          <span class="disc">Fotoğrafından oluşturuldu; oyundaki yüz bununla birebir aynı olmaz.</span>
-          <div class="ctl"><button type="button" id="front">Önden</button><button type="button" id="sideBtn">Yandan</button><button type="button" id="spinBtn">Döndür</button></div></div>
-          <button type="button" class="btn ghost sm wide" id="resetSl">Önerilen değerlere dön</button></div>
+        <div class="edView"><div class="view d3"><span class="lbl">Canlı önizleme</span><canvas id="head" aria-label="Fotoğrafından canlı yüz önizlemesi"></canvas>
+          <span class="disc">Kendi fotoğrafın, ayarlara göre bükülür. Oyundaki yüz birebir aynı olmaz.</span>
+          <div class="ctl"><button type="button" id="front">Ayarlı</button><button type="button" id="sideBtn">Orijinal</button><button type="button" id="spinBtn">Karşılaştır</button></div></div>
+          <div class="edActs"><button type="button" class="btn ghost sm" id="undoBtn" disabled title="Geri al (Ctrl+Z)" aria-label="Geri al"><svg viewBox="0 0 24 24"><path d="M9 14 4 9l5-5"/><path d="M4 9h11a5 5 0 0 1 0 10h-3"/></svg>Geri al</button><button type="button" class="btn ghost sm" id="redoBtn" disabled title="Yinele (Ctrl+Y)" aria-label="Yinele"><svg viewBox="0 0 24 24"><path d="m15 14 5-5-5-5"/><path d="M20 9H9a5 5 0 0 0 0 10h3"/></svg>Yinele</button><button type="button" class="btn ghost sm" id="resetSl">Önerilene dön</button></div></div>
         <div class="edList" id="edList"></div>
       </div>
     </section>

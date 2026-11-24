@@ -1,6 +1,6 @@
 // Yorum kartı: haftalık, aylık, uyum ve burç profili için paylaşılabilir görsel (1080×1350 ya da 1080×1920)
 // ve her sayfada aynı görünen paylaş / kaydet çubuğu.
-import { toast, shareImage, downloadBlob, shareLink, waLink } from "./common.js?v=10";
+import { toast, shareImage, downloadBlob, shareLink, waLink } from "./common.js?v=13";
 
 const GLYPH_FONT = "'Segoe UI Symbol','Noto Sans Symbols 2','Apple Symbols',sans-serif";
 
@@ -28,8 +28,73 @@ function lines(x, text, maxW, maxLines) {
   if (out.length > maxLines) { out.length = maxLines; out[maxLines - 1] = out[maxLines - 1].replace(/\s*\S*$/, "") + "…"; }
   return out;
 }
+/** Metni verilen genişliğe en çok maxLines satırda sığdıran en büyük yazı boyutunu bulur (kesmeden). */
+function fit(x, text, weight, family, maxPx, minPx, maxW, maxLines) {
+  for (let px = maxPx; px >= minPx; px -= 2) {
+    x.font = `${weight} ${px}px ${family}`;
+    const words = String(text).split(/\s+/);
+    if (words.some((w) => x.measureText(w).width > maxW)) continue;
+    const l = lines(x, text, maxW, 99);
+    if (l.length <= maxLines) return { px, l };
+  }
+  x.font = `${weight} ${minPx}px ${family}`;
+  return { px: minPx, l: lines(x, text, maxW, maxLines) };
+}
+function rr(x, X, Y, w, h, r) { x.beginPath(); x.roundRect ? x.roundRect(X, Y, w, h, r) : x.rect(X, Y, w, h); }
+
+/** Uyum kartı üst bölümü: iki isim, ortada yüzde halkası, altında alt puan çubukları. y'yi döndürür. */
+function matchHead(x, m, W, P, y, story) {
+  const R = story ? 150 : 128, cx = W / 2, cy = y + R + 10;
+  // halka
+  x.lineWidth = 22; x.lineCap = "round";
+  x.strokeStyle = "#ffffff1f"; x.beginPath(); x.arc(cx, cy, R, 0, Math.PI * 2); x.stroke();
+  const g = x.createLinearGradient(cx - R, cy - R, cx + R, cy + R);
+  g.addColorStop(0, "#f5c66b"); g.addColorStop(1, "#ff8fc7");
+  x.strokeStyle = g; x.beginPath(); x.arc(cx, cy, R, -Math.PI / 2, -Math.PI / 2 + (Math.PI * 2 * Math.max(0, Math.min(100, m.score))) / 100); x.stroke();
+  x.textAlign = "center"; x.fillStyle = "#fff";
+  x.font = `700 ${story ? 104 : 92}px Fraunces,Georgia,serif`;
+  x.fillText(`%${m.score}`, cx, cy + 30);
+  x.fillStyle = "#cfc6ff"; x.font = "600 26px Inter,sans-serif";
+  x.fillText("uyum", cx, cy + 74);
+  // isimler: halkanın iki yanında, sütuna sığana kadar küçülür, en çok 2 satır
+  const colW = cx - R - P - 34;
+  for (const [i, name, glyph] of [[0, m.a, m.ga], [1, m.b, m.gb]]) {
+    const colX = i === 0 ? P + colW / 2 : W - P - colW / 2;
+    if (glyph) { x.font = `86px ${GLYPH_FONT}`; x.fillStyle = "#f5c66b"; x.globalAlpha = 0.95; x.fillText(glyph, colX, cy - 34); x.globalAlpha = 1; }
+    const f = fit(x, name, 700, "Fraunces,Georgia,serif", 58, 30, colW, 2);
+    x.fillStyle = "#fff";
+    let ty = cy + 30 + (f.l.length === 1 ? 0 : -f.px * 0.45);
+    for (const l of f.l) { x.fillText(l, colX, ty); ty += f.px * 1.1; }
+  }
+  y = cy + R + 60;
+  // tür satırı
+  if (m.type) {
+    x.fillStyle = "#cfc6ff"; x.font = "500 31px Inter,sans-serif";
+    for (const l of lines(x, m.type, W - P * 2, 2)) { x.fillText(l, cx, y); y += 40; }
+    y += 8;
+  }
+  // alt puanlar: çubuklar
+  const subs = m.subs || [];
+  if (subs.length) {
+    const gap = 18, bw = (W - P * 2 - gap * (subs.length - 1)) / subs.length;
+    subs.forEach(([lab, v], i) => {
+      const bx = P + i * (bw + gap);
+      x.textAlign = "left"; x.fillStyle = "#ece6ff"; x.font = "600 25px Inter,sans-serif";
+      x.fillText(lab, bx, y + 8);
+      x.textAlign = "right"; x.fillStyle = "#f5c66b"; x.font = "700 25px Inter,sans-serif";
+      x.fillText(`%${v}`, bx + bw, y + 8);
+      x.fillStyle = "#ffffff1f"; rr(x, bx, y + 22, bw, 12, 6); x.fill();
+      x.fillStyle = g; rr(x, bx, y + 22, Math.max(12, (bw * v) / 100), 12, 6); x.fill();
+    });
+    y += 74;
+  }
+  x.textAlign = "left";
+  return y + 20;
+}
+
 /**
- * card: { glyph, color, eyebrow, title, sub, blocks: [{ h, t }], foot }
+ * card: { glyph, color, eyebrow, title, sub, blocks: [{ h, t }], foot, match? }
+ * match (uyum kartı): { a, b, ga, gb, score, type, subs: [[etiket, yüzde]] }
  * kind: "post" | "story"
  */
 export async function renderReading(card, kind = "post") {
@@ -48,7 +113,11 @@ export async function renderReading(card, kind = "post") {
 
   let y = kind === "story" ? 200 : 130;
   x.textBaseline = "alphabetic";
-  if (card.glyph) {
+  if (card.match) {
+    x.textAlign = "center"; x.fillStyle = "#f5c66b"; x.font = "700 30px Inter,sans-serif";
+    x.fillText((card.eyebrow || "").toLocaleUpperCase("tr"), W / 2, y);
+    y = matchHead(x, card.match, W, P, y + 40, kind === "story");
+  } else if (card.glyph) {
     x.textAlign = "right";
     x.fillStyle = card.color || "#f5c66b";
     x.globalAlpha = 0.9;
@@ -56,34 +125,39 @@ export async function renderReading(card, kind = "post") {
     x.fillText(card.glyph, W - P + 10, y + 70);
     x.globalAlpha = 1;
   }
-  x.textAlign = "left";
-  x.fillStyle = "#f5c66b";
-  x.font = "700 30px Inter,sans-serif";
-  x.fillText((card.eyebrow || "").toLocaleUpperCase("tr"), P, y);
-  y += 84;
-  x.fillStyle = "#ffffff";
-  x.font = "700 84px Fraunces,Georgia,serif";
-  for (const l of lines(x, card.title, W - P * 2 - 180, 2)) { x.fillText(l, P, y); y += 92; }
-  if (card.sub) {
-    x.fillStyle = "#cfc6ff";
-    x.font = "500 32px Inter,sans-serif";
-    x.fillText(card.sub, P, y);
+  if (!card.match) {
+    x.textAlign = "left";
+    x.fillStyle = "#f5c66b";
+    x.font = "700 30px Inter,sans-serif";
+    x.fillText((card.eyebrow || "").toLocaleUpperCase("tr"), P, y);
+    y += 84;
+    // başlık: kesmeden sığana kadar küçülür (en çok 2 satır)
+    const f = fit(x, card.title, 700, "Fraunces,Georgia,serif", 84, 50, W - P * 2 - (card.glyph ? 180 : 0), 2);
+    x.fillStyle = "#ffffff";
+    for (const l of f.l) { x.fillText(l, P, y); y += f.px * 1.1; }
+    if (card.sub) {
+      x.fillStyle = "#cfc6ff";
+      x.font = "500 32px Inter,sans-serif";
+      for (const l of lines(x, card.sub, W - P * 2, 2)) { y += 4; x.fillText(l, P, y); y += 40; }
+    }
     y += 40;
   }
-  y += 40;
   const bottom = H - (kind === "story" ? 230 : 150);
   const blocks = card.blocks || [];
+  x.textAlign = "left";
   for (const b of blocks) {
-    if (y > bottom - 120) break;
-    x.fillStyle = "#f5c66b";
-    x.font = "700 26px Inter,sans-serif";
-    x.fillText(b.h.toLocaleUpperCase("tr"), P, y);
-    y += 46;
-    x.fillStyle = "#ece6ff";
-    x.font = "500 33px Inter,sans-serif";
-    const room = Math.max(1, Math.floor((bottom - y) / 46));
-    for (const l of lines(x, b.t, W - P * 2, Math.min(room, kind === "story" ? 6 : 4))) { x.fillText(l, P, y); y += 46; }
-    y += 34;
+    if (y > bottom - 130) break;
+    x.font = "500 30px Inter,sans-serif";
+    const room = Math.max(1, Math.floor((bottom - y - 76) / 41));
+    const ls = lines(x, b.t, W - P * 2 - 56, Math.min(room, kind === "story" ? 7 : 4));
+    const boxH = 66 + ls.length * 41;
+    x.fillStyle = "#ffffff0f"; rr(x, P, y - 8, W - P * 2, boxH, 24); x.fill();
+    x.fillStyle = "#f5c66b"; x.font = "700 23px Inter,sans-serif";
+    x.fillText(b.h.toLocaleUpperCase("tr"), P + 28, y + 30);
+    x.fillStyle = "#ece6ff"; x.font = "500 30px Inter,sans-serif";
+    let ty = y + 74;
+    for (const l of ls) { x.fillText(l, P + 28, ty); ty += 41; }
+    y += boxH + 18;
   }
   x.fillStyle = "#ffffff22";
   x.fillRect(P, H - (kind === "story" ? 170 : 110), W - P * 2, 2);

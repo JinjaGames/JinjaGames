@@ -1,5 +1,5 @@
 // İki doğum haritasının karşılaştırması (sinastri): açılar, ev yerleşimleri, puanlar ve yorum metinleri.
-import * as E from "./ephem.js?v=10";
+import * as E from "./ephem.js?v=13";
 
 // Çift anahtarı: gezegenler bu sırada dizilir (yükselen en sonda)
 export const BODIES = ["sun", "moon", "mercury", "venus", "mars", "jupiter", "saturn", "asc"];
@@ -41,8 +41,9 @@ export const PAIR = {
 // Ev yerleşimleri: bir kişinin gezegeni ötekinin hangi evine düşüyor
 export const HOUSE_N = ["", "kişilik ve görünüş", "para ve değerler", "iletişim ve yakın çevre", "ev ve aile", "aşk, eğlence ve yaratıcılık", "günlük düzen ve sağlık",
   "ilişkiler ve ortaklık", "ortak kaynaklar ve mahremiyet", "inançlar, eğitim ve yolculuk", "kariyer ve hedefler", "arkadaşlık ve gelecek planları", "iç dünya ve bilinçaltı"];
-export const OVERLAY = { sun: "ışık tutan, ilham veren biri", moon: "duygusal olarak yakın ve güven veren biri", mercury: "fikir alışverişi yaptığı, zihnini açan biri",
-  venus: "sevgi, keyif ve uyum getiren biri", mars: "enerji, arzu ve bazen sürtüşme getiren biri", jupiter: "şans ve büyüme getiren biri", saturn: "ciddiyet, sorumluluk ve kalıcılık getiren biri" };
+// Bir kişinin gezegeni ötekinin evine düşünce: "Deniz, Eren'in <ev> alanına … getirir." (fiil öbeği)
+export const OVERLAY = { sun: "ışık tutar ve ilham verir", moon: "duygusal yakınlık ve güven getirir", mercury: "yeni fikirler getirir, bu konularda onun zihnini açar",
+  venus: "sevgi, keyif ve uyum getirir", mars: "enerji ve heyecan getirir; zaman zaman da sürtüşme çıkarır", jupiter: "şans ve büyüme getirir", saturn: "ciddiyet, sorumluluk ve kalıcılık getirir" };
 
 // Puan grupları: hangi çiftler hangi alt puanı etkiler, ağırlıklarıyla
 const GROUPS = {

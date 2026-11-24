@@ -105,6 +105,18 @@ export const MARS = [
   "Macera ve hareket istersin; yerinde duramazsın.", "Disiplinli ve dayanıklısın; uzun vadeli hedeflerde başarılısın.",
   "Kendi kurallarınla hareket edersin; özgürlüğün için direnirsin.", "Enerjin dalgalı; ilhamın geldiğinde harikalar çıkarırsın.",
 ];
+// Açı cümleleri: gezegenin hayatındaki anlamıyla, tam cümle. a/b = gezegen kimliği
+export const PLANET_MEAN = { sun: "kimliğin", moon: "duyguların", mercury: "düşüncelerin", venus: "sevgi anlayışın", mars: "enerjin ve isteklerin",
+  jupiter: "iyimserliğin ve şansın", saturn: "sorumluluk duygun", uranus: "özgürlük ihtiyacın", neptune: "hayal gücün", pluto: "dönüşüm gücün",
+  asc: "dışa yansıyan tavrın", mc: "hedeflerin", node: "yaşam yönün" };
+const capT = (s) => s.charAt(0).toLocaleUpperCase("tr") + s.slice(1);
+export const ASPECT_SENT = {
+  conj: (a, b) => `${capT(a)} ile ${b} kaynaşmış durumda; biri harekete geçince öteki de hemen devreye girer.`,
+  sext: (a, b) => `${capT(a)} ile ${b} birbirini destekler; biraz çaba gösterdiğinde bu uyum sana fırsat olarak döner.`,
+  square: (a, b) => `${capT(a)} ile ${b} arasında bir gerilim var. Bu sürtüşme seni zorlar ama aynı zamanda büyütür.`,
+  trine: (a, b) => `${capT(a)} ile ${b} kolayca uyum sağlar; bu konular sana kendiliğinden, doğal bir yetenek gibi gelir.`,
+  opp: (a, b) => `${capT(a)} ile ${b} seni zıt yönlere çeker. İkisi arasında denge kurmayı öğrendikçe güçlenirsin.`,
+};
 export const ASPECT_TXT = {
   conj: "birlikte çalışıyor; bu iki taraf senin içinde iç içe geçmiş.",
   sext: "birbirine destek veriyor; fırsat geldiğinde kolayca uyum sağlıyorlar.",

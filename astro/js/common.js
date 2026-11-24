@@ -1,8 +1,8 @@
 // JinjaAstro sayfalarının ortak parçaları: yardımcılar, kayıtlı haritalar, ülke→şehir seçici, paylaşma.
-import * as E from "./ephem.js?v=10";
-import { SIGNS } from "./zodiac.js?v=10";
-import { COUNTRIES } from "./places.js?v=10";
-import { utcOffset } from "./cities.js?v=10";
+import * as E from "./ephem.js?v=13";
+import { SIGNS } from "./zodiac.js?v=13";
+import { COUNTRIES } from "./places.js?v=13";
+import { utcOffset } from "./cities.js?v=13";
 
 export const $ = (s, r = document) => r.querySelector(s);
 export const $$ = (s, r = document) => [...r.querySelectorAll(s)];
@@ -46,7 +46,7 @@ export const mySign = () => { const c = saved()[0]; return c ? E.signOf(computeC
 
 // ---- aranabilir açılır liste (ülke ve şehir için) ----
 const fold = (s) => String(s).toLocaleLowerCase("tr").normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/ı/g, "i");
-export function combo(root, { items, placeholder, label, onPick }) {
+export function combo(root, { items, placeholder, label, onPick, pin = 0 }) {
   root.classList.add("combo");
   root.innerHTML = `<button type="button" class="comboBtn" aria-haspopup="listbox" aria-expanded="false"><span class="comboLabel">${esc(placeholder)}</span><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></button>
     <div class="comboPop" hidden><input class="comboSearch" type="search" placeholder="Ara…" aria-label="${esc(label)} ara" autocomplete="off"><ul class="comboList" role="listbox" aria-label="${esc(label)}"></ul></div>`;
@@ -54,9 +54,10 @@ export function combo(root, { items, placeholder, label, onPick }) {
   let list = items, value = null, act = 0;
   const draw = () => {
     const f = fold(q.value.trim());
-    const vis = list.map((it, i) => ({ it, i })).filter(({ it }) => !f || fold(it.n).includes(f));
+    // arama yaparken en üste sabitlenen kopyaları gösterme (aynı ülke iki kez çıkmasın)
+    const vis = list.map((it, i) => ({ it, i })).filter(({ it, i }) => (!f || fold(it.n).includes(f)) && !(f && i >= pin && list.indexOf(it) < pin));
     act = Math.min(act, Math.max(0, vis.length - 1));
-    ul.innerHTML = vis.length ? vis.map(({ it, i }, k) => `<li role="option" data-i="${i}" aria-selected="${it === value}" class="${k === act ? "act" : ""}">${it.flag ? `<span class="fl">${it.flag}</span>` : ""}${esc(it.n)}</li>`).join("") : `<li class="none">Bulunamadı</li>`;
+    ul.innerHTML = vis.length ? vis.map(({ it, i }, k) => `<li role="option" data-i="${i}" aria-selected="${it === value}" class="${k === act ? "act" : ""}${!f && pin && i === pin - 1 ? " pinEnd" : ""}">${it.flag ? `<span class="fl">${it.flag}</span>` : ""}${esc(it.n)}</li>`).join("") : `<li class="none">Bulunamadı</li>`;
   };
   const open = (v) => {
     pop.hidden = !v;
@@ -84,9 +85,11 @@ export function combo(root, { items, placeholder, label, onPick }) {
 /** Ülke ve şehir seçici. el: {country, city} kapsayıcıları. */
 export function placePicker(countryEl, cityEl, onChange) {
   const countries = COUNTRIES.map((c) => ({ ...c, n: c.name }));
+  // Türkiye ve KKTC en üstte; ayrıca alfabetik sıradaki yerlerinde de var
+  const list = [countries[0], countries[1], ...countries.slice().sort((a, b) => a.n.localeCompare(b.n, "tr"))];
   let country = countries[0];
-  const city = combo(cityEl, { items: country.cities, placeholder: "Şehir seç", label: "Şehir", onPick: () => onChange?.() });
-  const ctry = combo(countryEl, { items: countries, placeholder: "Ülke seç", label: "Ülke", onPick: (c) => { country = c; city.items(c.cities); city.set(null); onChange?.(); } });
+  const city = combo(cityEl, { items: country.cities, placeholder: "— Seç —", label: "Şehir", onPick: () => onChange?.() });
+  const ctry = combo(countryEl, { items: list, pin: 2, placeholder: "— Seç —", label: "Ülke", onPick: (c) => { country = c; city.items(c.cities); city.set(null); onChange?.(); } });
   ctry.set(country);
   return {
     get country() { return country; },

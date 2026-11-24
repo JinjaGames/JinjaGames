@@ -1,6 +1,6 @@
 // JinjaFC · Pro Clubs yüzü sayfası
 import { analyze, loadModel, grouped, EYE_NAMES, HAIR_NAMES } from "./face.js?v=2";
-import { headPreview } from "./head3d.js?v=2";
+import { facePreview } from "./face2d.js?v=1";
 import { toast, shareOrDownload, esc } from "./util.js";
 
 const $ = (s) => document.querySelector(s);
@@ -95,10 +95,38 @@ $("#edList").addEventListener("input", (e) => {
   lab.querySelector("small").textContent = s.why + (s.value !== s.rec ? ` · önerilen ${s.rec}` : "");
   preview?.set(keyOf(s), s.rec, s.value);
 });
+// geri al / yinele: her kaydırıcı bırakıldığında (ya da sıfırlandığında) durum kaydedilir
+let hist = [], hi = -1;
+const snap = () => current.sliders.map((s) => s.value);
+function pushHist() {
+  const v = snap();
+  if (hi >= 0 && hist[hi].every((x, i) => x === v[i])) return;
+  hist = hist.slice(0, hi + 1); hist.push(v); hi = hist.length - 1;
+  if (hist.length > 60) { hist.shift(); hi--; }
+  histBtns();
+}
+function histBtns() { $("#undoBtn").disabled = hi <= 0; $("#redoBtn").disabled = hi >= hist.length - 1; }
+function applyVals(v) {
+  current.sliders.forEach((s, i) => { s.value = v[i]; preview?.set(keyOf(s), s.rec, s.value); });
+  renderSliders(current);
+  histBtns();
+}
+const undo = () => { if (current && hi > 0) applyVals(hist[--hi]); };
+const redo = () => { if (current && hi < hist.length - 1) applyVals(hist[++hi]); };
+$("#edList").addEventListener("change", (e) => { if (current && e.target.matches("input[type=range]")) pushHist(); });
+$("#undoBtn").addEventListener("click", undo);
+$("#redoBtn").addEventListener("click", redo);
+document.addEventListener("keydown", (e) => {
+  if (!current || $("#result").hidden || !(e.ctrlKey || e.metaKey) || e.target.matches?.("input[type=text], input[type=search], textarea")) return;
+  const k = e.key.toLowerCase();
+  if (k === "z" && !e.shiftKey) { e.preventDefault(); undo(); }
+  else if (k === "y" || (k === "z" && e.shiftKey)) { e.preventDefault(); redo(); }
+});
 $("#resetSl").addEventListener("click", () => {
   if (!current) return;
   for (const s of current.sliders) { s.value = s.rec; preview?.set(keyOf(s), s.rec, s.rec); }
   renderSliders(current);
+  pushHist();
 });
 function skinPalette(step) {
   const cols = ["#f6dcc8", "#f0cfb3", "#e7bf9d", "#dcae86", "#c99670", "#b47f59", "#9a6646", "#7f5136", "#623d28", "#46291b"];
@@ -109,6 +137,7 @@ function render(r) {
   $("#result").hidden = false;
   for (const s of r.sliders) s.rec = s.value;
   renderSliders(r);
+  hist = [snap()]; hi = 0; histBtns();
   paint(r);
   finish(r);
 }
@@ -142,18 +171,20 @@ function finish(r) {
   drawPhoto();
   preview?.stop();
   preview = null;
-  const go = () => {
-    if (!window.THREE) return setTimeout(go, 80);
-    preview = headPreview($("#head"), img, r);
-    if (!preview) { $("#head").parentElement.querySelector(".disc").textContent = "Bu cihazda 3D önizleme açılamadı."; return; }
-    for (const s of r.sliders) preview.set(keyOf(s), s.rec, s.value);
-  };
-  go();
+  preview = facePreview($("#head"), img, r);
+  if (!preview) $("#head").parentElement.querySelector(".disc").textContent = "Bu cihazda canlı önizleme açılamadı.";
+  else for (const s of r.sliders) preview.set(keyOf(s), s.rec, s.value);
+  setView("front");
   $("#result").scrollIntoView({ behavior: "smooth", block: "start" });
 }
-$("#front").addEventListener("click", () => preview?.front());
-$("#spinBtn").addEventListener("click", () => preview?.spin());
-$("#sideBtn").addEventListener("click", () => preview?.side());
+// görünüm: ayarlı yüz / fotoğraftaki hâli / ikisi arasında gidip gelen karşılaştırma
+function setView(v) {
+  ({ front: () => preview?.front(), side: () => preview?.side(), spin: () => preview?.spin() })[v]();
+  for (const [id, k] of [["#front", "front"], ["#sideBtn", "side"], ["#spinBtn", "spin"]]) $(id).setAttribute("aria-pressed", String(k === v));
+}
+$("#front").addEventListener("click", () => setView("front"));
+$("#spinBtn").addEventListener("click", () => setView("spin"));
+$("#sideBtn").addEventListener("click", () => setView("side"));
 $("#again").addEventListener("click", () => { $("#result").hidden = true; current = null; preview?.stop(); preview = null; img = null; scrollTo({ top: 0, behavior: "smooth" }); });
 
 // --- dışa aktarma ---

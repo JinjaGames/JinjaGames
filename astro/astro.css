@@ -425,3 +425,16 @@ html { scroll-padding-top: 128px; }
 .band { font: 600 13px var(--sans); color: var(--gold); margin-left: 8px; padding: 3px 10px; border-radius: 999px; background: #f5c66b1a; vertical-align: 4px; white-space: nowrap; }
 .fcSec h4 { font: 700 16px var(--sans); margin: 16px 0 10px; color: #fff; }
 .fcSec .asp p small { display: block; margin: 2px 0 4px; }
+/* doğum tarihi ve saati seçicileri (Gün · Ay · Yıl, Saat : Dakika) */
+.dpick { display: grid; grid-template-columns: 0.8fr 1.4fr 1fr; gap: 8px; }
+.tpick { flex: 1; display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; gap: 6px; max-width: 220px; }
+.tpick b { color: var(--gold); font-size: 22px; font-weight: 800; }
+.tpick.off { opacity: .45; }
+.dpick select, .tpick select { width: 100%; min-height: 50px; padding: 0 30px 0 14px; border-radius: 14px; background: #0b0820b3 url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23f5c66b' stroke-width='2.5'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E") no-repeat right 10px center / 14px;
+  border: 1px solid #ffffff22; color: #fff; font: 600 16px var(--sans, Inter, sans-serif); color-scheme: dark; appearance: none; -webkit-appearance: none; cursor: pointer; }
+.tpick select { text-align: center; text-align-last: center; padding: 0 26px 0 10px; font-size: 18px; font-variant-numeric: tabular-nums; }
+.dpick select:focus, .tpick select:focus { border-color: var(--gold); outline: none; box-shadow: 0 0 0 3px #f5c66b33; }
+.dpick select option, .tpick select option { background: #140f2e; color: #fff; }
+.dpick select:invalid, .dpick select.empty { color: #ffffff99; }
+@media (max-width: 420px) { .dpick { grid-template-columns: 0.75fr 1.35fr 1fr; gap: 6px; } .dpick select { padding: 0 24px 0 10px; background-position: right 7px center; } }
+.comboList li.pinEnd { border-bottom: 1px solid #ffffff1f; border-radius: 10px 10px 0 0; margin-bottom: 6px; padding-bottom: 12px; }

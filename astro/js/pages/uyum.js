@@ -1,13 +1,13 @@
 // Uyum sayfası: iki burç ya da iki kayıtlı harita; ayrıntılı bölümler ve harita karşılaştırması.
-import * as E from "../ephem.js?v=10";
-import { SIGNS, PLANETS, MATCH } from "../zodiac.js?v=10";
-import { PROFILE, ELEMENT_PAIR, MOD_PAIR, REL } from "../readings.js?v=10";
-import { $, $$, esc, SLUGS, signBySlug, saved, computeChart, combo } from "../common.js?v=10";
-import { mountCharts } from "./uyumHarita.js?v=10";
-import { shareBar } from "../card.js?v=10";
-import { MOON_LOVE, LEARN, SPEND, HOME_STYLE } from "../readings2.js?v=10";
-import { TIP } from "../forecast-texts.js?v=10";
-import { secNav } from "./ui.js?v=10";
+import * as E from "../ephem.js?v=13";
+import { SIGNS, PLANETS, MATCH } from "../zodiac.js?v=13";
+import { PROFILE, ELEMENT_PAIR, MOD_PAIR, REL } from "../readings.js?v=13";
+import { $, $$, esc, SLUGS, signBySlug, saved, computeChart, combo } from "../common.js?v=13";
+import { mountCharts } from "./uyumHarita.js?v=13";
+import { shareBar } from "../card.js?v=13";
+import { MOON_LOVE, LEARN, SPEND, HOME_STYLE } from "../readings2.js?v=13";
+import { TIP } from "../forecast-texts.js?v=13";
+import { secNav } from "./ui.js?v=13";
 
 const EL_ORDER = ["Ateş", "Toprak", "Hava", "Su"], MOD_ORDER = ["Öncü", "Sabit", "Değişken"];
 const pairKey = (a, b, order) => [a, b].sort((x, y) => order.indexOf(x) - order.indexOf(y)).join("-");
@@ -94,7 +94,9 @@ function draw() {
     file: () => `uyum-${SLUGS[a]}-${SLUGS[b]}`,
     url: () => location.href,
     text: () => `${nm(A, sa)} ve ${nm(B, sb)} uyumu: %${score}`,
-    card: () => ({ glyph: `${sa.g}${sb.g}`, color: "#ff8fc7", eyebrow: `Burç uyumu · %${score}`, title: `${nm(A, sa)} & ${nm(B, sb)}`, sub: `${M.t} · ${sa.el} ile ${sb.el}`,
+    card: () => ({ color: "#ff8fc7", eyebrow: "Burç uyumu", title: `${nm(A, sa)} & ${nm(B, sb)}`,
+      match: { a: nm(A, sa), b: nm(B, sb), ga: sa.g, gb: sb.g, score, type: `${M.t} · ${sa.el} ile ${sb.el}`,
+        subs: [["Aşk", sub(friendly ? 2 : dist === 3 ? 4 : 0)], ["Arkadaşlık", sub(dist === 2 || dist === 4 ? 4 : -3)], ["İş", sub(sa.mod !== sb.mod ? 3 : -4)]] },
       blocks: [{ h: "Aşkta", t: el }, { h: "Güçlü yanlarınız", t: R.good }, { h: "Dikkat", t: R.hard }, { h: "Öneri", t: R.tip }] }),
   });
 }

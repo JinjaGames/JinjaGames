@@ -215,6 +215,29 @@ export const PLANET_DO = {
   neptune: "hayal kurduğun, bazen de yanılabildiğin alan",
   pluto: "derin dönüşümler yaşadığın alan",
 };
+// Evler, cümle içinde doğru hâl ekleriyle:
+//  HOUSE_TOPIC: "… konuları", "… etrafında" gibi yerlerde (yalın)
+//  HOUSE_LOC:   "… ararsın", "… meşgul olur" gibi yerlerde (-de hâli)
+export const HOUSE_TOPIC = ["", "kişilik ve dış görünüş", "para ve değerler", "yakın çevre ve günlük iletişim", "ev ve aile", "aşk, eğlence ve yaratıcılık",
+  "iş, günlük düzen ve sağlık", "ilişkiler ve ortaklıklar", "ortak kaynaklar, krizler ve mahremiyet", "eğitim, seyahat ve inançlar", "kariyer ve hedefler",
+  "arkadaşlıklar ve gelecek planları", "iç dünya ve bilinçaltı"];
+export const HOUSE_LOC = ["", "kişiliğinde ve dış görünüşünde", "paranda ve değer verdiğin şeylerde", "yakın çevrende ve günlük iletişiminde", "evinde ve ailende",
+  "aşkta, eğlencede ve yaratıcılığında", "işinde, günlük düzeninde ve sağlığında", "ilişkilerinde ve ortaklıklarında", "ortak paralarda, krizlerde ve mahrem konularda",
+  "eğitimde, seyahatlerde ve inançlarında", "kariyerinde ve hedeflerinde", "arkadaşlıklarında ve gelecek planlarında", "iç dünyanda ve bilinçaltında"];
+const cap = (s) => s.charAt(0).toLocaleUpperCase("tr") + s.slice(1);
+// Evdeki gezegen: tam ve düz bir cümle (h = ev numarası)
+export const PLANET_IN_HOUSE = {
+  sun: (h) => `Kendini en çok ${HOUSE_LOC[h]} gösterirsin; ${HOUSE_TOPIC[h]} senin parladığın alandır.`,
+  moon: (h) => `Duygusal huzuru en çok ${HOUSE_LOC[h]} ararsın. Bu alan yolunda gittiğinde içinde de rahatlarsın.`,
+  mercury: (h) => `Zihnin en çok ${HOUSE_LOC[h]} meşgul olur; bu konular üzerine çok düşünür, çok konuşursun.`,
+  venus: (h) => `Sevgi, güzellik ve şans hayatına en çok ${HOUSE_LOC[h]} gelir.`,
+  mars: (h) => `Enerjini ve mücadele gücünü en çok ${HOUSE_LOC[h]} harcarsın; burada hızlı ve kararlı davranırsın.`,
+  jupiter: (h) => `${cap(HOUSE_LOC[h])} büyür, fırsatların açıldığını görürsün.`,
+  saturn: (h) => `${cap(HOUSE_LOC[h])} sınavlardan geçersin; yavaş ilerlersin ama zamanla olgunlaşır, kalıcı bir şey kurarsın.`,
+  uranus: (h) => `${cap(HOUSE_LOC[h])} sürprizler ve ani değişimler yaşarsın; burada kalıpların dışına çıkmak sana iyi gelir.`,
+  neptune: (h) => `${cap(HOUSE_LOC[h])} hayal gücün çok güçlüdür; ama bu alanda olayları bazen olduğundan farklı görebilirsin.`,
+  pluto: (h) => `${cap(HOUSE_LOC[h])} derin dönüşümler yaşarsın; bu alanda hiçbir şey yüzeyde kalmaz.`,
+};
 export const HOUSE_AREA = ["", "kişiliğin ve görünüşün", "paran ve değerlerin", "yakın çevren ve iletişimin", "evin ve ailen", "aşkın, eğlencen ve yaratıcılığın",
   "işlerin, rutinlerin ve sağlığın", "ilişkilerin ve ortaklıkların", "ortak kaynaklar ve mahremiyet", "eğitim, seyahat ve inançlar", "kariyerin ve hedeflerin",
   "arkadaşlıklar ve gelecek planları", "iç dünyan ve bilinçaltın"];

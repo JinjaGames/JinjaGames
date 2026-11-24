@@ -144,6 +144,9 @@ nav.down{transform:translateY(-100%)}
 .mark{width:30px;height:30px;border-radius:9px;display:grid;place-items:center;color:#fff;font-weight:700;font-size:15px;background:var(--brand)}
 .nav-links{display:flex;gap:2px;list-style:none;align-items:center}
 .nav-links a{display:block;color:var(--ink-2);font-size:14.5px;font-weight:500;padding:9px 15px;border-radius:9px;transition:color .2s,background .2s}
+.nav-links a,.apps-trigger{white-space:nowrap}
+@media(max-width:1340px){.nav-links a,.apps-trigger{padding-left:10px!important;padding-right:10px!important;font-size:14px!important}}
+@media(max-width:1180px){.nav-links a,.apps-trigger{padding-left:7px!important;padding-right:7px!important;font-size:13.5px!important}}
 .nav-links a:hover,.nav-links a.active{color:var(--ink);background:var(--bg-soft)}
 .nav-end{display:flex;align-items:center;gap:8px;flex-shrink:0}
 .lang-menu{position:relative}
@@ -598,6 +601,7 @@ html,body{overflow-x:hidden;overflow-x:clip}
 <script src="assets/local-links.js?v=20261012d"></script><script src="assets/to-top.js?v=2" defer></script>
 <link rel="stylesheet" href="/assets/webapps.css?v=20261122">
 <script src="/assets/webapps.js?v=20261107" defer></script>
+<script src="/assets/analytics.js?v=1" defer></script>
 </head>
 <body>
 
@@ -619,22 +623,21 @@ html,body{overflow-x:hidden;overflow-x:clip}
         JinjaGames
       </a>
       <ul class="nav-links">
-        <li><a href="games/"><span class="en i">Games</span><span class="tr i">Oyunlar</span></a></li>
+        <li><a href="games/"><span class="en i">Games &amp; Entertainment</span><span class="tr i">Oyunlar ve Eğlence</span></a></li>
         <li class="apps-menu">
-          <button class="apps-trigger" type="button" aria-expanded="false" aria-controls="apps-pop" aria-haspopup="true"><span class="dot" aria-hidden="true"></span><span class="en i">Web Apps</span><span class="tr i">Web Uygulamaları</span><svg viewBox="0 0 12 12" aria-hidden="true"><path d="m2 4 4 4 4-4"></path></svg></button>
+          <button class="apps-trigger" type="button" aria-expanded="false" aria-controls="apps-pop" aria-haspopup="true"><span class="dot" aria-hidden="true"></span><span class="en i">Software &amp; Tools</span><span class="tr i">Yazılım ve Araçlar</span><svg viewBox="0 0 12 12" aria-hidden="true"><path d="m2 4 4 4 4-4"></path></svg></button>
           <div class="apps-pop" id="apps-pop">
             <div class="apps-pop-title"><span class="en i">Open in your browser, nothing to install</span><span class="tr i">Tarayıcıda aç, kurulum yok</span></div>
             <a class="app-item feat" href="/quiz/" style="--a:#ff5b3a"><img src="/assets/img/apps/jinjaquiz.svg" alt="" width="52" height="52"><span><b>JinjaQuiz <em class="tag"><span class="en i">New</span><span class="tr i">Yeni</span></em></b><small class="en i">Song and trivia quizzes, solo or in a lobby with friends</small><small class="tr i">Şarkı ve trivia quizleri; tek başına ya da arkadaşlarınla lobide</small></span><i class="go" aria-hidden="true">&rarr;</i></a>
             <a class="app-item" href="/astro/" style="--a:#a77bff"><img src="/assets/img/apps/jinjaastro.svg" alt="" width="44" height="44"><span><b>JinjaAstro <em class="tag"><span class="en i">New</span><span class="tr i">Yeni</span></em></b><small class="en i">Your birth chart in 3D, rising sign and weekly horoscopes</small><small class="tr i">3D doğum haritası, yükselen burç ve haftalık yorumlar</small></span><i class="go" aria-hidden="true">&rarr;</i></a>
-            <a class="app-item" href="/football/" style="--a:#3ddc84"><img src="/assets/img/apps/football.svg" alt="" width="44" height="44"><span><b>Jinja Football <em class="tag live"><span class="en i">Live</span><span class="tr i">Canlı</span></em></b><small class="en i">Change a match, a transfer or a penalty in football history</small><small class="tr i">Futbol tarihinde bir maçı, transferi ya da penaltıyı değiştir</small></span><i class="go" aria-hidden="true">&rarr;</i></a>
             <a class="app-item" href="/jinjafc/" style="--a:#4ef08a"><img src="/assets/img/apps/jinjafc.svg" alt="" width="44" height="44"><span><b>JinjaFC <em class="tag"><span class="en i">New</span><span class="tr i">Yeni</span></em></b><small class="en i">FC 27 squad builder with chemistry, and your face for Clubs</small><small class="tr i">FC 27 kimyalı kadro kurucu ve Clubs için yüz ayarları</small></span><i class="go" aria-hidden="true">&rarr;</i></a>
+            <a class="app-item" href="/football/" style="--a:#3ddc84"><img src="/assets/img/apps/football.svg" alt="" width="44" height="44"><span><b>Jinja Football <em class="tag live"><span class="en i">Live</span><span class="tr i">Canlı</span></em></b><small class="en i">Change a match, a transfer or a penalty in football history</small><small class="tr i">Futbol tarihinde bir maçı, transferi ya da penaltıyı değiştir</small></span><i class="go" aria-hidden="true">&rarr;</i></a>
             <a class="app-item" href="/peer/" style="--a:#5aa0ff"><img src="/assets/img/apps/jinjapeer.svg" alt="" width="44" height="44"><span><b>JinjaPeer</b><small class="en i">Send files straight to another device, encrypted</small><small class="tr i">Dosyaları şifreli olarak doğrudan başka cihaza gönder</small></span><i class="go" aria-hidden="true">&rarr;</i></a>
             <a class="apps-all" href="/apps/"><span class="en i">All web apps</span><span class="tr i">Tüm web uygulamaları</span><span aria-hidden="true">&rarr;</span></a>
           </div>
         </li>
-        <li><a href="#studio"><span class="en i">Studio</span><span class="tr i">Stüdyo</span></a></li>
-        <li><a href="#faq"><span class="en i">FAQ</span><span class="tr i">SSS</span></a></li>
-        <li><a href="#contact"><span class="en i">Contact</span><span class="tr i">İletişim</span></a></li>
+        <li><a href="about/"><span class="en i">About JinjaGames</span><span class="tr i">JinjaGames Hakkında</span></a></li>
+        <li><a href="business/"><span class="en i">Business / Press / Support</span><span class="tr i">İş / Basın / Destek</span></a></li>
         <li><a class="bb" href="banebender/"><i aria-hidden="true"></i>BaneBender</a></li>
       </ul>
       <div class="nav-end">
@@ -895,7 +898,7 @@ html,body{overflow-x:hidden;overflow-x:clip}
   <section id="opensource" class="blk">
     <div class="wrap">
       <div class="head rv">
-        <span class="label"><span class="en i">Open source</span><span class="tr i">Açık kaynak</span></span>
+        <span class="label"><span class="en i">Open source &amp; developer tools</span><span class="tr i">Açık kaynak ve geliştirici araçları</span></span>
         <div>
           <h2 class="en">Built in the open, <span class="hl">free to use.</span></h2>
           <h2 class="tr">Açıkta yapılan, <span class="hl">özgürce kullanılan.</span></h2>
@@ -988,6 +991,7 @@ html,body{overflow-x:hidden;overflow-x:clip}
               <a href="https://www.linkedin.com/company/jinjagamesofficial" target="_blank" rel="noopener">LinkedIn</a>
               <a href="https://www.instagram.com/jinja.games/" target="_blank" rel="noopener">Instagram</a>
             </div>
+            <a class="btn g" href="about/" style="margin-top:18px"><span class="en i">Vision, values and milestones</span><span class="tr i">Vizyon, değerler ve kilometre taşları</span> <span aria-hidden="true">&rarr;</span></a>
           </div>
         </aside>
       </div>
@@ -1037,7 +1041,7 @@ html,body{overflow-x:hidden;overflow-x:clip}
         </div>
         <div class="fitem">
           <button class="fq" data-faq><span><span class="en i">Where can I play your games?</span><span class="tr i">Oyunlarını nerede oynayabilirim?</span></span><span class="fi"></span></button>
-          <div class="fa"><div><span class="en i">Cyber Academy and Locard are on Steam. The Jelly games and DayPot are on Google Play for Android. The web apps (<a href="/quiz/">JinjaQuiz</a>, <a href="/astro/">JinjaAstro</a>, <a href="/football/">Jinja Football</a> and <a href="/peer/">JinjaPeer</a>) run right in your browser, nothing to install.</span><span class="tr i">Cyber Academy ve Locard Steam'de. Jelly oyunları ve DayPot Android için Google Play'de. Web uygulamaları (<a href="/quiz/">JinjaQuiz</a>, <a href="/astro/">JinjaAstro</a>, <a href="/football/">Jinja Football</a> ve <a href="/peer/">JinjaPeer</a>) doğrudan tarayıcında açılıyor, bir şey kurman gerekmiyor.</span></div></div>
+          <div class="fa"><div><span class="en i">Cyber Academy and Locard are on Steam. The Jelly games and DayPot are on Google Play for Android. The web apps (<a href="/quiz/">JinjaQuiz</a>, <a href="/astro/">JinjaAstro</a>, <a href="/jinjafc/">JinjaFC</a>, <a href="/football/">Jinja Football</a> and <a href="/peer/">JinjaPeer</a>) run right in your browser, nothing to install.</span><span class="tr i">Cyber Academy ve Locard Steam'de. Jelly oyunları ve DayPot Android için Google Play'de. Web uygulamaları (<a href="/quiz/">JinjaQuiz</a>, <a href="/astro/">JinjaAstro</a>, <a href="/jinjafc/">JinjaFC</a>, <a href="/football/">Jinja Football</a> ve <a href="/peer/">JinjaPeer</a>) doğrudan tarayıcında açılıyor, bir şey kurman gerekmiyor.</span></div></div>
         </div>
         <div class="fitem">
           <button class="fq" data-faq><span><span class="en i">Do the web apps cost anything? Do I need an account?</span><span class="tr i">Web uygulamaları ücretli mi, hesap açmam gerekiyor mu?</span></span><span class="fi"></span></button>
@@ -1069,6 +1073,11 @@ html,body{overflow-x:hidden;overflow-x:clip}
         <p class="en">Business, press or support. It all lands in the same inbox, and it is read by a person.</p>
         <p class="tr">İş, basın ya da destek. Hepsi aynı kutuya düşüyor ve hepsini bir insan okuyor.</p>
         <a class="mailbtn" href="mailto:jinjagamesofficial@gmail.com">jinjagamesofficial@gmail.com</a>
+        <div class="clinks" style="display:flex;flex-wrap:wrap;gap:10px;justify-content:center;margin-top:22px">
+          <a class="btn g" href="business/"><span class="en i">Business &amp; partnerships</span><span class="tr i">İş ve ortaklıklar</span></a>
+          <a class="btn g" href="press/"><span class="en i">Press kit</span><span class="tr i">Basın kiti</span></a>
+          <a class="btn g" href="publishers/"><span class="en i">For publishers</span><span class="tr i">Yayıncılar için</span></a>
+        </div>
         <div class="socials">
           <a href="https://www.instagram.com/jinja.games/" target="_blank" rel="noopener" aria-label="Instagram">
             <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2.16c3.2 0 3.58.01 4.85.07 1.17.05 1.8.25 2.23.41.56.22.96.48 1.38.9.42.42.68.82.9 1.38.16.42.36 1.06.41 2.23.06 1.27.07 1.65.07 4.85s-.01 3.58-.07 4.85c-.05 1.17-.25 1.8-.41 2.23-.22.56-.48.96-.9 1.38-.42.42-.82.68-1.38.9-.42.16-1.06.36-2.23.41-1.27.06-1.65.07-4.85.07s-3.58-.01-4.85-.07c-1.17-.05-1.8-.25-2.23-.41a3.7 3.7 0 0 1-1.38-.9 3.7 3.7 0 0 1-.9-1.38c-.16-.42-.36-1.06-.41-2.23-.06-1.27-.07-1.65-.07-4.85s.01-3.58.07-4.85c.05-1.17.25-1.8.41-2.23.22-.56.48-.96.9-1.38.42-.42.82-.68 1.38-.9.42-.16 1.06-.36 2.23-.41 1.27-.06 1.65-.07 4.85-.07M12 0C8.74 0 8.33.01 7.05.07 5.78.13 4.9.33 4.14.63c-.79.31-1.46.72-2.12 1.38C1.36 2.67.95 3.34.63 4.14.33 4.9.13 5.78.07 7.05.01 8.33 0 8.74 0 12s.01 3.67.07 4.95c.06 1.27.26 2.15.56 2.91.31.79.72 1.46 1.38 2.12.66.66 1.33 1.07 2.12 1.38.76.3 1.64.5 2.91.56C8.33 23.99 8.74 24 12 24s3.67-.01 4.95-.07c1.27-.06 2.15-.26 2.91-.56a5.86 5.86 0 0 0 2.12-1.38 5.86 5.86 0 0 0 1.38-2.12c.3-.76.5-1.64.56-2.91.06-1.28.07-1.69.07-4.95s-.01-3.67-.07-4.95c-.06-1.27-.26-2.15-.56-2.91a5.86 5.86 0 0 0-1.38-2.12A5.86 5.86 0 0 0 19.86.63c-.76-.3-1.64-.5-2.91-.56C15.67.01 15.26 0 12 0zm0 5.84A6.16 6.16 0 1 0 18.16 12 6.16 6.16 0 0 0 12 5.84zM12 16a4 4 0 1 1 4-4 4 4 0 0 1-4 4zm6.4-10.85a1.44 1.44 0 1 0 1.44 1.44 1.44 1.44 0 0 0-1.44-1.44z"/></svg>
@@ -1109,15 +1118,21 @@ html,body{overflow-x:hidden;overflow-x:clip}
       <h5><span class="en i">Web apps</span><span class="tr i">Web uygulamaları</span></h5>
       <a href="/quiz/">JinjaQuiz</a>
       <a href="/astro/">JinjaAstro</a>
+      <a href="/jinjafc/">JinjaFC</a>
       <a href="/football/">Jinja Football</a>
       <a href="/peer/">JinjaPeer</a>
       <a class="more" href="/apps/"><span class="en i">All web apps</span><span class="tr i">Tümü</span> &rarr;</a>
     </div>
     <div class="fcol">
-      <h5><span class="en i">Studio</span><span class="tr i">Stüdyo</span></h5>
-      <a href="#studio"><span class="en i">About</span><span class="tr i">Hakkında</span></a>
+      <h5><span class="en i">Company</span><span class="tr i">Şirket</span></h5>
+      <a href="about/"><span class="en i">About JinjaGames</span><span class="tr i">JinjaGames hakkında</span></a>
+      <a href="business/"><span class="en i">Business / Press / Support</span><span class="tr i">İş / Basın / Destek</span></a>
+      <a href="press/"><span class="en i">Press kit</span><span class="tr i">Basın kiti</span></a>
+      <a href="publishers/"><span class="en i">For publishers</span><span class="tr i">Yayıncılar için</span></a>
+      <a href="roadmap/"><span class="en i">Roadmap</span><span class="tr i">Yol haritası</span></a>
+      <a href="careers/"><span class="en i">Careers</span><span class="tr i">Kariyer</span></a>
+      <a href="#opensource"><span class="en i">Open source &amp; developer tools</span><span class="tr i">Açık kaynak ve geliştirici araçları</span></a>
       <a href="#faq"><span class="en i">FAQ</span><span class="tr i">SSS</span></a>
-      <a href="#contact"><span class="en i">Contact</span><span class="tr i">İletişim</span></a>
       <a href="privacy/"><span class="en i">Privacy</span><span class="tr i">Gizlilik</span></a>
     </div>
   </div>
@@ -1134,9 +1149,9 @@ html,body{overflow-x:hidden;overflow-x:clip}
 <div class="dock" id="dock" role="navigation" aria-label="Sections">
   <a href="games/" data-dock="games"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3.5" y="3.5" width="7" height="7" rx="1.6"/><rect x="13.5" y="3.5" width="7" height="7" rx="1.6"/><rect x="3.5" y="13.5" width="7" height="7" rx="1.6"/><rect x="13.5" y="13.5" width="7" height="7" rx="1.6"/></svg><span class="en i">Games</span><span class="tr i">Oyunlar</span></a>
   <a class="apps-dock" href="/apps/" data-dock="apps"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3.5" y="4.5" width="17" height="13" rx="2.2"/><path d="M8 20.5h8M12 17.5v3"/><path d="m9.5 9.5 2 1.5-2 1.5M13 13h2"/></svg><span class="en i">Apps</span><span class="tr i">Uygulamalar</span></a>
-  <a href="#studio" data-dock="studio"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20V9.5L12 4l8 5.5V20"/><path d="M9.5 20v-5.5h5V20"/></svg><span class="en i">Studio</span><span class="tr i">Stüdyo</span></a>
+  <a href="about/" data-dock="about"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20V9.5L12 4l8 5.5V20"/><path d="M9.5 20v-5.5h5V20"/></svg><span class="en i">About</span><span class="tr i">Hakkında</span></a>
   <a href="#faq" data-dock="faq"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8.5"/><path d="M9.6 9.4a2.5 2.5 0 0 1 4.8.9c0 1.7-2.4 2.2-2.4 3.7"/><path d="M12 16.9v.2"/></svg><span class="en i">FAQ</span><span class="tr i">SSS</span></a>
-  <a href="#contact" data-dock="contact"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3.5" y="5.5" width="17" height="13" rx="2.2"/><path d="m4.5 7 7.5 6 7.5-6"/></svg><span class="en i">Contact</span><span class="tr i">İletişim</span></a>
+  <a href="business/" data-dock="business"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3.5" y="7.5" width="17" height="12" rx="2.2"/><path d="M9 7.5V5.8A1.8 1.8 0 0 1 10.8 4h2.4A1.8 1.8 0 0 1 15 5.8v1.7M3.5 12.5h17"/></svg><span class="en i">Business</span><span class="tr i">İş</span></a>
   <a class="bb" href="banebender/"><i aria-hidden="true"></i><span>BaneBender</span></a>
 </div>
 

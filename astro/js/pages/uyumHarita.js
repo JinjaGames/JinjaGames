@@ -1,12 +1,13 @@
 // Uyum sayfası, "Doğum haritalarıyla" bölümü: iki kişinin haritası girilir ya da kayıtlılardan seçilir,
 // gezegenler arası açılar, ev yerleşimleri ve alt puanlarla ayrıntılı karşılaştırma gösterilir.
-import * as E from "../ephem.js?v=10";
-import { SIGNS, PLANETS, MATCH } from "../zodiac.js?v=10";
-import { ELEMENT_PAIR } from "../readings.js?v=10";
-import { $, $$, esc, toast, saved, keepChart, computeChart, placePicker } from "../common.js?v=10";
-import { shareBar } from "../card.js?v=10";
-import { secNav } from "./ui.js?v=10";
-import { compare, overlays, PAIR, BODY_NAME, HOUSE_N, OVERLAY } from "../synastry.js?v=10";
+import * as E from "../ephem.js?v=13";
+import { SIGNS, PLANETS, MATCH } from "../zodiac.js?v=13";
+import { ELEMENT_PAIR } from "../readings.js?v=13";
+import { $, $$, esc, toast, saved, keepChart, computeChart, placePicker } from "../common.js?v=13";
+import { shareBar } from "../card.js?v=13";
+import { secNav } from "./ui.js?v=13";
+import { enhanceFields } from "../datefield.js?v=13";
+import { compare, overlays, PAIR, BODY_NAME, HOUSE_N, OVERLAY } from "../synastry.js?v=13";
 
 // Türkçe ilgi eki: Eren'in, Elif'in, Ali'nin, Ayşe'nin
 export function gen(name) {
@@ -31,6 +32,7 @@ function personForm(root, idx, preset) {
     <div class="f"><span>Şehir</span><div data-k="city"></div></div>
     <p class="tzLine" data-k="tz">Şehir ve tarih seçince saat dilimi otomatik hesaplanır.</p>
     <label class="chk keep"><input type="checkbox" data-k="keep"> Bu kişiyi cihazımda sakla</label>`;
+  enhanceFields(root);
   const q = (k) => root.querySelector(`[data-k="${k}"]`);
   const updTz = () => {
     const off = place.offset(q("date").value);
@@ -111,7 +113,7 @@ function render(A, B) {
   };
   const groupsHtml = ["ask", "duygu", "iletisim", "kalicilik"].map(groupSec).join("");
   const others = r.list.filter((x) => !used.has(x));
-  const ov = (X, Y, nX, nY) => overlays(X, Y).map((o) => `<li><span class="pgl" style="color:${PLANETS[o.body].c}">${PLANETS[o.body].g}</span><p><b>${esc(gen(nY))} ${POSS[o.body]} → ${esc(gen(nX))} ${o.house}. evinde</b><br>${esc(nY)}, ${esc(nX)} için ${HOUSE_N[o.house]} alanında ${OVERLAY[o.body]}.</p></li>`).join("");
+  const ov = (X, Y, nX, nY) => overlays(X, Y).map((o) => `<li><span class="pgl" style="color:${PLANETS[o.body].c}">${PLANETS[o.body].g}</span><p><b>${esc(gen(nY))} ${POSS[o.body]} → ${esc(gen(nX))} ${o.house}. evinde</b><br>${esc(nY)}, ${esc(gen(nX))} ${HOUSE_N[o.house]} alanına ${OVERLAY[o.body]}.</p></li>`).join("");
   const ovA = ov(PA, PB, nA, nB), ovB = ov(PB, PA, nB, nA);
   const good = r.list.filter((x) => x.tone !== "t").slice(0, 4), hard = r.list.filter((x) => x.tone === "t").slice(0, 3);
   const weakest = Object.entries(r.sub).sort((x, y) => x[1] - y[1])[0][0];
@@ -148,7 +150,9 @@ function render(A, B) {
     file: () => "harita-uyumu",
     url: () => location.origin + location.pathname + "?mode=charts",
     text: () => `${nA} ve ${nB} doğum haritası uyumu: %${r.total}`,
-    card: () => ({ glyph: `${SIGNS[sa].g}${SIGNS[sb].g}`, color: "#ff8fc7", eyebrow: `Doğum haritası uyumu · %${r.total}`, title: `${nA} & ${nB}`, sub: Object.entries(GROUP_TITLE).map(([g, t]) => `${t.split(" ")[0]} %${r.sub[g]}`).join(" · "),
+    card: () => ({ color: "#ff8fc7", eyebrow: "Doğum haritası uyumu", title: `${nA} & ${nB}`,
+      match: { a: nA, b: nB, ga: SIGNS[sa].g, gb: SIGNS[sb].g, score: r.total, type: `${band(r.total)} bir uyum · ${r.list.length} gezegen bağlantısı`,
+        subs: Object.entries(GROUP_TITLE).map(([g, t]) => [t.split(" ")[0], r.sub[g]]) },
       blocks: [...(good[0] ? [{ h: "Sizi bağlayan", t: PAIR[good[0].k][good[0].tone] }] : []), ...(hard[0] ? [{ h: "Dikkat", t: PAIR[hard[0].k][hard[0].tone] }] : []), { h: "Öneri", t: TIPS[weakest] }] }),
   });
   secNav($(".secNav", $("#cDetail")));
