@@ -38,3 +38,47 @@
   .prStats { grid-template-columns: repeat(4, minmax(0, 1fr)); row-gap: 8px; }
   .prStats span { font-size: 15px; }
 }
+.pr { cursor: pointer; transition: border-color .15s, transform .15s; }
+.pr:hover { transform: translateY(-1px); }
+.pr:focus-visible { outline: 2px solid var(--lime); outline-offset: 2px; }
+/* oyuncu ayrıntısı */
+.pd { width: min(920px, calc(100vw - 24px)); max-height: calc(100dvh - 24px); padding: 22px; border: 1px solid var(--line2); border-radius: 22px; background: #0b1a15; color: #fff; overflow: auto; }
+.pd::backdrop { background: #02080699; backdrop-filter: blur(6px); }
+.pd[open] { animation: pdIn .22s ease-out; }
+@keyframes pdIn { from { opacity: 0; transform: translateY(14px) scale(.98); } }
+.pdX { position: sticky; top: 0; float: right; width: 38px; height: 38px; border-radius: 50%; border: 1px solid var(--line2); background: #07130f; color: #fff; font-size: 16px; cursor: pointer; z-index: 3; }
+.pdTop { display: grid; grid-template-columns: 220px minmax(0, 1fr); gap: 24px; align-items: start; }
+.pdCard { filter: drop-shadow(0 16px 30px #0008); }
+.pdInfo h2 { font: 800 clamp(24px, 3.4vw, 34px)/1.1 var(--disp); margin: 4px 0 8px; }
+.pdInfo p { color: var(--ink2); font-size: 14px; margin: 3px 0; }
+.pdFacts { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; margin: 14px 0 6px; }
+.pdFacts span { display: grid; gap: 2px; padding: 9px 10px; border-radius: 12px; background: #07130f; border: 1px solid var(--line); font: 800 16px var(--disp); }
+.pdFacts em, .pd h4 small { font: 600 11.5px var(--sans); font-style: normal; color: var(--muted); }
+.pd h4 { font: 800 15px var(--disp); margin: 18px 0 8px; }
+.pdRoles { display: flex; flex-wrap: wrap; gap: 6px; }
+.pdRoles > span { display: inline-flex; align-items: center; gap: 8px; padding: 6px 10px; border-radius: 12px; background: #07130f; border: 1px solid var(--line); }
+.pdRoles > span.on { border-color: var(--gold); box-shadow: 0 0 0 3px #ffcf5c1f; }
+.pdRoles .meta, .pdS .meta { display: inline-flex; align-items: center; gap: 4px; font: 800 14px var(--disp); font-style: normal; }
+.pdRoles .meta i, .pdS .meta i { width: 18px; height: 18px; border-radius: 50%; display: grid; place-items: center; border: 2px solid var(--gold); color: var(--gold); font: 800 9px var(--disp); font-style: normal; }
+.pdPs { gap: 6px; }
+.pdAttrs { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
+.pdAttrs section { padding: 12px; border-radius: 14px; background: #07130f; border: 1px solid var(--line); }
+.pdAttrs h5 { display: flex; justify-content: space-between; font: 800 14px var(--disp); margin: 0 0 8px; }
+.pdAttrs h5 b { padding: 0 8px; border-radius: 6px; background: #ffffff14; }
+.at { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; column-gap: 8px; font-size: 13px; color: var(--ink2); margin-bottom: 6px; }
+.at b { font: 800 14px var(--disp); color: #fff; }
+.at i { grid-column: 1 / -1; height: 4px; border-radius: 4px; background: #ffffff14; position: relative; overflow: hidden; margin-top: 3px; }
+.at i::after { content: ""; position: absolute; inset: 0 auto 0 0; width: var(--w); border-radius: 4px; background: currentColor; }
+.at i.s5::after { background: #3fe0ff; } .at i.s4::after { background: var(--lime); } .at i.s3::after { background: var(--gold); } .at i.s2::after { background: #ff9f43; } .at i.s1::after { background: var(--red); }
+.pdAttrs h5 b.s5 { color: #3fe0ff; } .pdAttrs h5 b.s4 { color: var(--lime); } .pdAttrs h5 b.s3 { color: var(--gold); } .pdAttrs h5 b.s2 { color: #ff9f43; } .pdAttrs h5 b.s1 { color: var(--red); }
+.pdSim { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 10px; }
+.pdS { display: grid; justify-items: center; gap: 6px; padding: 0; border: 0; background: none; color: #fff; cursor: pointer; transition: transform .15s; }
+.pdS:hover { transform: translateY(-3px); }
+@media (max-width: 760px) {
+  .pd { padding: 16px; }
+  .pdTop { grid-template-columns: 130px minmax(0, 1fr); gap: 14px; }
+  .pdFacts { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .pdAttrs { grid-template-columns: 1fr 1fr; }
+  .pdSim { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+}
+@media (max-width: 480px) { .pdTop { grid-template-columns: 1fr; } .pdCard { width: 170px; margin: 0 auto; } .pdAttrs { grid-template-columns: 1fr; } }

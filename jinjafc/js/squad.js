@@ -1,9 +1,10 @@
-// JinjaFC · FUT kadro kurucu (perspektifli saha, kart görünümü, JinjaFC Rating, otomatik kadro kurma)
+// JinjaFC · FUT kadro kurucu (perspektifli saha, kart görünümü, Meta Rating, otomatik kadro kurma)
 import { FORMATIONS, DEFAULT_FORMATION } from "./formations.js?v=2";
 import { chemistry, teamRating, THRESH } from "./chem.js?v=2";
 import { metaAt, squadMeta, autoBuild } from "./meta.js?v=1";
-import { loadDB, fold, POS_TR, flag } from "./db.js?v=1";
-import { cardHtml, chemPips } from "./fccard.js?v=1";
+import { loadDB, fold, POS_TR, flag, crestSrc } from "./db.js?v=3";
+import { cardHtml, chemPips } from "./fccard.js?v=3";
+import { crest } from "./db.js?v=3";
 import { esc, store, toast, shareOrDownload } from "./util.js";
 
 const $ = (s, r = document) => r.querySelector(s);
@@ -47,7 +48,7 @@ function render() {
     const m = p && !out ? metaAt(p, pos) : null;
     return `<button type="button" class="slot${pick?.slot === i ? " on" : ""}" data-i="${i}" style="left:${pr.l}%;top:${pr.t}%;--s:${pr.s}" aria-label="${POS_TR[pos]}${p ? ": " + esc(p.name) : ", boş"}">
       ${p ? cardHtml(p, { pos, out }) : `<span class="emptyC"><b>+</b></span>`}
-      <span class="labs">${p ? `<span class="meta"><i>J</i>${m ?? "–"}</span>` : ""}<span class="slotLab${p ? (out ? " bad" : per.chem === 3 ? " full" : "") : ""}">${POS_TR[pos]}${p ? ` ${"+".repeat(per.chem) || "0"}` : ""}</span></span></button>`;
+      <span class="labs">${p ? `<span class="meta"><i>M</i>${m ?? "–"}</span>` : ""}<span class="slotLab${p ? (out ? " bad" : per.chem === 3 ? " full" : "") : ""}">${POS_TR[pos]}${p ? ` ${"+".repeat(per.chem) || "0"}` : ""}</span></span></button>`;
   }).join("");
   $("#bench").innerHTML = state.bench.map((p, j) => `<button type="button" class="bslot${pick?.bench === j ? " on" : ""}" data-b="${j}" aria-label="Yedek ${j + 1}${p ? ": " + esc(p.name) : ", boş"}">${p ? cardHtml(p, { size: "s" }) : `<span class="emptyC s"><b>+</b></span>`}</button>`).join("");
   $("#mMeta").textContent = meta ? meta.toFixed(1) : "0";
@@ -59,7 +60,7 @@ function render() {
   const grp = (map, t, kind) => [...map.entries()].sort((a, b) => b[1] - a[1]).forEach(([k, cnt]) => {
     const lvl = cnt >= t[2] ? 3 : cnt >= t[1] ? 2 : cnt >= t[0] ? 1 : 0, next = t.find((x) => x > cnt);
     const nat = kind === "nation" ? DB.natByName.get(k) : null;
-    rows.push(`<li class="lv${lvl}"><span class="gi">${nat ? flag(nat) : `<i class="gtag">${kind === "league" ? "LİG" : "KLP"}</i>`}</span><b title="${esc(nat ? nat.tr : k)}">${esc(nat ? nat.tr : k)}</b>
+    rows.push(`<li class="lv${lvl}"><span class="gi">${nat ? flag(nat) : kind === "club" && DB.clubIdByName.get(k) ? `<img class="crestI" src="${crestSrc(DB.clubIdByName.get(k))}" alt="" loading="lazy" data-hide>` : `<i class="gtag">${kind === "league" ? "LİG" : "KLP"}</i>`}</span><b title="${esc(nat ? nat.tr : k)}">${esc(nat ? nat.tr : k)}</b>
       <span class="gp">${t.map((x, q) => `<i class="${cnt >= x ? "on" : ""}" title="${x} oyuncu: +${q + 1}"></i>`).join("")}</span><em>${cnt}</em><small>${next ? `${next - cnt} oyuncu daha → +${lvl + 1}` : "En üst seviye"}</small></li>`);
   });
   grp(c.count.league, THRESH.league, "league");
@@ -91,7 +92,7 @@ function panelBuild() {
   $("#panel").innerHTML = `<h2 class="pTitle">Kadro kur</h2>
     <div class="pBox">
       <div class="prow"><span>Diziliş</span><select id="bForm" aria-label="Kurulacak diziliş">${opt("current", `Şu anki (${FORMATIONS[state.f].name})`, build.formation === "current")}${opt("best", "En iyi diziliş (hepsini dene)", build.formation === "best")}</select></div>
-      <div class="prow"><span>Hedef</span><div class="seg2">${[["meta", "JinjaFC Rating"], ["chem", "Tam kimya"]].map(([v, t]) => `<button type="button" data-want="${v}" aria-pressed="${build.want === v}">${t}</button>`).join("")}</div></div>
+      <div class="prow"><span>Hedef</span><div class="seg2">${[["meta", "Meta Rating"], ["chem", "Tam kimya"]].map(([v, t]) => `<button type="button" data-want="${v}" aria-pressed="${build.want === v}">${t}</button>`).join("")}</div></div>
     </div>
     <div class="pBox"><h3>Filtreler</h3>${filterSelects(build, "b")}</div>
     <p class="hint">${locked ? `Sahadaki <b>${locked} oyuncu kilitli</b> kalır; geri kalanı doldurulur.` : "Sahaya oyuncu koyarsan onların etrafında kadro kurulur."}</p>
@@ -140,8 +141,8 @@ function panelResults() {
   for (const r of sorted) ((seen[r.f] = (seen[r.f] || 0) + 1) <= 4 ? head : rest).push(r);
   const list = [...head, ...rest].slice(0, 45);
   $("#panel").innerHTML = `<div class="pHead"><h2 class="pTitle">Önerilen kadrolar</h2><button type="button" class="x" id="resClose" aria-label="Kadro kur paneline dön">✕</button></div>
-    <div class="prow"><span>Sıralama</span><div class="seg2">${[["meta", "JinjaFC Rating"], ["chem", "Kimya"]].map(([v, t]) => `<button type="button" data-rs="${v}" aria-pressed="${build.sort === v}">${t}</button>`).join("")}</div></div>
-    <div class="tiles">${list.map((r) => `<button type="button" class="tile" data-sig="${r.sig}"><span><i class="ico jr">J</i>${r.meta.toFixed(1)}</span><span><i class="ico ch"><i></i><i></i><i></i></i>${r.chem}</span><small>${FORMATIONS[r.f].name}</small></button>`).join("")}</div>`;
+    <div class="prow"><span>Sıralama</span><div class="seg2">${[["meta", "Meta Rating"], ["chem", "Kimya"]].map(([v, t]) => `<button type="button" data-rs="${v}" aria-pressed="${build.sort === v}">${t}</button>`).join("")}</div></div>
+    <div class="tiles">${list.map((r) => `<button type="button" class="tile" data-sig="${r.sig}"><span><i class="ico jr">M</i>${r.meta.toFixed(1)}</span><span><i class="ico ch"><i></i><i></i><i></i></i>${r.chem}</span><small>${FORMATIONS[r.f].name}</small></button>`).join("")}</div>`;
   $("#resClose").addEventListener("click", () => { build.results = null; panelBuild(); });
   $$("[data-rs]", $("#panel")).forEach((b) => b.addEventListener("click", () => { build.sort = b.dataset.rs; panelResults(); }));
   $$(".tile", $("#panel")).forEach((b) => b.addEventListener("click", () => {
@@ -165,7 +166,7 @@ function panelPick(focus) {
   const isBench = pick.bench != null, pos = isBench ? null : slots()[pick.slot];
   const cur = isBench ? state.bench[pick.bench] : state.xi[pick.slot];
   $("#panel").innerHTML = `<div class="pHead"><h2 class="pTitle">${isBench ? `Yedek ${pick.bench + 1}` : `${POS_TR[pos]} için oyuncu`}</h2><button type="button" class="x" id="pickClose" aria-label="Kapat">✕</button></div>
-    ${cur ? `<div class="curP">${cardHtml(cur, { pos: pos || undefined, size: "s" })}<div><b>${esc(cur.name)}</b><small>${esc(cur.club)}</small><small>${esc(cur.nat.tr)} · ${esc(cur.league)}</small></div><button type="button" class="btn ghost sm" id="rmP">Kaldır</button></div>` : ""}
+    ${cur ? `<div class="curP">${cardHtml(cur, { pos: pos || undefined, size: "s" })}<div><b>${esc(cur.name)}</b><small>${crest(cur, "crestI")}${esc(cur.club)}</small><small>${esc(cur.nat.tr)} · ${esc(cur.league)}</small><a class="detL" href="/jinjafc/players/?id=${cur.id}" target="_blank" rel="noopener">Ayrıntılar ↗</a></div><button type="button" class="btn ghost sm" id="rmP">Kaldır</button></div>` : ""}
     <input type="search" id="pq" class="search" placeholder="Oyuncu ara" value="${esc(pick.q)}" autocomplete="off" aria-label="Oyuncu ara">
     <div class="prow"><span>Sıralama</span><div class="seg2">${[...(pos ? [["meta", "JinjaFC"], ["chem", "Kimya"]] : []), ["rating", "Reyting"]].map(([v, t]) => `<button type="button" data-ps="${v}" aria-pressed="${pick.sort === v}">${t}</button>`).join("")}</div></div>
     <button type="button" class="fToggle" id="fTog" aria-expanded="${pick.showF}">Filtreler${[pick.nation, pick.league, pick.club, +pick.min ? 1 : "", pick.g !== "all" ? 1 : ""].filter(Boolean).length ? ` (${[pick.nation, pick.league, pick.club, +pick.min ? 1 : "", pick.g !== "all" ? 1 : ""].filter(Boolean).length})` : ""}</button>
@@ -199,7 +200,7 @@ function results() {
   $("#res").innerHTML = total ? `<p class="rcount">${total.toLocaleString("tr")} oyuncu</p><div class="cgrid">${shown.map((p) => {
     const m = pos ? metaAt(p, pos) : null, g = gain?.get(p.id);
     return `<button type="button" class="pickC" data-id="${p.id}" title="${esc(p.name)} · ${esc(p.club)}">${cardHtml(p, { pos: pos && p.pos.includes(pos) ? pos : undefined })}
-      <span class="under">${m != null ? `<span class="meta"><i>J</i>${m || "–"}</span>` : ""}${g != null ? `<span class="gain ${g > 0 ? "up" : g < 0 ? "down" : ""}">${g > 0 ? "+" : ""}${g} kimya</span>` : ""}</span></button>`;
+      <span class="under">${m != null ? `<span class="meta"><i>M</i>${m || "–"}</span>` : ""}${g != null ? `<span class="gain ${g > 0 ? "up" : g < 0 ? "down" : ""}">${g > 0 ? "+" : ""}${g} kimya</span>` : ""}</span></button>`;
   }).join("")}</div>${list.length > shown.length ? `<button type="button" class="btn ghost wide" id="more">Daha fazla göster</button>` : ""}` : `<p class="muted pad">Bu filtrelerle oyuncu bulunamadı.</p>`;
   $("#more")?.addEventListener("click", () => { pick.limit += 40; results(); });
 }

@@ -17,7 +17,7 @@ concurrency:
 jobs:
   players:
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 40
     steps:
       - uses: actions/checkout@v4
 
@@ -28,11 +28,20 @@ jobs:
       - name: Oyuncuları çek
         run: node tools/fc_players.mjs
 
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Yeni oyuncu fotoğrafları ve armalar
+        run: |
+          pip install --quiet pillow
+          python tools/fc_images.py
+
       - name: Değiştiyse siteye işle
         run: |
           git config user.name "jinjagames-bot"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add jinjafc/data/players.json
+          git add jinjafc/data/players.json jinjafc/img tools/fc_crests.json
           if git diff --cached --quiet; then
             echo "Değişiklik yok."
           else

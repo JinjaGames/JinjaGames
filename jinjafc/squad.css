@@ -142,3 +142,4 @@
   .cgrid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
 @media (max-width: 640px) { .sbTabs { top: 104px; } }
+.detL { font-size: 12.5px; font-weight: 700; color: var(--lime); text-decoration: none; margin-top: 2px; }

@@ -1,4 +1,4 @@
-// JinjaFC Rating: oyuncunun belirli bir mevkide oyunda ne kadar etkili olacağını tahmin eden kendi puanımız.
+// Meta Rating: oyuncunun belirli bir mevkide oyunda ne kadar etkili olacağını tahmin eden kendi puanımız.
 // Mevkiye göre ağırlıklandırılmış ayrıntılı özellikler + zayıf ayak, yetenek hareketleri, PlayStyle+ ve boy bonusları.
 // Ayrıca: seçilen filtrelere göre en iyi kadroları kuran otomatik kadro kurucu.
 import { chemistry } from "./chem.js";
@@ -20,7 +20,7 @@ export const GROUP = { ST: "ST", CF: "ST", LW: "W", RW: "W", LM: "W", RM: "W", C
 const ROLE_TR = { ST: "Bitirici forvet", W: "Hızlı kanat", CAM: "Oyun kurucu 10", CM: "Box-to-box orta saha", CDM: "Savunmacı orta saha", FB: "Bindiren bek", CB: "Savunma lideri", GK: "Kaleci" };
 const ATTACK = new Set(["ST", "W", "CAM"]);
 
-/** Oyuncunun bir mevkideki JinjaFC Rating'i (bir ondalık). Mevkisi kartında yoksa 0. */
+/** Oyuncunun bir mevkideki Meta Rating'i (bir ondalık). Mevkisi kartında yoksa 0. */
 export function metaAt(p, pos) {
   if (!p.pos.includes(pos)) return 0;
   const key = (p.mk ||= {});
@@ -52,7 +52,7 @@ export function grade(m, r) {
   return d >= 3 ? "S" : d >= 1.5 ? "A+" : d >= 0 ? "A" : d >= -1.5 ? "B" : "C";
 }
 
-/** Kadronun JinjaFC Rating'i: oyuncuların kendi mevkilerindeki puan ortalaması (mevki dışı = reytinginin 10 eksiği) */
+/** Kadronun Meta Rating'i: oyuncuların kendi mevkilerindeki puan ortalaması (mevki dışı = reytinginin 10 eksiği) */
 export function squadMeta(slots, xi) {
   const v = xi.map((p, i) => (p ? metaAt(p, slots[i]) || p.r - 10 : 0));
   const n = xi.filter(Boolean).length;
