@@ -5,7 +5,11 @@ name: YouTube günlük verisi
 on:
   schedule:
     - cron: "40 2 * * *"
-  workflow_dispatch: {}
+  workflow_dispatch:
+    inputs:
+      search:
+        description: "Yeni arama yapılsın mı? (0 = yalnızca izlenmeleri tazele)"
+        default: "1"
 
 permissions:
   contents: write
@@ -27,6 +31,7 @@ jobs:
       - name: YouTube verisini topla
         env:
           YT_API_KEY: ${{ secrets.YT_API_KEY }}
+          YT_SEARCH: ${{ github.event.inputs.search || '1' }}
         run: node tools/youtube_daily.mjs
 
       - name: Değiştiyse siteye işle

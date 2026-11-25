@@ -13,6 +13,8 @@ const ROOT = new URL("../", import.meta.url);
 const RANK_FILE = new URL("quiz/data/rank-yt.json", ROOT);
 const OPS_FILE = new URL("quiz/data/anime-ops.json", ROOT);
 const BUDGET = Number(process.env.YT_BUDGET || 9000);
+const RESERVE = 300; // izlenme tazeleme için her zaman ayrılan kota (arama bunu yiyemez)
+const SEARCH = process.env.YT_SEARCH !== "0"; // 0: yalnızca izlenmeleri tazele
 const TOP = 10; // sanatçı başına izlenmesi bakılan şarkı
 const OP_MAX = 400;
 const OP_PER_DAY = 25;
@@ -26,7 +28,8 @@ const strip = (t) => String(t || "").replace(/\s*[([].*?[)\]]/g, "").trim();
 class Quota extends Error {}
 let units = 0;
 async function yt(path, params, cost) {
-  if (units + cost > BUDGET) throw new Quota("bütçe");
+  if (units + cost > (path === "search" ? BUDGET - RESERVE : BUDGET)) throw new Quota("bütçe");
+  if (path === "search" && !SEARCH) throw new Quota("arama kapalı");
   units += cost;
   const u = new URL(`https://www.googleapis.com/youtube/v3/${path}`);
   for (const [k, v] of Object.entries(params)) u.searchParams.set(k, String(v));
@@ -74,7 +77,13 @@ async function rankArtists() {
   return list.filter((a) => /^\d+$/.test(a.id) && !seen.has(a.id) && seen.add(a.id));
 }
 async function deezerTop(id) {
-  const j = await json(`https://api.deezer.com/artist/${id}/top?limit=100`);
+  // Deezer saniyede birkaç istekten fazlasını reddeder ({error:{code:4}}): yavaş git, gerekirse tekrar dene
+  let j;
+  for (let i = 0; i < 4; i++) {
+    await sleep(400 + i * 1500);
+    j = await json(`https://api.deezer.com/artist/${id}/top?limit=100`);
+    if (!j?.error) break;
+  }
   const seen = new Set();
   const out = [];
   for (const t of j?.data || []) {
