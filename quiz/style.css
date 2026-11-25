@@ -3263,3 +3263,41 @@ body.rkDragging, body.rkDragging * { cursor: grabbing !important; -webkit-user-s
 @keyframes opPulse { to { box-shadow: 0 0 0 12px transparent; } }
 @media (prefers-reduced-motion: reduce) { .opTap.pulse { animation: none; } }
 .opPaused { display: inline-flex; align-items: center; gap: 6px; justify-self: center; margin: 0; font-size: 14px; }
+/* ---------- lobide "Quiz ekle" penceresi: türlere ayrılmış ---------- */
+.sheet[data-kind="picker"] { width: min(860px, 100vw - 24px); height: min(88dvh, 860px); }
+.sheet[data-kind="picker"] #sheetBody { padding-top: 0; gap: 14px; }
+.pickTop { position: sticky; top: 0; z-index: 2; display: grid; gap: 10px; margin: 0 -22px; padding: 18px 22px 12px; background: var(--s1); border-bottom: 1px solid var(--line); }
+.pickTabs { display: flex; gap: 4px; padding: 4px; background: var(--s2); border-radius: 999px; overflow-x: auto; scrollbar-width: none; }
+.pickTabs::-webkit-scrollbar { display: none; }
+.pickTabs button { flex: 1 0 auto; display: inline-flex; align-items: center; justify-content: center; gap: 6px; min-height: 40px; padding: 0 14px; border-radius: 999px; color: var(--muted); font-weight: 700; font-size: 14px; transition: background 0.2s, color 0.2s; }
+.pickTabs button:hover { color: var(--ink); }
+.pickTabs button[aria-selected="true"] { background: var(--accent); color: var(--accent-ink); }
+.pickTabs button small { min-width: 20px; padding: 1px 6px; border-radius: 99px; background: #ffffff14; font-size: 11px; text-align: center; }
+.pickTabs button[aria-selected="true"] small { background: #0002; }
+.pickTop .subChips { margin: 0; }
+.pickTop .search { margin: 0; }
+.pickGrid { grid-template-columns: repeat(auto-fill, minmax(132px, 1fr)); }
+.pickItem { align-content: start; gap: 6px; }
+.pickItem small { display: flex; align-items: center; gap: 4px; min-width: 0; color: var(--muted); font-size: 12px; line-height: 1.25; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pickItem small .ic { flex: none; width: 12px; height: 12px; }
+.pickMake { background: transparent; border: 2px dashed var(--line); color: var(--ink); }
+.pickMake:hover { border-color: var(--accent); background: var(--s2); }
+.pickMake .pImg { display: grid; place-items: center; background: var(--s2); color: var(--accent); }
+.pickMake .pImg .ic { width: 40%; height: 40%; }
+.pickNote { margin: 0; text-align: center; }
+#pickResults:empty { display: none; }
+@media (max-width: 560px) {
+  .sheet[data-kind="picker"] { width: 100vw; height: 92dvh; max-height: 92dvh; }
+  .pickTop { padding-top: 14px; }
+  .pickGrid { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+  .pickItem { padding: 6px; }
+  .pickItem b { font-size: 13px; }
+  .pickItem small { font-size: 11px; }
+  .pickTabs { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); border-radius: 16px; overflow: visible; }
+  .pickTabs button { min-height: 36px; padding: 0 4px; gap: 4px; border-radius: 12px; font-size: 12.5px; }
+  .pickTabs button .ic { display: none; }
+  .pickTabs button small { min-width: 0; padding: 0 4px; font-size: 10px; }
+}
+/* oluşturma sayfası lobiden açıldıysa: bitti ekranı */
+.lobbyDone { display: grid; justify-items: center; gap: 12px; max-width: 520px; margin: 12vh auto; padding: 0 16px; text-align: center; }
+.lobbyDone > .ic { width: 56px; height: 56px; padding: 12px; border-radius: 50%; background: var(--accent); color: var(--accent-ink); }

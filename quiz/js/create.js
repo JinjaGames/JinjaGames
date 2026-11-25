@@ -262,6 +262,30 @@ function opMain() {
     <button class="btn soft wide" data-do="opAdd">${ic("plus")}Opening ekle</button>
   </section>`;
 }
+// Lobiden açıldıysa (?lobi=1, yeni sekme): quiz kaydedilince lobi sekmesine haber verilir, orada sıraya eklenmeye hazır açılır.
+const keepCustom = (l) => (saveCustom(l), l);
+const FROM_LOBBY = new URLSearchParams(location.search).has("lobi");
+function finish(q, tab) {
+  if (FROM_LOBBY && !window.opener) {
+    // tarayıcı yeni sekme yerine aynı sekmede açtıysa: lobiye geri dön, quiz orada açılır
+    try { sessionStorage.setItem("jqLobbyBack", JSON.stringify({ at: Date.now(), q })); } catch {}
+    st.saving = true;
+    location.href = "../";
+    return;
+  }
+  if (FROM_LOBBY) {
+    try { localStorage.setItem("jqLobbyNew", JSON.stringify({ at: Date.now(), q })); } catch {}
+    st.saving = true;
+    $("#crTitle").textContent = "Quiz hazır";
+    app.innerHTML = `<section class="lobbyDone">${ic("check")}<h2>${esc(q.name || "Quizin")} lobiye gönderildi</h2>
+      <p class="muted">Lobi sekmesinde açıldı; ayarlarını seçip sıraya ekleyebilirsin. Bu sekmeyi kapatabilirsin.</p>
+      <button class="btn primary lg" data-do="closeTab">${ic("arrow-left")}Lobiye dön</button></section>`;
+    setTimeout(() => window.close(), 900);
+    return;
+  }
+  if (tab === "topluluk") try { sessionStorage.setItem("jqJustPublished", JSON.stringify(q)); } catch {}
+  location.href = "../?tab=" + tab;
+}
 async function saveOps() {
   const items = opItems();
   const bad = st.ops.findIndex((o) => (o.url || o.anime || o.song) && !cleanOps([{ ...(ytParse(o.url) || {}), anime: o.anime, song: o.song }]).length);
@@ -272,12 +296,10 @@ async function saveOps() {
     if (st.public) {
       const q = await publishQuiz({ kind: "op", d: st.d, name: st.name, desc: st.desc, author: st.author || "Anonim", emoji: st.emoji, items, prevAt: st.prevAt });
       if (st.localId) removeCustom(st.localId);
-      try { sessionStorage.setItem("jqJustPublished", JSON.stringify(q)); } catch {}
-      location.href = "../?tab=topluluk";
+      finish(q, "topluluk");
     } else {
       if (st.d) await removeQuiz({ d: st.d, pubkey: myPubkey(), at: st.prevAt }).catch(() => {});
-      saveCustom({ id: st.localId || "my" + Math.random().toString(36).slice(2, 10), kind: "op", cat: "Anime", name: st.name, desc: st.desc, emoji: st.emoji, items, genre: "Senin" });
-      location.href = "../?tab=senin";
+      finish(keepCustom({ id: st.localId || "my" + Math.random().toString(36).slice(2, 10), kind: "op", cat: "Anime", name: st.name, desc: st.desc, emoji: st.emoji, items, genre: "Senin" }), "senin");
     }
   } catch (e) { st.saving = false; drawLists(); fail(e); }
 }
@@ -290,12 +312,10 @@ async function saveRank() {
     if (st.public) {
       const q = await publishQuiz({ ...base, d: st.d, author: st.author || "Anonim", prevAt: st.prevAt });
       if (st.localId) removeCustom(st.localId);
-      try { sessionStorage.setItem("jqJustPublished", JSON.stringify(q)); } catch {}
-      location.href = "../?tab=topluluk";
+      finish(q, "topluluk");
     } else {
       if (st.d) await removeQuiz({ d: st.d, pubkey: myPubkey(), at: st.prevAt }).catch(() => {});
-      saveCustom({ ...base, id: st.localId || "my" + Math.random().toString(36).slice(2, 10), genre: "Senin" });
-      location.href = "../?tab=senin";
+      finish(keepCustom({ ...base, id: st.localId || "my" + Math.random().toString(36).slice(2, 10), genre: "Senin" }), "senin");
     }
   } catch (e) { st.saving = false; drawLists(); fail(e); }
 }
@@ -499,12 +519,10 @@ async function save() {
       const q = await publishQuiz({ d: st.d, name: st.name, desc: st.desc, author: st.author || "Anonim", tracks, rev: st.kind === "rev", prevAt: st.prevAt });
       if (st.localId) removeCustom(st.localId);
       // Ana sayfa röleler yanıt vermeden de göstersin
-      try { sessionStorage.setItem("jqJustPublished", JSON.stringify(q)); } catch {}
-      location.href = "../?tab=topluluk";
+      finish(q, "topluluk");
     } else {
       if (st.d) await removeQuiz({ d: st.d, pubkey: myPubkey(), at: st.prevAt }).catch(() => {});
-      saveCustom({ id: st.localId || "my" + Math.random().toString(36).slice(2, 10), name: st.name, desc: st.desc, picture: tracks.find((t) => t.cover)?.cover || "", artists: [], tracks, ...(st.kind === "rev" ? { rev: true } : {}), genre: "Senin" });
-      location.href = "../?tab=senin";
+      finish(keepCustom({ id: st.localId || "my" + Math.random().toString(36).slice(2, 10), name: st.name, desc: st.desc, picture: tracks.find((t) => t.cover)?.cover || "", artists: [], tracks, ...(st.kind === "rev" ? { rev: true } : {}), genre: "Senin" }), "senin");
     }
   } catch (e) {
     st.saving = false; drawLists(); fail(e);
@@ -534,12 +552,10 @@ async function saveTrivia() {
     if (st.public) {
       const q = await publishQuiz({ kind: "trivia", d: st.d, name: st.name, desc: st.desc, author: st.author || "Anonim", cat: st.cat, emoji: st.emoji, items, prevAt: st.prevAt });
       if (st.localId) removeCustom(st.localId);
-      try { sessionStorage.setItem("jqJustPublished", JSON.stringify(q)); } catch {}
-      location.href = "../?tab=topluluk";
+      finish(q, "topluluk");
     } else {
       if (st.d) await removeQuiz({ d: st.d, pubkey: myPubkey(), at: st.prevAt }).catch(() => {});
-      saveCustom({ id: st.localId || "my" + Math.random().toString(36).slice(2, 10), kind: "trivia", name: st.name, desc: st.desc, cat: st.cat, emoji: st.emoji, items, genre: "Senin" });
-      location.href = "../?tab=senin";
+      finish(keepCustom({ id: st.localId || "my" + Math.random().toString(36).slice(2, 10), kind: "trivia", name: st.name, desc: st.desc, cat: st.cat, emoji: st.emoji, items, genre: "Senin" }), "senin");
     }
   } catch (e) {
     st.saving = false; drawLists(); fail(e);
@@ -618,6 +634,7 @@ document.addEventListener("click", async (e) => {
       }
       case "clear": if (confirm("Quizdeki tüm şarkılar çıkarılsın mı?")) (st.tracks = []), drawLists(); return;
       case "save": return save();
+      case "closeTab": window.close(); return toast("Bu sekmeyi kapatıp lobi sekmesine dönebilirsin.");
       case "tvAdd": {
         if (st.items.length >= T_MAX) return toast(`En fazla ${T_MAX} soru.`, "bad");
         st.items.push(blank()); drawLists();

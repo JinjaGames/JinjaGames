@@ -711,8 +711,8 @@ function numRail() {
   </div>`;
 }
 // Seçili sekme/alt kategori yatay kaydırmalı şeritte görünür kalsın
-function keepVisible(sel) {
-  const b = app.querySelector(sel);
+function keepVisible(sel, root = app) {
+  const b = root.querySelector(sel);
   const bar = b?.parentElement;
   if (!bar || bar.scrollWidth <= bar.clientWidth) return;
   const r = b.getBoundingClientRect(), br = bar.getBoundingClientRect();
@@ -731,10 +731,9 @@ const TABS = [
   ["Senin", "bookmark", "Senin quizlerin"],
 ];
 const SUBS = { Müzik: ["Rap", "Pop", "Rock"], Sıralama: RANK_CATS, Tersten: ["Pop", "Rap", "Rock"], Trivia: TCATS, Topluluk: ["Müzik", "Trivia"] };
-function inTab(l) {
+function inTab(l, g = ui.genre, c = ui.cat) {
   const trivia = l.kind === "trivia";
-  const c = ui.cat;
-  switch (ui.genre) {
+  switch (g) {
     case "Müzik": return (!l.kind || l.kind === "song") && (!c || l.genre === c);
     case "Sıralama": return l.kind === "rank" && (!c || l.rcat === c);
     case "Tersten": return (!!l.mix || !!l.rev) && (!c || l.genre === c || (l.rev && !l.mix));
@@ -1858,7 +1857,13 @@ async function resizePhoto(file) {
 
 function justPublished() {
   try {
-    const q = JSON.parse(sessionStorage.getItem("jqJustPublished"));
+    return normPublished(JSON.parse(sessionStorage.getItem("jqJustPublished")));
+  } catch {
+    return null;
+  }
+}
+function normPublished(q) {
+  try {
     if (q && q.id && q.kind === "trivia") return { ...q, items: cleanItems(q.items), mine: true, genre: "Topluluk" };
     if (q && q.id && (q.kind === "rank" || q.kind === "op")) return { ...q, items: Array.isArray(q.items) ? q.items.slice(0, 100) : [], picture: cdn(q.picture), mine: true, genre: "Topluluk" };
     return q && q.id && Array.isArray(q.tracks) ? { ...q, tracks: cleanTracksLite(q.tracks), mine: true, genre: "Topluluk" } : null;
@@ -1879,16 +1884,77 @@ async function loadCommunity() {
     ui.communityErr = true;
   }
   if (screen === "home" && !mode && !sheet.open) renderHome();
+  drawPick();
 }
 
+// ---------- lobide "Quiz ekle" penceresi: ana sayfadaki türlere ayrılmış (Sayı Quizi hariç; o tek kişilik) ----------
+const pick = { tab: "Müzik", cat: "", q: "" };
+const pickTabs = () => TABS.filter((t) => t[0] !== "Keşfet" && t[0] !== "Sayı" && (t[0] !== "Senin" || customLists().length));
+const CREATE_TUR = { Müzik: ["sarki", "şarkı"], Sıralama: ["siralama", "sıralama"], Tersten: ["tersten", "tersten şarkı"], Anime: ["opening", "anime opening"], Trivia: ["trivia", "trivia"] };
+function pickLists(tab = pick.tab, cat = pick.cat, q = fold(pick.q)) {
+  return allLists().filter((l) => inTab(l, tab, cat) && (!q || fold(l.name).includes(q) || fold(l.author || "").includes(q) || fold(l.cat || "").includes(q) || fold(l.rcat || "").includes(q)));
+}
 function pickerSheet() {
-  const lists = allLists();
-  sheetBody.innerHTML = `<div class="sheetHead"><h2>Quiz ekle</h2><button class="icon" data-close aria-label="Kapat">${ic("x")}</button></div>
-    <form class="search" id="pickSearch">${ic("search")}<input id="pickQ" type="search" placeholder="Başka sanatçı ara…"><button class="btn soft" type="submit">Ara</button></form>
-    <div id="pickResults"></div>
-    <div class="pickGrid">${lists
-      .map((l) => `<button class="pickItem" data-list="${esc(l.id)}">${cover(l, "pImg")}<b>${esc(l.name)}</b></button>`)
-      .join("")}</div>`;
+  const tabs = pickTabs();
+  if (!tabs.some((t) => t[0] === pick.tab)) Object.assign(pick, { tab: "Müzik", cat: "" });
+  const subs = SUBS[pick.tab];
+  const music = pick.tab === "Müzik";
+  sheetBody.innerHTML = `<div class="pickTop">
+      <div class="sheetHead"><h2>Quiz ekle</h2><button class="icon" data-close aria-label="Kapat">${ic("x")}</button></div>
+      <nav class="pickTabs" role="tablist" aria-label="Quiz türleri">${pickTabsHtml(tabs)}</nav>
+      ${subs ? `<div class="seg chips subChips">${["", ...subs].map((c) => `<button data-psub="${esc(c)}" aria-pressed="${pick.cat === c}">${esc(c || "Hepsi")}</button>`).join("")}</div>` : ""}
+      <form class="search" id="pickSearch" role="search" autocomplete="off">${ic("search")}<input id="pickQ" type="search" value="${esc(pick.q)}" placeholder="${music ? "Quiz ara ya da sanatçı bul…" : `${esc(pick.tab)} quizlerinde ara…`}" aria-label="Quiz ara">${music ? `<button class="btn soft" type="submit" title="Deezer'da sanatçı ara">Sanatçı bul</button>` : ""}</form>
+    </div>
+    <div id="pickResults">${music ? resultsHtml() : ""}</div>
+    <div id="pickBody">${pickBodyHtml()}</div>`;
+  keepVisible('.pickTabs [aria-selected="true"]', sheetBody);
+}
+function pickTabsHtml(tabs = pickTabs()) {
+  return tabs.map(([name, icon]) => { const n = pickLists(name, "", "").length; return `<button role="tab" aria-selected="${pick.tab === name}" data-ptab="${esc(name)}">${ic(icon)}<span>${esc(name)}</span>${n ? `<small>${n}</small>` : ""}</button>`; }).join("");
+}
+function pickBodyHtml() {
+  const lists = pickLists();
+  const t = CREATE_TUR[pick.tab];
+  const make = `<button class="pickItem pickMake" data-do="pickCreate"><span class="pImg">${ic("plus")}</span><b>Yeni ${t ? `${t[1]} quizi` : "quiz"} oluştur</b><small>Kaydedince buraya gelir</small></button>`;
+  const wait = pick.tab === "Topluluk" && ui.community === null;
+  const note = wait ? `<p class="muted pickNote">${spinner()} Topluluk quizleri yükleniyor…</p>`
+    : lists.length ? ""
+    : `<p class="muted pickNote">${pick.q ? "Aramana uyan quiz yok." : pick.tab === "Topluluk" && ui.communityErr ? "Topluluk quizlerine şu an ulaşılamadı." : "Bu türde henüz quiz yok; ilkini sen oluştur."}</p>`;
+  return `<div class="pickGrid">${make}${lists.map((l) => `<button class="pickItem" data-list="${esc(l.id)}">${cover(l, "pImg")}<b>${esc(l.name)}</b><small>${cardSub(l)}</small></button>`).join("")}</div>${note}`;
+}
+function drawPick() {
+  const b = sheet.open && sheetCtx?.kind === "picker" && $("#pickBody");
+  if (!b) return;
+  b.innerHTML = pickBodyHtml();
+  const t = $(".pickTabs");
+  if (t) { const x = t.scrollLeft; t.innerHTML = pickTabsHtml(); t.scrollLeft = x; }
+}
+// Quiz oluşturma sayfası yeni sekmede açılır (lobi bağlantısı kopmasın); kaydedilince "storage" olayıyla buraya döner.
+function pickCreate() {
+  const t = CREATE_TUR[pick.tab];
+  const w = window.open(`create/?lobi=1${t ? `&tur=${t[0]}` : ""}`, "_blank");
+  if (!w) return toast("Yeni sekme açılamadı. Tarayıcının açılır pencere engelini kaldırıp tekrar dene.", "bad");
+  toast("Quizini yeni sekmede oluştur; kaydedince burada sıraya eklemeye hazır açılır.");
+}
+addEventListener("storage", (e) => {
+  if (e.key !== "jqLobbyNew" || !e.newValue) return;
+  try { lobbyNew(JSON.parse(e.newValue)); } catch {}
+  try { localStorage.removeItem("jqLobbyNew"); } catch {}
+});
+function lobbyNew(m) {
+  const q = m?.q;
+  if (!q?.id || Date.now() - num(m.at) > 600000) return;
+  if (q.genre !== "Senin") {
+    const jp = normPublished(q);
+    if (jp) ui.community = [jp, ...(ui.community || []).filter((x) => x.id !== jp.id)];
+  }
+  if (mode && mode.role !== "solo" && isHost() && !inGame()) {
+    screen = "room";
+    render();
+    toast(`"${q.name || "Quizin"}" hazır. Ayarlarını seçip sıraya ekle.`);
+    return openList(q.id);
+  }
+  if (screen === "home" && !sheet.open) renderHome();
 }
 
 function setupFoot(enqueue, disabled = "") {
@@ -2354,6 +2420,8 @@ async function doAction(a, el) {
       return act({ type: "again" });
     case "tolobby":
       return act({ type: "lobby" });
+    case "pickCreate":
+      return pickCreate();
     case "reset":
       return act({ type: "reset" });
 
@@ -2448,6 +2516,18 @@ document.addEventListener("click", async (e) => {
     if (d.list) return openList(d.list);
     if (d.numcat) return startNumber(d.numcat);
     if (d.npick !== undefined) return numPick(Number(d.npick));
+    if (d.ptab) {
+      Object.assign(pick, { tab: d.ptab, cat: "", q: "" });
+      ui.results = null;
+      if (d.ptab === "Topluluk" && (ui.communityErr || ui.community?.length === 0)) (ui.community = null), loadCommunity();
+      pickerSheet();
+      return sheetBody.scrollTo({ top: 0 });
+    }
+    if (d.psub !== undefined) {
+      pick.cat = d.psub;
+      $$(".pickTop [data-psub]").forEach((x) => x.setAttribute("aria-pressed", x === b));
+      return drawPick();
+    }
     if (d.tab && d.scroll) {
       ui.genre = d.tab;
       ui.cat = "";
@@ -2607,6 +2687,11 @@ document.addEventListener("input", (e) => {
     s.setSelectionRange(pos, pos);
   }
   if (t.id === "trackQ") filterTracks(t.value);
+  if (t.id === "pickQ") {
+    pick.q = t.value;
+    if (!t.value) ui.results = null, $("#pickResults") && ($("#pickResults").innerHTML = "");
+    drawPick();
+  }
   if (t.id === "vol") {
     const v = Number(t.value) / 100;
     const g = gainOf(v);
@@ -2693,6 +2778,10 @@ function boot() {
   if (saved?.role === "host" && saved.game) {
     try {
       startHost({ restore: typeof saved.game === "string" ? unseal(saved.game) : saved.game });
+      // oluşturma sayfası aynı sekmede açıldıysa: kaydedilen quiz lobiye dönünce açılır
+      const back = store.get("jqLobbyBack", null, sessionStorage);
+      store.del("jqLobbyBack", sessionStorage);
+      if (back) setTimeout(() => lobbyNew(back), 300);
       return;
     } catch {
       store.del("jqSession", sessionStorage);
