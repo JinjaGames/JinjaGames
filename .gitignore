@@ -1,1 +1,4 @@
 banebender/data/new_mods.txt
+
+# Claude Code yerel çalışma klasörü (ayarlar, test dosyaları); depoya girmez
+.claude/
