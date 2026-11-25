@@ -117,13 +117,14 @@ async function deezerTop(id) {
 }
 const ENT = { amp: "&", quot: '"', apos: "'", lt: "<", gt: ">", nbsp: " " };
 const unent = (s) => String(s || "").replace(/&(#x[0-9a-f]+|#\d+|[a-z]+);/gi, (m, e) => (e[0] === "#" ? String.fromCodePoint(e[1] === "x" || e[1] === "X" ? parseInt(e.slice(2), 16) : Number(e.slice(1))) : ENT[e.toLowerCase()] ?? m));
-const NOISE = /\b(official|resmi|music|video|klip|clip|audio|lyrics?|lyric video|sozleri|şarkı sözleri|visualizer|hd|4k|m\/v|mv|prod\.?.*)$/i;
+const NOISE = /\b(official|resmi|music|video|klip|clip|audio|lyrics?|lyric video|lirik|sozleri|şarkı sözleri|visualizer|hd|4k|m\/v|mv|prod\.?.*)$/i;
 const SKIP = /\b(reaction|tepki|röportaj|interview|canlı yayın|trailer|fragman|teaser|kamera arkası|behind the scenes|making|full album|tüm şarkıları|mix|playlist|dance (practice|performance)|performance video|choreography|koreografi)\b/i;
 // "(feat. X)", "(with X)", "(prod. X)" gibi ekleri at; Deezer adlarındaki aynı ekler de böylece eşleşir
 const stripFeat = (t) => String(t || "").replace(/\s*[([](?:feat\.?|ft\.?|featuring|with|prod\.?)\s[^)\]]*[)\]]/gi, "").replace(/\s+(?:feat\.?|ft\.?)\s.+$/i, "").trim();
 const nonLatin = /[^\p{Script=Latin}\p{Script=Common}\p{Script=Inherited}]/u;
 function cleanSong(s) {
-  let t = String(s);
+  // #etiketler, @kanal adları ve emojiler şarkı adına ait değil
+  let t = String(s).replace(/(^|\s)[#@][^\s#@]+/gu, " ").replace(/\p{Extended_Pictographic}/gu, "").replace(/\s+/g, " ").replace(/[\s\-–—|]+$/, "").trim();
   // 'Şarkı' tırnak içindeyse şarkı adı odur (ör. BTS (방탄소년단) 'Dynamite' Official MV)
   const q = t.match(/(?:^|\s)[‘'"“]([^‘'"“”’]{2,80})[’'"”](?=\s|$)/);
   if (q) t = q[1];
@@ -141,11 +142,12 @@ const firstArtist = (s) => fold(String(s).replace(/\s*\([^)]*\)/g, "").split(/\s
 /** YouTube videosunun başlığından, video gerçekten bu sanatçının şarkısıysa şarkı adını çıkarır. */
 function songOf(artist, title, channel) {
   const raw = unent(title);
-  if (alternate.test(raw) || SKIP.test(raw)) return "";
+  if (alternate.test(raw) || SKIP.test(raw) || /#shorts?\b/i.test(raw)) return "";
   const fa = fold(artist);
   const parts = raw.split(/\s+[-–—|]\s+/);
   if (parts.length >= 2) {
-    if (firstArtist(parts[0]) === fa) return cleanSong(parts.slice(1).join(" - "));
+    // "Sanatçı - Şarkı - Konuk @kanal": yalnızca şarkı; "Şarkı A / Şarkı B" (iki şarkılık video): ilki
+    if (firstArtist(parts[0]) === fa) return cleanSong(parts[1]).split(/\s+\/\s+/)[0];
     return "";
   }
   // ayraç yok: başlık sanatçı adıyla başlayıp şarkıyı tırnak içinde veriyorsa
