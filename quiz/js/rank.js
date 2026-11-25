@@ -1,6 +1,6 @@
 // Sıralama quizi: bir sanatçının en çok dinlenen 5 şarkısını 20 şık arasından doğru sırayla diz.
 // Sıralama, Deezer'ın sanatçı "en popüler" listesinden (dinlenme sayısına göre) her açılışta güncel alınır.
-import { artistTop, isAlternate, fold } from "./music.js?v=3";
+import { artistTop, isAlternate, fold } from "./music.js?v=4";
 
 export const RANK_CATS = ["Türkçe Rap", "Türkçe Pop", "Türkçe Rock", "Yabancı"];
 export const RANK_QUIZZES = [
@@ -8,14 +8,14 @@ export const RANK_QUIZZES = [
   { id: "rk-3254", name: "Tarkan", artistId: 3254, rcat: "Türkçe Pop", picture: "https://cdn-images.dzcdn.net/images/artist/71f42a0742089955587933a5e97c41e7/500x500-000000-80-0-0.jpg" },
   { id: "rk-9289", name: "Sezen Aksu", artistId: 9289, rcat: "Türkçe Pop", picture: "https://cdn-images.dzcdn.net/images/artist/9c62f746db8e41bb49eb13a3c254f597/500x500-000000-80-0-0.jpg" },
   { id: "rk-8354140", name: "Ezhel", artistId: 8354140, rcat: "Türkçe Rap", picture: "https://cdn-images.dzcdn.net/images/artist/86897403b02175990e9d84322a94654a/500x500-000000-80-0-0.jpg" },
-  { id: "rk-250495", name: "UZI", artistId: 250495, rcat: "Türkçe Rap", picture: "https://cdn-images.dzcdn.net/images/artist/da88e4cb7b944e85c2cfd6d5a46cd7c7/500x500-000000-80-0-0.jpg" },
+  { id: "rk-98336572", name: "UZI", artistId: 98336572, rcat: "Türkçe Rap", picture: "https://cdn-images.dzcdn.net/images/artist/65905c1901748c17c176bfd1889cc3ae/500x500-000000-80-0-0.jpg" },
   { id: "rk-12934", name: "Sagopa Kajmer", artistId: 12934, rcat: "Türkçe Rap", picture: "https://cdn-images.dzcdn.net/images/artist/861348e7f8b6d93d3e2fff5ea6df2dcd/500x500-000000-80-0-0.jpg" },
   { id: "rk-14546", name: "Ceza", artistId: 14546, rcat: "Türkçe Rap", picture: "https://cdn-images.dzcdn.net/images/artist/2af230afdd9e93989d7d7288e93fb536/500x500-000000-80-0-0.jpg" },
   { id: "rk-14414849", name: "Ben Fero", artistId: 14414849, rcat: "Türkçe Rap", picture: "https://cdn-images.dzcdn.net/images/artist/cd7de0ac70198ea395e8c43fac6200cd/500x500-000000-80-0-0.jpg" },
   { id: "rk-142875392", name: "Semicenk", artistId: 142875392, rcat: "Türkçe Rap", picture: "https://cdn-images.dzcdn.net/images/artist/f213929354a3ce3aaf7e8657507f0e34/500x500-000000-80-0-0.jpg" },
   { id: "rk-72272502", name: "Lvbel C5", artistId: 72272502, rcat: "Türkçe Rap", picture: "https://cdn-images.dzcdn.net/images/artist/55eba79b292dbef8e65d5b7b6873b9e8/500x500-000000-80-0-0.jpg" },
   { id: "rk-389038", name: "Murda", artistId: 389038, rcat: "Türkçe Rap", picture: "https://cdn-images.dzcdn.net/images/artist/dbd7de9aa7a90a039f18dee17edd84dd/500x500-000000-80-0-0.jpg" },
-  { id: "rk-1550629", name: "Cakal", artistId: 1550629, rcat: "Türkçe Rap", picture: "https://cdn-images.dzcdn.net/images/artist/ebcf22e5c3a0eb3178b8a6f6bc1a5a6c/500x500-000000-80-0-0.jpg" },
+  { id: "rk-1550629", name: "Cakal", artistId: 1550629, rcat: "Türkçe Rap", picture: "https://cdn-images.dzcdn.net/images/cover/e8fd5004eded6099a4d32661639d8f83/500x500-000000-80-0-0.jpg" },
   { id: "rk-11818971", name: "Norm Ender", artistId: 11818971, rcat: "Türkçe Rap", picture: "https://cdn-images.dzcdn.net/images/artist/bb95df885ebe58d8988f239d406f345b/500x500-000000-80-0-0.jpg" },
   { id: "rk-575796", name: "Patron", artistId: 575796, rcat: "Türkçe Rap", picture: "https://cdn-images.dzcdn.net/images/artist/5e05a8661c673cb97e6e3ca2bf780d48/500x500-000000-80-0-0.jpg" },
   { id: "rk-1666381", name: "Şanışer", artistId: 1666381, rcat: "Türkçe Rap", picture: "https://cdn-images.dzcdn.net/images/artist/781e4e057814a78819df7f233b8bb160/500x500-000000-80-0-0.jpg" },
@@ -57,6 +57,15 @@ export const RANK_QUIZZES = [
   { id: "rk-288166", name: "Justin Bieber", artistId: 288166, rcat: "Yabancı", picture: "https://cdn-images.dzcdn.net/images/artist/fe097f693cebf1f882e3da79e99e3bf9/500x500-000000-80-0-0.jpg" },].map((r) => ({ ...r, kind: "rank", rank: true, genre: "Sıralama", artists: [r.artistId], desc: `${r.name} için en çok dinlenen 5 şarkıyı 20 şık arasından bul ve doğru sıraya diz.` }));
 
 const memo = new Map();
+const DAY = 864e5;
+const cacheKey = (id) => `jqRank:${id}`;
+function cached(id) {
+  try {
+    const c = JSON.parse(localStorage.getItem(cacheKey(id)) || "null");
+    if (c && Date.now() - c.t < DAY && Array.isArray(c.own) && c.own.length >= 12) return c;
+  } catch {}
+  return null;
+}
 const shuffle = (a) => { a = [...a]; for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; };
 
 /** Bir sanatçı için sıralama sorusu: ilk 5 (doğru sıra) + 15 şaşırtmaca (sanatçının diğer bilinen şarkıları). */
@@ -64,15 +73,22 @@ export async function rankItems(artistId, name, picture = "") {
   const key = String(artistId);
   if (!memo.has(key)) {
     const p = (async () => {
-      const seen = new Set();
-      const own = (await artistTop(artistId)).filter((t) => {
-        if (isAlternate(t)) return false;
-        const k = fold(t.title);
-        if (!k || seen.has(k)) return false;
-        seen.add(k);
-        return true;
-      });
-      if (own.length < 12) throw Error("Bu sanatçının sıralama quizi için yeterli şarkısı yok.");
+      // Sıralama günde bir kez Deezer'dan alınır; gün içinde aynı sıra cihazdan okunur.
+      let c = cached(key);
+      if (!c) {
+        const seen = new Set();
+        const list = (await artistTop(artistId)).filter((t) => {
+          if (isAlternate(t)) return false;
+          const k = fold(t.title);
+          if (!k || seen.has(k)) return false;
+          seen.add(k);
+          return true;
+        });
+        if (list.length < 12) throw Error("Bu sanatçının sıralama quizi için yeterli şarkısı yok.");
+        c = { t: Date.now(), own: list.slice(0, 60).map((t) => ({ title: t.title, cover: t.cover || "" })) };
+        try { localStorage.setItem(cacheKey(key), JSON.stringify(c)); } catch {}
+      }
+      const own = c.own;
       const top = own.slice(0, 5).map((t) => t.title);
       // şaşırtmacalar önce popüler olanlardan (6-25. sıralar), yetmezse sonrakilerden
       const rest = own.slice(5);

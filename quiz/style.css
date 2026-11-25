@@ -3079,3 +3079,11 @@ html { overflow-x: clip; }
 .rkList li.rkRow { display: flex; }
 .rkRow .rkSaid { margin-left: auto; }
 .ytHost.pre { visibility: hidden; }
+/* sıralama: sürükle-bırak */
+.rkOpt, .rkSlot.full { -webkit-user-select: none; user-select: none; }
+.rkGrip { color: var(--muted); letter-spacing: -2px; font-style: normal; opacity: 0.6; cursor: grab; }
+body.rkDragging, body.rkDragging * { cursor: grabbing !important; -webkit-user-select: none; user-select: none; }
+.rkOpt.dragging, .rkSlot.dragging { opacity: 0.35; }
+.rkOpt.armed, .rkSlot.armed { transform: scale(1.05); border-color: #3ddc97; }
+.rkSlot.over { border-style: solid; border-color: #3ddc97; background: #3ddc9722; box-shadow: 0 0 0 3px #3ddc9744; }
+.rkGhost { position: fixed; left: 0; top: 0; z-index: 100; pointer-events: none; padding: 10px 16px; border-radius: 99px; background: #3ddc97; color: #04200f; font: 700 14px var(--body); white-space: nowrap; box-shadow: 0 14px 30px -8px #000c; }

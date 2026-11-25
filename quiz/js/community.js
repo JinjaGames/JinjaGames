@@ -3,9 +3,9 @@
 // saklanan anahtarla imzalar; aynı quizi yalnızca o güncelleyebilir ya da kaldırabilir.
 // Gelen her kayıt imzası doğrulandıktan ve alan alan süzüldükten sonra kullanılır.
 import { schnorr, sha256, bytesToHex, hexToBytes } from "../vendor/nostr-sign.js";
-import { cdn } from "./music.js?v=3";
+import { cdn } from "./music.js?v=4";
 import { cleanItems, cleanCat, cleanEmoji, T_MIN, T_MAX } from "./trivia.js?v=2";
-import { cleanRank, cleanOps } from "./engine.js?v=4";
+import { cleanRank, cleanOps } from "./engine.js?v=6";
 
 export const OP_MIN = 4; // anime opening quizinde en az (şıklar diğer openinglerden oluşur)
 
@@ -98,7 +98,7 @@ function parse(e) {
     d, pubkey: e.pubkey, at: e.created_at,
     name, desc: str(c.desc, 160), author: str(c.author, 24) || "Anonim",
     picture: cdn(c.cover) || tracks.find((t) => t.cover)?.cover || "",
-    genre: "Topluluk", tracks, mine: e.pubkey === myPubkey(),
+    genre: "Topluluk", tracks, rev: !!c.rev, mine: e.pubkey === myPubkey(),
   };
 }
 
@@ -168,7 +168,7 @@ export async function fetchCommunity({ limit = 300, ms = 6000 } = {}) {
 }
 
 /** Quizi yayınlar (aynı d ile tekrar çağırmak günceller). En az bir röle kabul ederse başarılıdır. */
-export async function publishQuiz({ d, name, desc, author, tracks, kind, items, cat, emoji, artist, artistId, picture, prevAt = 0 }) {
+export async function publishQuiz({ d, name, desc, author, tracks, kind, items, cat, emoji, artist, artistId, picture, rev, prevAt = 0 }) {
   d ||= "jinjaquiz:" + bytesToHex(crypto.getRandomValues(new Uint8Array(8)));
   const content = kind === "rank" ? JSON.stringify({
     v: 1, kind: "rank", name: str(name, 60), desc: str(desc, 160), author: str(author, 24), artist: str(artist, 80), artistId: int(artistId), cover: cdn(picture),
@@ -180,7 +180,7 @@ export async function publishQuiz({ d, name, desc, author, tracks, kind, items, 
     v: 1, kind: "trivia", name: str(name, 60), desc: str(desc, 160), author: str(author, 24), cat: cleanCat(cat), emoji: cleanEmoji(emoji),
     items: cleanItems(items).slice(0, T_MAX),
   }) : JSON.stringify({
-    v: 1, name: str(name, 60), desc: str(desc, 160), author: str(author, 24), cover: tracks.find((t) => t.cover)?.cover || "",
+    v: 1, name: str(name, 60), desc: str(desc, 160), author: str(author, 24), cover: tracks.find((t) => t.cover)?.cover || "", ...(rev ? { rev: 1 } : {}),
     tracks: tracks.slice(0, MAX_TRACKS).map((t) => ({ id: t.id, t: str(t.title, 120), a: str(t.artist, 80), ...(t.cover ? { c: t.cover } : {}) })),
   });
   const e = sign(KIND, [["d", d], ["t", TAG], ["client", "jinjagames.com/quiz"]], content, prevAt);

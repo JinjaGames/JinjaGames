@@ -4,6 +4,10 @@ let ctx = null, master = null;
 const on = () => { try { return localStorage.getItem("jqSfx") !== "0"; } catch { return true; } };
 export const sfxEnabled = on;
 export function setSfx(v) { try { localStorage.setItem("jqSfx", v ? "1" : "0"); } catch {} }
+// Efekt sesi, sağ üstteki ses düzeyine uyar (0-1).
+const BASE = 0.32;
+const level = () => { try { const v = Number(JSON.parse(localStorage.getItem("jqVolume"))); return Number.isFinite(v) ? Math.min(1, Math.max(0, v)) : 0.8; } catch { return 0.8; } };
+export function setSfxVolume(v) { if (master) master.gain.value = BASE * Math.min(1, Math.max(0, Number(v) || 0)); }
 
 function ac() {
   if (!ctx) {
@@ -11,7 +15,7 @@ function ac() {
     if (!C) return null;
     ctx = new C();
     master = ctx.createGain();
-    master.gain.value = 0.32;
+    master.gain.value = BASE * level();
     master.connect(ctx.destination);
   }
   if (ctx.state === "suspended") ctx.resume().catch(() => {});

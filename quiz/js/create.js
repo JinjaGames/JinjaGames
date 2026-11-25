@@ -1,11 +1,11 @@
 // JinjaQuiz: quiz oluşturma sayfası (/quiz/create/). Sanatçı ve şarkı araması ayrı sekmelerde;
 // sanatçının popüler şarkıları ve tüm albümleri tek tek ya da topluca eklenebilir.
-import { searchArtists, searchTracks, artistInfo, artistTop, artistAlbums, albumTracks, ownTracks, isAlternate, customLists, saveCustom, removeCustom, cleanTracks, fold, cdn } from "./music.js?v=3";
-import { fetchCommunity, publishQuiz, removeQuiz, myPubkey, MIN_TRACKS, MAX_TRACKS } from "./community.js?v=2";
+import { searchArtists, searchTracks, artistInfo, artistTop, artistAlbums, albumTracks, ownTracks, isAlternate, customLists, saveCustom, removeCustom, cleanTracks, fold, cdn } from "./music.js?v=4";
+import { fetchCommunity, publishQuiz, removeQuiz, myPubkey, MIN_TRACKS, MAX_TRACKS } from "./community.js?v=3";
 import { TCATS, TART, EMOJIS, T_MIN, T_MAX, cleanItems, cleanCat, cleanEmoji, isTF, IMG } from "./trivia.js?v=2";
-import { cleanOps, RANK_PTS, OP_PTS } from "./engine.js?v=4";
-import { rankItems } from "./rank.js";
-import { OP_MIN } from "./community.js?v=2";
+import { cleanOps, RANK_PTS, OP_PTS } from "./engine.js?v=6";
+import { rankItems } from "./rank.js?v=2";
+import { OP_MIN } from "./community.js?v=3";
 
 const $ = (s, r = document) => r.querySelector(s);
 const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
@@ -40,6 +40,7 @@ const st = {
 };
 const KINDS = [
   ["song", "music", "Şarkı quizi", "Sanatçı ya da şarkı ara, listeni kur. Oyuncular kesiti dinleyip şarkıyı bilir."],
+  ["rev", "rewind", "Tersten Şarkı", "Şarkı quizi gibi listeni kur; oyunda kesitler tersten çalar."],
   ["trivia", "circle-help", "Trivia", "Kendi sorularını ve şıklarını yaz, istersen görsel ekle."],
   ["rank", "list-ordered", "Sıralama", "Bir sanatçı seç; en çok dinlenen 5 şarkısı ve 20 şık otomatik hazırlanır."],
   ["op", "tv", "Anime Opening", "YouTube bağlantısını yapıştır, animenin ve şarkının adını yaz."],
@@ -165,7 +166,7 @@ function chooserHtml() {
   return `<section class="crChoose">
     <span class="kicker">Yeni quiz</span>
     <h2>Ne tür bir quiz oluşturmak istersin?</h2>
-    <div class="crKinds">${KINDS.map(([k, icon, t, d], i) => `<button class="crKindCard k-${k}" data-kind="${k}" style="--i:${i}"><span class="crKindIc">${ic(icon)}</span><b>${t}${k === "rank" || k === "op" ? " <em>Yeni</em>" : ""}</b><small>${d}</small><i class="crKindGo">${ic("chevron-right")}</i></button>`).join("")}</div>
+    <div class="crKinds">${KINDS.map(([k, icon, t, d], i) => `<button class="crKindCard k-${k}" data-kind="${k}" style="--i:${i}"><span class="crKindIc">${ic(icon)}</span><b>${t}${k === "rank" || k === "op" || k === "rev" ? " <em>Yeni</em>" : ""}</b><small>${d}</small><i class="crKindGo">${ic("chevron-right")}</i></button>`).join("")}</div>
   </section>`;
 }
 
@@ -179,7 +180,7 @@ function rankSide() {
     <label class="field"><span>Quiz adı</span><input id="qName" maxlength="60" value="${esc(st.name)}" placeholder="Örn. Wegh · En çok dinlenen 5 şarkı" autocomplete="off"></label>
     <label class="field"><span>Kısa açıklama <small class="muted">(isteğe bağlı)</small></span><input id="qDesc" maxlength="160" value="${esc(st.desc)}" placeholder="Bu quiz ne hakkında?" autocomplete="off"></label>
     ${publishFields()}
-    <div class="rkRules"><span>${ic("check")}<b>+${RANK_PTS.exact}</b> doğru yerdeki her şarkı</span><span>${ic("list-ordered")}<b>+${RANK_PTS.near}</b> ilk 5'te, yeri yanlış</span><span>${ic("trophy")}<b>+${RANK_PTS.perfect}</b> sıranın tamamı doğru</span></div>
+    <div class="rkRules"><span>${ic("check")}<b>+${RANK_PTS.exact}</b> doğru yerdeki her şarkı</span><span>${ic("list-ordered")}<b>+${RANK_PTS.near}</b> ilk 5'te, yeri yanlış</span><span>${ic("trophy")}<b>+${RANK_PTS.perfect}</b> sıranın tamamı doğru</span><span>${ic("timer")}<b>Hız</b> erken kilitleyen tam puan, son saniyede %60</span></div>
   </div>${saveFoot(R?.items ? 1 : 0, 1, R?.items ? "sıralama hazır" : "sanatçı seç")}</div>`;
 }
 function rankMain() {
@@ -489,14 +490,14 @@ async function save() {
   try {
     const tracks = cleanTracks(st.tracks);
     if (st.public) {
-      const q = await publishQuiz({ d: st.d, name: st.name, desc: st.desc, author: st.author || "Anonim", tracks, prevAt: st.prevAt });
+      const q = await publishQuiz({ d: st.d, name: st.name, desc: st.desc, author: st.author || "Anonim", tracks, rev: st.kind === "rev", prevAt: st.prevAt });
       if (st.localId) removeCustom(st.localId);
       // Ana sayfa röleler yanıt vermeden de göstersin
       try { sessionStorage.setItem("jqJustPublished", JSON.stringify(q)); } catch {}
       location.href = "../?tab=topluluk";
     } else {
       if (st.d) await removeQuiz({ d: st.d, pubkey: myPubkey(), at: st.prevAt }).catch(() => {});
-      saveCustom({ id: st.localId || "my" + Math.random().toString(36).slice(2, 10), name: st.name, desc: st.desc, picture: tracks.find((t) => t.cover)?.cover || "", artists: [], tracks, genre: "Senin" });
+      saveCustom({ id: st.localId || "my" + Math.random().toString(36).slice(2, 10), name: st.name, desc: st.desc, picture: tracks.find((t) => t.cover)?.cover || "", artists: [], tracks, ...(st.kind === "rev" ? { rev: true } : {}), genre: "Senin" });
       location.href = "../?tab=senin";
     }
   } catch (e) {
@@ -544,7 +545,7 @@ function setKind(kind) {
   st.kind = kind; st.tracks = []; st.items = kind === "trivia" ? [blank()] : [];
   st.rank = null; st.ops = kind === "op" ? [blankOp(), blankOp(), blankOp(), blankOp()] : []; st.results = null; st.q = ""; st.busy = false;
   if (kind === "op") st.emoji = "📺"; else if (kind === "trivia") st.emoji = "🧠";
-  history.replaceState(null, "", kind ? `?tur=${kind === "song" ? "sarki" : kind === "rank" ? "siralama" : kind === "op" ? "opening" : "trivia"}` : location.pathname);
+  history.replaceState(null, "", kind ? `?tur=${kind === "song" ? "sarki" : kind === "rev" ? "tersten" : kind === "rank" ? "siralama" : kind === "op" ? "opening" : "trivia"}` : location.pathname);
   drawAll();
   scrollTo({ top: 0 });
   if (kind) (kind === "trivia" || kind === "op" ? $("#qName") : $("#crq"))?.focus();
@@ -683,7 +684,7 @@ addEventListener("beforeunload", (e) => {
 (async function boot() {
   const params = new URLSearchParams(location.search);
   const id = (params.get("edit") || params.get("duzenle")) || "";
-  const tur = { trivia: "trivia", sarki: "song", song: "song", siralama: "rank", rank: "rank", opening: "op", op: "op" }[params.get("type") || params.get("tur")];
+  const tur = { trivia: "trivia", sarki: "song", song: "song", tersten: "rev", rev: "rev", siralama: "rank", rank: "rank", opening: "op", op: "op" }[params.get("type") || params.get("tur")];
   if (tur && !id) { st.kind = null; setKind(tur); return; }
   drawAll();
   if (!id) return;
@@ -701,7 +702,7 @@ addEventListener("beforeunload", (e) => {
   }
   const local = customLists().find((l) => l.id === id && l.tracks?.length);
   if (local) {
-    Object.assign(st, { kind: "song", name: local.name, desc: local.desc || "", tracks: [...local.tracks], public: false, localId: local.id });
+    Object.assign(st, { kind: local.rev ? "rev" : "song", name: local.name, desc: local.desc || "", tracks: [...local.tracks], public: false, localId: local.id });
     return drawAll();
   }
   if (id.startsWith("nq-")) {
@@ -713,7 +714,7 @@ addEventListener("beforeunload", (e) => {
       if (q.kind === "rank") Object.assign(st, { kind: "rank", name: q.name, desc: q.desc, author: q.author, rank: { artist: { id: q.artistId, name: q.artist, picture: q.picture }, items: q.items }, public: true, d: q.d, prevAt: q.at, pubkey: q.pubkey });
       else if (q.kind === "op") Object.assign(st, { kind: "op", name: q.name, desc: q.desc, author: q.author, emoji: q.emoji, ops: q.items.map((o) => ({ url: `https://www.youtube.com/watch?v=${o.yt}${o.s ? `&t=${o.s}` : ""}`, anime: o.anime, song: o.song })), public: true, d: q.d, prevAt: q.at, pubkey: q.pubkey });
       else if (q.kind === "trivia") Object.assign(st, { kind: "trivia", name: q.name, desc: q.desc, author: q.author, cat: q.cat, emoji: q.emoji, items: q.items.map(toEditor), public: true, d: q.d, prevAt: q.at, pubkey: q.pubkey });
-      else Object.assign(st, { kind: "song", name: q.name, desc: q.desc, author: q.author, tracks: [...q.tracks], public: true, d: q.d, prevAt: q.at, pubkey: q.pubkey });
+      else Object.assign(st, { kind: q.rev ? "rev" : "song", name: q.name, desc: q.desc, author: q.author, tracks: [...q.tracks], public: true, d: q.d, prevAt: q.at, pubkey: q.pubkey });
     } catch (e) { fail(e); }
     drawAll();
   }

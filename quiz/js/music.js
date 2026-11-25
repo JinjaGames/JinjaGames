@@ -82,7 +82,7 @@ export const PRESETS = [
 // Normal ya da tersten çalınarak oynanır.
 export const MIXES = [
   { id: "mx-trpop", name: "Türkçe Pop", genre: "Pop", mix: true, emoji: "🎤", artists: [3254, 9289, 211393, 4317, 10819570, 1385987, 124797, 1381155, 91598, 4313, 1171997, 1511107], picture: "https://cdn-images.dzcdn.net/images/artist/71f42a0742089955587933a5e97c41e7/1000x1000-000000-80-0-0.jpg" },
-  { id: "mx-trrap", name: "Türkçe Rap", genre: "Rap", mix: true, emoji: "🎧", artists: [8354140, 14546, 12934, 14414849, 250495, 72196, 1666381, 575796, 72272502, 389038, 1550629, 11818971], picture: "https://cdn-images.dzcdn.net/images/artist/86897403b02175990e9d84322a94654a/1000x1000-000000-80-0-0.jpg" },
+  { id: "mx-trrap", name: "Türkçe Rap", genre: "Rap", mix: true, emoji: "🎧", artists: [8354140, 14546, 12934, 14414849, 98336572, 72196, 1666381, 575796, 72272502, 389038, 1550629, 11818971], picture: "https://cdn-images.dzcdn.net/images/artist/86897403b02175990e9d84322a94654a/1000x1000-000000-80-0-0.jpg" },
   { id: "mx-trrock", name: "Türkçe Rock", genre: "Rock", mix: true, emoji: "🎸", artists: [14826, 16758, 12018, 15049, 299117, 97094, 13877, 124344, 12875, 6696895, 343660, 6433], picture: "https://cdn-images.dzcdn.net/images/artist/420bd789cacec4d562f981f6eae6c76e/1000x1000-000000-80-0-0.jpg" },
   { id: "mx-enpop", name: "İngilizce Pop", genre: "Pop", mix: true, emoji: "✨", artists: [12246, 384236, 8706544, 4050205, 1562681, 9635624, 5313805, 288166, 429675, 75491, 564, 1176900], picture: "https://cdn-images.dzcdn.net/images/artist/cc2495870fe1a792ad0cdb05501ad5ec/1000x1000-000000-80-0-0.jpg" },
   { id: "mx-enrap", name: "İngilizce Rap", genre: "Rap", mix: true, emoji: "🔥", artists: [13, 246791, 525046, 4495513, 230, 66, 7543848, 339209, 74309, 3, 165930, 6853403], picture: "https://cdn-images.dzcdn.net/images/artist/0f30bbd33a680030054af004d698d6ac/1000x1000-000000-80-0-0.jpg" },
@@ -289,6 +289,7 @@ export function customLists() {
         picture: cdn(l.picture),
         artists: (Array.isArray(l.artists) ? l.artists : []).map(int).filter(Boolean).slice(0, 6),
         tracks: Array.isArray(l.tracks) ? cleanTracks(l.tracks) : undefined,
+        ...(l.rev ? { rev: true } : {}),
         genre: "Senin",
       }))
       .filter((l) => l.id && (l.items?.length || l.artists?.length || l.tracks?.length));

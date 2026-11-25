@@ -1,9 +1,9 @@
-import { PRESETS, MIXES, loadTracks, searchArtists, customLists, saveCustom, removeCustom, fold, cdn, realPic, loadPresetPictures } from "./music.js?v=3";
-import { sfx, sfxEnabled, setSfx } from "./sfx.js?v=2";
+import { PRESETS, MIXES, loadTracks, searchArtists, customLists, saveCustom, removeCustom, fold, cdn, realPic, loadPresetPictures } from "./music.js?v=4";
+import { sfx, sfxEnabled, setSfx, setSfxVolume } from "./sfx.js?v=3";
 import { randomName } from "./names.js";
-import { fetchCommunity, removeQuiz, hideQuiz, unhideQuiz, hiddenList } from "./community.js?v=2";
-import { Game, MAX_PLAYERS, RANK_PTS, OP_PTS } from "./engine.js?v=4";
-import { RANK_QUIZZES, RANK_CATS, rankItems } from "./rank.js";
+import { fetchCommunity, removeQuiz, hideQuiz, unhideQuiz, hiddenList } from "./community.js?v=3";
+import { Game, MAX_PLAYERS, RANK_PTS, OP_PTS } from "./engine.js?v=6";
+import { RANK_QUIZZES, RANK_CATS, rankItems } from "./rank.js?v=2";
 import { TRIVIA, TCATS, TART, EMOJIS, cleanItems, IMG, ANI_IMG, FLAG, flagUrl, cleanEmo } from "./trivia.js?v=2";
 import { ANIME_QUIZZES, ERAS, animeItems } from "./anime.js";
 import { NUMCATS, fmtNum, farEnough } from "./numdata.js";
@@ -179,7 +179,7 @@ function stopClip() {
 const playsKey = (qid) => "jqPlays:" + qid;
 const playsUsed = (qid) => store.get(playsKey(qid), 0, sessionStorage);
 // Tersten çalma: önizleme indirilir, kesit ters çevrilip Web Audio ile çalınır.
-let rctx = null, rsrc = null;
+let rctx = null, rsrc = null, rgain = null;
 const rcache = new Map();
 async function reversedClip(url, offset, clip) {
   rctx ??= new (window.AudioContext || window.webkitAudioContext)();
@@ -209,7 +209,7 @@ async function listenReversed(q, auto) {
     const buf = await reversedClip(cdn(q.url), q.offset, q.clip);
     if (view?.question?.id !== q.id) { player.loading = false; return; }
     if (rctx.state !== "running") throw Object.assign(Error("tap"), { name: "NotAllowedError" });
-    const g = rctx.createGain();
+    const g = (rgain = rctx.createGain());
     g.gain.value = volume();
     rsrc = rctx.createBufferSource();
     rsrc.buffer = buf;
@@ -618,8 +618,8 @@ function drawHome() {
   <section class="hm-make">
     <div class="hm-makeArt" aria-hidden="true">${pics.length >= 3 ? pics.slice(0, 5).map((u, k) => `<img src="${esc(u)}" alt="" style="--k:${k}">`).join("") : TRIVIA.slice(0, 5).map((t, k) => `<span class="mkEmo" style="--k:${k};--h:${hue(t.name)}">${t.emoji}</span>`).join("")}</div>
     <div><span class="kicker">${ic("sparkles")} Kendi quizin</span><h2>Kendi quizini yap, herkes oynasın.</h2>
-      <p>Bir sanatçının albümlerinden şarkı quizi ya da kendi sorularınla trivia yap. Herkese açık yayınlarsan Topluluk'ta herkes görür.</p>
-      <div class="hm-actions"><a class="btn primary lg" href="create/">${ic("music")}Şarkı quizi oluştur</a><a class="btn light lg" href="create/?type=trivia">${ic("circle-help")}Trivia oluştur</a></div></div>
+      <p>Şarkı, tersten şarkı, trivia, sıralama ya da anime opening: türünü seç, quizini kur. Herkese açık yayınlarsan Topluluk'ta herkes görür.</p>
+      <div class="hm-actions"><a class="btn primary lg" href="create/">${ic("sparkles")}Kendi quizini oluştur</a></div></div>
   </section>
   <footer><a href="/">JinjaGames</a> · <a href="/apps/">Diğer web uygulamaları</a> · <a href="/privacy/">Gizlilik</a></footer>`;
   keepVisible('.subChips [aria-pressed="true"]');
@@ -727,7 +727,7 @@ function inTab(l) {
   switch (ui.genre) {
     case "Müzik": return (!l.kind || l.kind === "song") && (!c || l.genre === c);
     case "Sıralama": return l.kind === "rank" && (!c || l.rcat === c);
-    case "Tersten": return !!l.mix && (!c || l.genre === c);
+    case "Tersten": return (!!l.mix || !!l.rev) && (!c || l.genre === c || (l.rev && !l.mix));
     case "Anime": return !!l.anime || l.kind === "op";
     case "Trivia": return trivia && !l.anime && (!c || l.cat === c);
     case "Topluluk": return l.genre === "Topluluk" && (!c || (c === "Trivia") === trivia);
@@ -738,7 +738,7 @@ function inTab(l) {
 function tabCount(name, mine) {
   if (name === "Trivia") return TRIVIA.length + (ui.community || []).filter((l) => l.kind === "trivia").length;
   if (name === "Sayı") return NUMCATS.length;
-  if (name === "Tersten") return MIXES.length;
+  if (name === "Tersten") return MIXES.length + (ui.community || []).filter((l) => l.rev).length + customLists().filter((l) => l.rev).length;
   if (name === "Anime") return ANIME_QUIZZES.length + (ui.community || []).filter((l) => l.kind === "op").length;
   if (name === "Sıralama") return RANK_QUIZZES.length + (ui.community || []).filter((l) => l.kind === "rank").length;
   if (name === "Topluluk") return ui.community?.length || 0;
@@ -801,6 +801,7 @@ function cardSub(l) {
   if (l.kind === "rank") return l.genre === "Topluluk" ? `${ic("user")}${esc(l.author)} · Sıralama` : `${esc(l.rcat || "Sıralama")} · ilk 5 şarkı`;
   if (l.kind === "op") return `${l.genre === "Topluluk" ? `${ic("user")}${esc(l.author)} · ` : ""}Anime opening · ${num(l.items?.length)} opening`;
   if (l.mix) return `${esc(l.genre)} · ${num(l.artists?.length)} sanatçı`;
+  if (l.rev) return `${l.genre === "Topluluk" ? `${ic("user")}${esc(l.author)} · ` : ""}${ic("rewind")}Tersten · ${num(l.tracks?.length)} şarkı`;
   const n = l.kind === "trivia" ? `${num(l.items?.length)} soru` : `${num(l.tracks?.length)} şarkı`;
   if (l.genre === "Topluluk") return `${ic("user")}${esc(l.author)} · ${l.kind === "trivia" ? esc(l.cat) + " · " : ""}${n}`;
   if (l.kind === "trivia") return `Trivia · ${n}`;
@@ -1131,10 +1132,34 @@ function gameHtml(v) {
 }
 
 // ---------- Sıralama sorusu ----------
-const rk = { qid: "", picks: [] };
+// Sıralar sabit yerlidir (boşluk kalabilir). Tıklayınca şarkı, en son konulan yerden sonraki ilk boşluğa
+// (yoksa baştaki ilk boşluğa) gider; ilk şarkı 1. sıraya. Sürükle-bırak ile istenen sıraya da konur.
+const rk = { qid: "", picks: [], last: -1 };
 function rkPicks(q) {
-  if (rk.qid !== q.id) { rk.qid = q.id; rk.picks = []; }
+  if (rk.qid !== q.id) Object.assign(rk, { qid: q.id, picks: Array(num(q.slots) || 5).fill(null), last: -1 });
   return rk.picks;
+}
+const rkFilled = (q) => rkPicks(q).filter(Boolean).length;
+function rkPlace(q, song, at) {
+  const p = rkPicks(q);
+  const from = p.indexOf(song);
+  if (at == null) {
+    if (from >= 0) return;
+    const n = p.length;
+    for (let k = 1; k <= n; k++) { const i = (rk.last + k + n) % n; if (!p[i]) { at = i; break; } }
+    if (at == null) return false;
+  }
+  // hedefte şarkı varsa: sürüklenen bir sıradan geliyorsa yer değiştirir, havuzdan geliyorsa havuza döner
+  const prev = p[at];
+  if (from >= 0) p[from] = prev && from !== at ? prev : null;
+  p[at] = song;
+  rk.last = at;
+  return true;
+}
+function rkRemove(q, i) {
+  const p = rkPicks(q);
+  if (!p[i]) return;
+  p[i] = null;
 }
 function rankStage(v, q, reveal, cdHtml) {
   const pic = q.picture ? `<img class="rkPic" src="${esc(q.picture)}" alt="" referrerpolicy="no-referrer">` : `<span class="rkPic noart">${ic("mic-vocal")}</span>`;
@@ -1162,11 +1187,13 @@ function rankBody(v, q, reveal) {
   }
   const mineA = Array.isArray(q.mine?.answer) ? q.mine.answer : null;
   const picks = mineA || rkPicks(q);
+  let next = -1;
+  if (!mineA) for (let k = 1; k <= n; k++) { const i = (rk.last + k + n) % n; if (!picks[i]) { next = i; break; } }
   const slots = Array.from({ length: n }, (_, i) => {
     const t = picks[i];
     return t
-      ? `<li><button class="rkSlot full" data-rs="${i}" ${mineA ? "disabled" : ""} aria-label="${i + 1}. sıradan çıkar"><b class="rkN">${i + 1}</b><span class="rkT">${esc(t)}</span>${mineA ? "" : `<i class="rkX">${ic("x")}</i>`}</button></li>`
-      : `<li><div class="rkSlot ${i === picks.length ? "next" : ""}"><b class="rkN">${i + 1}</b><span class="rkT">${i === picks.length ? "Sıradaki şarkıyı seç" : "Boş"}</span></div></li>`;
+      ? `<li><button class="rkSlot full" data-rs="${i}" data-slot="${i}" ${mineA ? "disabled" : ""} aria-label="${i + 1}. sıradan çıkar"><b class="rkN">${i + 1}</b><span class="rkT">${esc(t)}</span>${mineA ? "" : `<i class="rkGrip" aria-hidden="true">⋮⋮</i><i class="rkX">${ic("x")}</i>`}</button></li>`
+      : `<li><div class="rkSlot ${i === next ? "next" : ""}" data-slot="${i}"><b class="rkN">${i + 1}</b><span class="rkT">${i === next ? "Sıradaki şarkıyı seç ya da buraya sürükle" : "Boş"}</span></div></li>`;
   }).join("");
   const pool = mineA ? "" : `<div class="rkPool">${(q.options || []).map((o, i) => {
     const at = picks.indexOf(o);
@@ -1176,8 +1203,8 @@ function rankBody(v, q, reveal) {
 }
 function rankAnswers(v, q, reveal) {
   if (reveal || q.mine) return q.mine && !reveal ? `<div class="locked">${ic("check")} Sıralaman kilitlendi</div>` : "";
-  const full = rkPicks(q).length >= (num(q.slots) || 5);
-  return `<div class="rkDock"><button class="btn ghost" data-do="rkclear" ${rkPicks(q).length ? "" : "disabled"}>${ic("rotate-ccw")}Temizle</button><button class="btn primary lg" data-do="rkgo" id="rkGo" ${full ? "" : "disabled"}>${ic("check")}Sıralamayı kilitle</button></div>`;
+  const full = rkFilled(q) >= (num(q.slots) || 5);
+  return `<div class="rkDock"><button class="btn ghost" data-do="rkclear" ${rkFilled(q) ? "" : "disabled"}>${ic("rotate-ccw")}Temizle</button><button class="btn primary lg" data-do="rkgo" id="rkGo" ${full ? "" : "disabled"}>${ic("check")}Sıralamayı kilitle</button></div>`;
 }
 function rankRedraw() {
   const q = view?.question;
@@ -1187,6 +1214,65 @@ function rankRedraw() {
   const d = $(".rkDock");
   if (d) d.outerHTML = rankAnswers(view, q, false);
 }
+
+const drag = { el: null, song: "", from: -1, x: 0, y: 0, ghost: null, moved: false, over: null };
+function rkCanDrag() {
+  const q = view?.question;
+  return screen === "room" && q?.kind === "rank" && view.phase === "question" && !q.mine && hostNow() >= q.start;
+}
+document.addEventListener("pointerdown", (e) => {
+  if (e.button > 0 || !rkCanDrag()) return;
+  const el = e.target.closest(".rkOpt, .rkSlot.full");
+  if (!el) return;
+  const q = view.question;
+  const song = el.dataset.rk !== undefined ? q.options[Number(el.dataset.rk)] : rkPicks(q)[Number(el.dataset.rs)];
+  if (!song) return;
+  Object.assign(drag, { el, song, from: el.dataset.rs !== undefined ? Number(el.dataset.rs) : -1, x: e.clientX, y: e.clientY, moved: false, over: null, touch: e.pointerType === "touch", armed: e.pointerType !== "touch" });
+  // dokunmatikte sayfa kaydırılabilsin diye sürükleme kısa basılı tutunca başlar
+  clearTimeout(drag.hold);
+  if (drag.touch) drag.hold = setTimeout(() => { if (drag.el === el) { drag.armed = true; el.classList.add("armed"); navigator.vibrate?.(15); } }, 220);
+});
+document.addEventListener("touchmove", (e) => { if (drag.el && drag.armed) e.preventDefault(); }, { passive: false });
+document.addEventListener("pointermove", (e) => {
+  if (!drag.el) return;
+  if (!drag.moved) {
+    if (Math.hypot(e.clientX - drag.x, e.clientY - drag.y) < 8) return;
+    if (!drag.armed) { clearTimeout(drag.hold); drag.el = null; return; } // kaydırma
+    drag.moved = true;
+    drag.ghost = document.createElement("div");
+    drag.ghost.className = "rkGhost";
+    drag.ghost.textContent = drag.song;
+    document.body.append(drag.ghost);
+    drag.el.classList.add("dragging");
+    document.body.classList.add("rkDragging");
+  }
+  e.preventDefault();
+  drag.ghost.style.transform = `translate(${e.clientX}px, ${e.clientY}px) translate(-50%, -60%)`;
+  const t = document.elementFromPoint(e.clientX, e.clientY)?.closest("[data-slot]");
+  if (t !== drag.over) { drag.over?.classList.remove("over"); t?.classList.add("over"); drag.over = t; }
+}, { passive: false });
+function endDrag(e, cancel) {
+  clearTimeout(drag.hold);
+  if (!drag.el) return;
+  const { moved, over, song, from } = drag;
+  drag.ghost?.remove();
+  drag.el.classList.remove("dragging", "armed");
+  drag.over?.classList.remove("over");
+  document.body.classList.remove("rkDragging");
+  Object.assign(drag, { el: null, ghost: null, over: null });
+  if (!moved || cancel || !rkCanDrag()) return;
+  // sürükleme bitti: ardından gelen tıklama yok sayılsın
+  drag.skipClick = performance.now();
+  const q = view.question;
+  if (over) { rkPlace(q, song, Number(over.dataset.slot)); sfx("pick"); }
+  else if (from >= 0) { rkRemove(q, from); sfx("unpick"); }
+  rankRedraw();
+}
+document.addEventListener("pointerup", (e) => endDrag(e, false));
+document.addEventListener("pointercancel", (e) => endDrag(e, true));
+document.addEventListener("click", (e) => {
+  if (drag.skipClick && performance.now() - drag.skipClick < 400) { drag.skipClick = 0; e.stopPropagation(); e.preventDefault(); }
+}, true);
 
 // ---------- Anime opening sorusu (YouTube) ----------
 const op = { qid: "", a: null, s: null };
@@ -1619,6 +1705,7 @@ function optsHtml(l) {
       <span>${ic("check")}<b>+${RANK_PTS.exact}</b> doğru yerdeki her şarkı</span>
       <span>${ic("list-ordered")}<b>+${RANK_PTS.near}</b> ilk 5'te ama yeri yanlış</span>
       <span>${ic("trophy")}<b>+${RANK_PTS.perfect}</b> sıranın tamamı doğruysa</span>
+      <span>${ic("timer")}<b>Hız</b> erken kilitleyen tam puan, son saniyede %60</span>
     </div></div>`;
   }
   if (l.kind === "op") {
@@ -1792,7 +1879,7 @@ function openList(id) {
   if (l.anime && !l.items) loadAnime(l, l.era || "pop");
   if (l.kind === "rank" && !l.items?.length) loadRank(l);
   const last = store.get("jqSetup", {});
-  const rev = l.mix && ui.genre === "Tersten" ? 1 : 0;
+  const rev = (l.mix && ui.genre === "Tersten") || l.rev ? 1 : 0;
   const ctx = { list: l, count: last.count || 10, mode: last.mode || "choice", clip: rev ? 5 : last.clip || 3, rev, play: "solo", gmode: "normal" };
   // Lobide kurucu quiz eklerken pencere; ana sayfada tam detay sayfası
   if (mode && mode.role !== "solo" && isHost()) return openSheet("setup", ctx);
@@ -1925,12 +2012,12 @@ async function doAction(a, el) {
       return startHost();
     case "rkgo": {
       const q = view?.question;
-      if (!q || q.mine || rkPicks(q).length < (num(q.slots) || 5)) return;
+      if (!q || q.mine || rkFilled(q) < (num(q.slots) || 5)) return;
       sfx("lock");
       return act({ type: "answer", q: q.id, answer: [...rkPicks(q)] });
     }
     case "rkclear":
-      if (view?.question) rkPicks(view.question).length = 0;
+      if (view?.question) { rkPicks(view.question).fill(null); rk.last = -1; }
       sfx("unpick");
       return rankRedraw();
     case "ytplay":
@@ -2145,16 +2232,16 @@ document.addEventListener("click", async (e) => {
     if (d.rk !== undefined) {
       const q = view?.question;
       if (!q || q.mine || view.phase !== "question" || hostNow() < q.start) return;
-      const picks = rkPicks(q), o = q.options[Number(d.rk)];
-      const at = picks.indexOf(o);
-      if (at >= 0) { picks.splice(at, 1); sfx("unpick"); }
-      else if (picks.length < (num(q.slots) || 5)) { picks.push(o); sfx("pick"); }
+      const o = q.options[Number(d.rk)];
+      const at = rkPicks(q).indexOf(o);
+      if (at >= 0) { rkRemove(q, at); sfx("unpick"); }
+      else if (rkPlace(q, o)) sfx("pick");
       return rankRedraw();
     }
     if (d.rs !== undefined) {
       const q = view?.question;
       if (!q || q.mine) return;
-      rkPicks(q).splice(Number(d.rs), 1);
+      rkRemove(q, Number(d.rs));
       sfx("unpick");
       return rankRedraw();
     }
@@ -2242,6 +2329,10 @@ document.addEventListener("input", (e) => {
     const v = Number(t.value) / 100;
     audio.volume = v;
     store.set("jqVolume", v);
+    // çalmakta olan sese de hemen uygula: tersten kesit, YouTube opening ve ses efektleri
+    if (rgain) rgain.gain.value = v;
+    if (yt.frame) ytCmd("setVolume", [Math.round(v * 100)]);
+    setSfxVolume(v);
   }
 
   if (t.id === "joinCode") t.value = t.value.toUpperCase().replace(/[^A-Z0-9]/g, "");

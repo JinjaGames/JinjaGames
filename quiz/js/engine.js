@@ -1,6 +1,6 @@
 // Oyun motoru. Kurucunun tarayıcısında çalışır ve tek doğruluk kaynağıdır.
 // Diğer oyuncular yalnızca kendilerine özel durum özetini (view) alır.
-import { fold, preview } from "./music.js?v=3";
+import { fold, preview } from "./music.js?v=4";
 import { cleanItems, cleanEmoji } from "./trivia.js?v=2";
 
 export const MAX_PLAYERS = 12;
@@ -369,7 +369,9 @@ export class Game {
       const top = q.item.top;
       const marks = order.map((x, i) => (top[i] === x ? 2 : top.includes(x) ? 1 : 0));
       const perfect = marks.every((m) => m === 2);
-      const points = marks.reduce((a, m) => a + (m === 2 ? RANK_PTS.exact : m === 1 ? RANK_PTS.near : 0), 0) + (perfect ? RANK_PTS.perfect : 0);
+      // hız da sayılır: hemen kilitleyen tam puanı, son saniyede kilitleyen %60'ını alır
+      const base = marks.reduce((a, m) => a + (m === 2 ? RANK_PTS.exact : m === 1 ? RANK_PTS.near : 0), 0) + (perfect ? RANK_PTS.perfect : 0);
+      const points = Math.round(base * (0.6 + 0.4 * Math.max(0, left)));
       q.answers[pid] = { answer: order, marks, correct: perfect, partial: points > 0, points, ms: now - q.start };
       if (this.solo) this.reveal();
       else if (!this.checkAllAnswered()) this.emit();
