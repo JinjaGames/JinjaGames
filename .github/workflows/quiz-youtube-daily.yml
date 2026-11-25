@@ -4,7 +4,8 @@ name: YouTube günlük verisi
 
 on:
   schedule:
-    - cron: "40 2 * * *"
+    # YouTube kotası Pasifik gece yarısı (08:00 UTC) sıfırlanır; hemen sonrasında çalışır
+    - cron: "20 8 * * *"
   workflow_dispatch:
     inputs:
       search:
