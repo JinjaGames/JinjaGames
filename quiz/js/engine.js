@@ -1,6 +1,6 @@
 // Oyun motoru. Kurucunun tarayıcısında çalışır ve tek doğruluk kaynağıdır.
 // Diğer oyuncular yalnızca kendilerine özel durum özetini (view) alır.
-import { fold, preview } from "./music.js?v=4";
+import { fold, preview } from "./music.js?v=5";
 import { cleanItems, cleanEmoji } from "./trivia.js?v=3";
 
 export const MAX_PLAYERS = 12;

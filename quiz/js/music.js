@@ -184,9 +184,26 @@ export const cleanTracks = (arr) => {
 
 // Şarkı araması (quiz oluştururken): yalnızca önizlemesi olan, çalınabilir kayıtlar.
 // Sanatçının albümleri ve bir albümün şarkıları (quiz oluşturma sayfası için).
+// Deezer'da fotoğrafı olmayan sanatçılar için son albümünün kapağı (resimsiz kalmasın)
+const coverMemo = new Map();
+export function artistCover(id) {
+  id = int(id);
+  if (!coverMemo.has(id)) {
+    const p = jsonp(`artist/${id}/albums`, { limit: 100 })
+      .then((r) => {
+        const al = (r.data || []).filter((a) => realPic(a.cover_big) || realPic(a.cover_medium));
+        al.sort((a, b) => String(b.release_date || "").localeCompare(String(a.release_date || "")));
+        return realPic(al[0]?.cover_big) || realPic(al[0]?.cover_medium) || "";
+      })
+      .catch(() => "");
+    coverMemo.set(id, p);
+  }
+  return coverMemo.get(id);
+}
 export async function artistInfo(id) {
   const a = await jsonp(`artist/${int(id)}`);
-  return { id: int(a.id), name: str(a.name, 80), picture: cdn(a.picture_big) || cdn(a.picture_medium), fans: int(a.nb_fan), albums: int(a.nb_album) };
+  const picture = realPic(a.picture_big) || realPic(a.picture_medium) || (await artistCover(id));
+  return { id: int(a.id), name: str(a.name, 80), picture, fans: int(a.nb_fan), albums: int(a.nb_album) };
 }
 // Yalnızca sanatçının kendi şarkıları: başkasının şarkısında konuk olduğu kayıtlar (ör. "Nahir feat. Uzi") alınmaz.
 export const ownTracks = (arr, id) => arr.filter((t) => t.artistId === int(id));
@@ -220,7 +237,7 @@ export async function searchTracks(q) {
 // Sanatçı araması: en çok hayranı olan en başta (aynı adlı küçük hesaplar arkaya düşer).
 export async function searchArtists(q) {
   const r = await jsonp("search/artist", { q, limit: 25 });
-  return (r.data || [])
+  const list = (r.data || [])
     .map((a) => ({ id: int(a.id), name: str(a.name, 80), picture: realPic(a.picture_medium), fans: int(a.nb_fan) }))
     .filter((a) => a.id && a.name)
     .map((a, i) => ({ ...a, _m: nameMatch(a.name, q), _i: i }))
@@ -228,6 +245,9 @@ export async function searchArtists(q) {
     .sort((a, b) => b._m - a._m || b.fans - a.fans || a._i - b._i)
     .slice(0, 12)
     .map(({ _m, _i, ...a }) => a);
+  // fotoğrafı olmayanlara son albüm kapağı (en çok 6 istek)
+  let n = 0;
+  return Promise.all(list.map(async (a) => (a.picture || n++ >= 6 ? a : { ...a, picture: await artistCover(a.id) })));
 }
 function nameMatch(name, q) {
   const n = fold(name).replace(/[^\p{L}\p{N} ]+/gu, " ").replace(/\s+/g, " ").trim();

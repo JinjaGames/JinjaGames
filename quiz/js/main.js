@@ -1,7 +1,7 @@
-import { PRESETS, MIXES, loadTracks, searchArtists, customLists, saveCustom, removeCustom, fold, cdn, realPic, loadPresetPictures } from "./music.js?v=4";
+import { PRESETS, MIXES, loadTracks, searchArtists, customLists, saveCustom, removeCustom, fold, cdn, realPic, loadPresetPictures } from "./music.js?v=5";
 import { sfx, sfxEnabled, setSfx, setSfxVolume } from "./sfx.js?v=4";
 import { randomName } from "./names.js";
-import { fetchCommunity, removeQuiz, hideQuiz, unhideQuiz, hiddenList } from "./community.js?v=5";
+import { fetchCommunity, removeQuiz, hideQuiz, unhideQuiz, hiddenList } from "./community.js?v=6";
 import { Game, MAX_PLAYERS, RANK_PTS, OP_PTS } from "./engine.js?v=9";
 import { lbKey, loadBoard, peekBoard, submitScore, myBest, isMine, LB_TOP, LB_QUESTIONS } from "./board.js?v=1";
 import { maskName } from "./badwords.js?v=1";
@@ -833,7 +833,7 @@ function resultsHtml() {
   return `<div class="results"><p class="muted">Doğru sanatçıyı seç:</p><div class="hits">${ui.results
     .map(
       (a, i) =>
-        `<button class="hit" data-hit="${i}"><img src="${esc(a.picture)}" alt="" loading="lazy"><b>${esc(a.name)}</b><small>${num(a.fans).toLocaleString("tr")} hayran</small></button>`,
+        `<button class="hit" data-hit="${i}">${a.picture ? `<img src="${esc(a.picture)}" alt="" loading="lazy">` : `<span class="noart">${ic("mic-vocal")}</span>`}<b>${esc(a.name)}</b><small>${num(a.fans).toLocaleString("tr")} hayran</small></button>`,
     )
     .join("")}</div></div>`;
 }
@@ -1797,7 +1797,7 @@ async function loadCommunity() {
   const jp = justPublished();
   if (jp && !ui.community) ui.community = [jp];
   try {
-    const list = await fetchCommunity();
+    const list = (await fetchCommunity()).filter((q) => q.kind !== "rank");
     ui.community = jp && !list.some((x) => x.id === jp.id) ? [jp, ...list] : list;
     ui.communityErr = false;
   } catch {

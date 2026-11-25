@@ -3,7 +3,7 @@
 // saklanan anahtarla imzalar; aynı quizi yalnızca o güncelleyebilir ya da kaldırabilir.
 // Gelen her kayıt imzası doğrulandıktan ve alan alan süzüldükten sonra kullanılır.
 import { schnorr, sha256, bytesToHex, hexToBytes } from "../vendor/nostr-sign.js";
-import { cdn } from "./music.js?v=4";
+import { cdn } from "./music.js?v=5";
 import { cleanItems, cleanCat, cleanEmoji, T_MIN, T_MAX } from "./trivia.js?v=3";
 import { cleanRank, cleanOps } from "./engine.js?v=9";
 
@@ -64,7 +64,10 @@ function parse(e) {
   if (!c || c.v !== 1 || c.deleted) return null;
   const id = "nq-" + e.pubkey.slice(0, 16) + "-" + d.slice(10);
   if (c.kind !== "trivia" && e.created_at < SONG_CUTOFF) return null;
-  if (c.kind === "rank" || c.kind === "op") {
+  // Sıralama quizleri yalnızca sitenin hazır listesinden oynanır (YouTube izlenmeleriyle doğrulanmış sıra);
+  // topluluğun oluşturduğu sıralama quizleri gösterilmez.
+  if (c.kind === "rank") return null;
+  if (c.kind === "op") {
     const items = c.kind === "rank" ? cleanRank(c.items).slice(0, 1) : cleanOps(c.items);
     const name = str(c.name, 60);
     if (!name || items.length < (c.kind === "rank" ? 1 : OP_MIN)) return null;
