@@ -112,7 +112,7 @@ function cleanSong(s) {
   // Latin olmayan ad + parantez içinde Latin ad: Latin olanı al (ör. 뚜두뚜두 (DDU-DU DDU-DU))
   const lat = t.match(/\(([^()]*\p{Script=Latin}[^()]*)\)/u);
   if (lat && nonLatin.test(t.replace(lat[0], ""))) t = lat[1];
-  t = t.replace(/\s*[([{【].*?[)\]}】]/g, " ").replace(/\s+(ft\.?|feat\.?|featuring)\s.+$/i, "").replace(/["“”«»‘’]/g, "").replace(/^#/, "").replace(/\s+/g, " ").trim();
+  t = t.replace(/\s*[([{【].*?[)\]}】]/g, " ").replace(/\s+(ft\.?|feat\.?|featuring)\s.+$/i, "").replace(/["“”«»]/g, "").replace(/[‘’]/g, "'").replace(/^[#']+|'+$/g, "").replace(/\s+/g, " ").trim();
   for (let i = 0; i < 3; i++) t = t.replace(NOISE, "").replace(/[\s\-–—|:,]+$/, "").trim();
   // TAMAMI BÜYÜK HARF başlıkları düzgün yaz
   if (t.length > 3 && t === t.toLocaleUpperCase("tr") && /\p{L}/u.test(t))
