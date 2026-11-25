@@ -99,44 +99,53 @@ async function deezerTop(id) {
 }
 const ENT = { amp: "&", quot: '"', apos: "'", lt: "<", gt: ">", nbsp: " " };
 const unent = (s) => String(s || "").replace(/&(#x[0-9a-f]+|#\d+|[a-z]+);/gi, (m, e) => (e[0] === "#" ? String.fromCodePoint(e[1] === "x" || e[1] === "X" ? parseInt(e.slice(2), 16) : Number(e.slice(1))) : ENT[e.toLowerCase()] ?? m));
-const NOISE = /\b(official|resmi|music|video|klip|clip|audio|lyrics?|lyric video|sozleri|şarkı sözleri|visualizer|hd|4k|mv|prod\.?.*)$/i;
+const NOISE = /\b(official|resmi|music|video|klip|clip|audio|lyrics?|lyric video|sozleri|şarkı sözleri|visualizer|hd|4k|m\/v|mv|prod\.?.*)$/i;
+const SKIP = /\b(reaction|tepki|röportaj|interview|canlı yayın|trailer|fragman|teaser|kamera arkası|behind the scenes|making|full album|tüm şarkıları|mix|playlist|dance (practice|performance)|performance video|choreography|koreografi)\b/i;
+// "(feat. X)", "(with X)", "(prod. X)" gibi ekleri at; Deezer adlarındaki aynı ekler de böylece eşleşir
+const stripFeat = (t) => String(t || "").replace(/\s*[([](?:feat\.?|ft\.?|featuring|with|prod\.?)\s[^)\]]*[)\]]/gi, "").replace(/\s+(?:feat\.?|ft\.?)\s.+$/i, "").trim();
+const nonLatin = /[^\p{Script=Latin}\p{Script=Common}\p{Script=Inherited}]/u;
 function cleanSong(s) {
-  let t = s.replace(/\s*[([{【].*?[)\]}】]/g, " ").replace(/\s+(ft\.?|feat\.?|featuring)\s.+$/i, "").replace(/["“”«»]/g, "").replace(/\s+/g, " ").trim();
+  let t = String(s);
+  // 'Şarkı' tırnak içindeyse şarkı adı odur (ör. BTS (방탄소년단) 'Dynamite' Official MV)
+  const q = t.match(/(?:^|\s)[‘'"“]([^‘'"“”’]{2,80})[’'"”](?=\s|$)/);
+  if (q) t = q[1];
+  // Latin olmayan ad + parantez içinde Latin ad: Latin olanı al (ör. 뚜두뚜두 (DDU-DU DDU-DU))
+  const lat = t.match(/\(([^()]*\p{Script=Latin}[^()]*)\)/u);
+  if (lat && nonLatin.test(t.replace(lat[0], ""))) t = lat[1];
+  t = t.replace(/\s*[([{【].*?[)\]}】]/g, " ").replace(/\s+(ft\.?|feat\.?|featuring)\s.+$/i, "").replace(/["“”«»‘’]/g, "").replace(/^#/, "").replace(/\s+/g, " ").trim();
   for (let i = 0; i < 3; i++) t = t.replace(NOISE, "").replace(/[\s\-–—|:,]+$/, "").trim();
   // TAMAMI BÜYÜK HARF başlıkları düzgün yaz
   if (t.length > 3 && t === t.toLocaleUpperCase("tr") && /\p{L}/u.test(t))
     t = t.toLocaleLowerCase("tr").replace(/(^|[\s(-])(\p{L})/gu, (m, a, b) => a + b.toLocaleUpperCase("tr"));
   return t;
 }
-const firstArtist = (s) => fold(String(s).split(/\s*(?:&|,|\bx\b|\bft\.?|\bfeat\.?|\bve\b|\bwith\b)\s*/i)[0]);
+const firstArtist = (s) => fold(String(s).replace(/\s*\([^)]*\)/g, "").split(/\s*(?:&|,|\bx\b|\bft\.?|\bfeat\.?|\bve\b|\bwith\b)\s*/i)[0]);
 /** YouTube videosunun başlığından, video gerçekten bu sanatçının şarkısıysa şarkı adını çıkarır. */
 function songOf(artist, title, channel) {
   const raw = unent(title);
-  if (alternate.test(raw) || /\b(reaction|tepki|röportaj|interview|canlı yayın|trailer|fragman|kamera arkası|behind the scenes|full album|tüm şarkıları|mix|playlist)\b/i.test(raw)) return "";
+  if (alternate.test(raw) || SKIP.test(raw)) return "";
   const fa = fold(artist);
   const parts = raw.split(/\s+[-–—|]\s+/);
   if (parts.length >= 2) {
     if (firstArtist(parts[0]) === fa) return cleanSong(parts.slice(1).join(" - "));
     return "";
   }
-  // ayraç yok: yalnızca sanatçının kendi kanalındaysa başlık şarkı adıdır
+  // ayraç yok: başlık sanatçı adıyla başlayıp şarkıyı tırnak içinde veriyorsa
+  if (fold(raw).startsWith(fa) && /(?:^|\s)[‘'"“][^‘'"“”’]{2,80}[’'"”](?=\s|$)/.test(raw)) return cleanSong(raw);
+  // ya da sanatçının kendi kanalındaysa başlık şarkı adıdır
   const ch = fold(channel);
   if (ch && (ch === fa || ch.startsWith(fa))) return cleanSong(raw.replace(new RegExp(artist.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), "ig"), ""));
   return "";
 }
 async function topVideos(artist) {
   const j = await yt("search", { part: "snippet", type: "video", videoCategoryId: 10, order: "viewCount", maxResults: 50, q: artist }, 100);
-  const out = [];
-  for (const it of j.items || []) {
-    const song = songOf(artist, it.snippet?.title, it.snippet?.channelTitle);
-    if (song && fold(song).length >= 2 && it.id?.videoId) out.push({ id: it.id.videoId, t: song });
-  }
-  return out;
+  // ham başlık saklanır: kurallar değişirse yeniden aramadan tekrar işlenir
+  return (j.items || []).filter((it) => it.id?.videoId).map((it) => ({ id: it.id.videoId, raw: unent(it.snippet?.title), ch: it.snippet?.channelTitle || "" }));
 }
 // Deezer'daki yazımı tercih et (aynı şarkıysa)
 function canonical(song, titles) {
-  const k = fold(song);
-  return titles.find((t) => fold(t) === k) || titles.find((t) => { const f = fold(t); return f.length >= 5 && (k.startsWith(f) || f.startsWith(k)); }) || song;
+  const k = fold(stripFeat(song));
+  return titles.find((t) => fold(stripFeat(t)) === k) || titles.find((t) => { const f = fold(stripFeat(t)); return f.length >= 5 && (k.startsWith(f) || f.startsWith(k)); }) || song;
 }
 async function rank() {
   const data = await load(RANK_FILE, { v: 2, artists: {} });
@@ -149,7 +158,8 @@ async function rank() {
     cur.name = a.name;
     try { const t = await deezerTop(a.id); if (t.length) cur.titles = t; } catch {}
     const old = cur.ytAt ? (Date.parse(today) - Date.parse(cur.ytAt)) / 864e5 : Infinity;
-    if (old >= SEARCH_EVERY) {
+    // eski biçimde (ham başlıksız) saklananlar bir kez yeniden aranır
+    if (old >= SEARCH_EVERY || (cur.yt || []).some((x) => !x.raw)) {
       try { cur.yt = await topVideos(a.name); cur.ytAt = today; }
       catch (e) { if (e instanceof Quota) break outer; console.log(`${a.name}: ${e.message}`); }
     }
@@ -162,10 +172,20 @@ async function rank() {
     const vs = await views(ids);
     for (const a of Object.values(data.artists)) {
       const titles = a.titles || [];
-      const best = new Map(); // şarkı (katlanmış ad) -> { t, v }
-      const put = (t, v) => { const k = fold(t); if (!k) return; const p = best.get(k); if (!p || v > p.v) best.set(k, { t, v }); };
-      for (const x of a.yt || []) put(canonical(x.t, titles), vs.get(x.id)?.v || 0);
-      for (const t of titles) put(t, vs.get(a.vids?.[fold(t)]?.id)?.v || 0);
+      const best = new Map(); // şarkı (eksiz, katlanmış ad) -> { t, v }
+      const used = new Set(); // aynı video iki şarkı adıyla sayılmasın
+      const put = (t, id) => {
+        t = stripFeat(t);
+        const k = fold(t);
+        if (!k || fold(t).length < 2) return;
+        if (id && used.has(id)) return;
+        if (id) used.add(id);
+        const v = (id && vs.get(id)?.v) || 0;
+        const p = best.get(k);
+        if (!p || v > p.v) best.set(k, { t: p && p.v >= v ? p.t : t, v: Math.max(v, p?.v || 0) });
+      };
+      for (const x of a.yt || []) { const song = x.raw ? songOf(a.name, x.raw, x.ch) : x.t; if (song) put(canonical(song, titles), x.id); }
+      for (const t of titles) put(t, a.vids?.[fold(t)]?.id);
       a.songs = [...best.values()].sort((x, y) => y.v - x.v).slice(0, 60);
       a.ready = !!a.ytAt && a.songs.filter((s) => s.v > 0).length >= 5 && a.songs.length >= 13;
     }
