@@ -180,3 +180,16 @@ h1, h2, h3 { font-family: var(--disp); font-weight: 700; letter-spacing: -.02em;
 .edActs .btn { justify-content: center; gap: 6px; }
 .edActs svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 2.2; stroke-linecap: round; stroke-linejoin: round; }
 .edActs .btn:disabled { opacity: .45; cursor: default; }
+/* yüklenirken iskelet görünüm: boş ekran ya da dönen simge yerine sayfanın taslağı */
+.sk { display: block; border-radius: 10px; background: linear-gradient(90deg, #12261d 0%, #1c3a2c 45%, #12261d 90%); background-size: 220% 100%; animation: skShine 1.3s ease-in-out infinite; }
+@keyframes skShine { from { background-position: 120% 0; } to { background-position: -120% 0; } }
+@media (prefers-reduced-motion: reduce) { .sk { animation: none; } }
+.sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+.skRow { display: flex; align-items: center; gap: 14px; padding: 14px 16px; margin-bottom: 10px; border-radius: 16px; border: 1px solid var(--line); background: #0b1a1588; }
+.skAv { width: 52px; height: 68px; border-radius: 10px; flex: none; }
+.skCol { flex: 1; display: grid; gap: 10px; }
+.skL { height: 12px; }
+.skPill { width: 64px; height: 30px; border-radius: 99px; flex: none; }
+.skMini { position: absolute; width: 11%; aspect-ratio: 3 / 4; translate: -50% 0; border-radius: 8px; }
+.skTop { height: 150px; border-radius: 14px; }
+.skList { display: block; }

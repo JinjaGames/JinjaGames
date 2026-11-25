@@ -68,12 +68,30 @@ function cached(id) {
 }
 const shuffle = (a) => { a = [...a]; for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; };
 
+// Günlük YouTube verisi (tools/youtube_daily.mjs): hazır olan sanatçılarda sıra YouTube izlenmelerine göredir.
+let ytData = null;
+const ytLoad = () => (ytData ??= fetch(new URL("../data/rank-yt.json", import.meta.url), { cache: "no-cache" })
+  .then((r) => (r.ok ? r.json() : null)).catch(() => null));
+async function fromYouTube(artistId, name, picture) {
+  const a = (await ytLoad())?.artists?.[String(artistId)];
+  if (!a?.ready || !Array.isArray(a.songs)) return null;
+  const songs = a.songs.filter((x) => x && typeof x.t === "string");
+  const top = songs.filter((x) => x.v > 0).slice(0, 5);
+  if (top.length < 5) return null;
+  const rest = songs.filter((x) => !top.includes(x)).map((x) => x.t);
+  const decoys = shuffle(rest).slice(0, 15);
+  if (decoys.length < 8) return null;
+  return [{ q: "YouTube'da en çok izlenen 5 şarkısını sırala", artist: name, cover: picture, top: top.map((x) => x.t), n: top.map((x) => Math.round(x.v)), pool: [...top.map((x) => x.t), ...decoys] }];
+}
+
 /** Bir sanatçı için sıralama sorusu: ilk 5 (doğru sıra) + 15 şaşırtmaca (sanatçının diğer bilinen şarkıları). */
 export async function rankItems(artistId, name, picture = "") {
   const key = String(artistId);
   if (!memo.has(key)) {
     const p = (async () => {
-      // Sıralama günde bir kez Deezer'dan alınır; gün içinde aynı sıra cihazdan okunur.
+      const y = await fromYouTube(artistId, name, picture);
+      if (y) return y;
+      // YouTube verisi henüz yoksa: sıralama günde bir kez Deezer'dan alınır; gün içinde aynı sıra cihazdan okunur.
       let c = cached(key);
       if (!c) {
         const seen = new Set();

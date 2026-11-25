@@ -3111,3 +3111,17 @@ body.rkDragging, body.rkDragging * { cursor: grabbing !important; -webkit-user-s
 .nqOver { inset: auto; left: 50%; top: 50%; translate: -50% -50%; width: min(340px, calc(100% - 32px)); padding: 20px 22px; border-radius: var(--r-lg); background: var(--s1); border: 1px solid var(--line); box-shadow: 0 24px 60px -20px #000e; backdrop-filter: none; -webkit-backdrop-filter: none; }
 .nqOver h2 { font-size: clamp(38px, 6vw, 56px); }
 .nqOver .nqBtns { justify-content: center; }
+/* yüklenirken iskelet görünüm */
+.sk { display: block; border-radius: 10px; background: linear-gradient(90deg, var(--s2) 0%, var(--s3) 45%, var(--s2) 90%); background-size: 220% 100%; animation: skShine 1.3s ease-in-out infinite; }
+@keyframes skShine { from { background-position: 120% 0; } to { background-position: -120% 0; } }
+@media (prefers-reduced-motion: reduce) { .sk { animation: none; } }
+.skWrap { display: grid; gap: 8px; }
+.skRow { display: flex; align-items: center; gap: 12px; padding: 10px 12px; border-radius: var(--r); border: 1px solid var(--line); background: var(--s1); animation: rise 0.35s var(--ease) both; animation-delay: calc(var(--i) * 50ms); }
+.skAv { width: 42px; height: 42px; flex: none; border-radius: 10px; }
+.skCol { flex: 1; display: grid; gap: 8px; }
+.skL { height: 11px; }
+.skCard { flex: none; display: grid; gap: 8px; width: 190px; padding: 10px; border-radius: var(--r-lg); border: 1px solid var(--line); background: var(--s1); }
+.skArt { aspect-ratio: 1; border-radius: var(--r); }
+.skGrid .skCard { width: auto; }
+.skNote { margin: 0 0 10px; }
+@media (max-width: 600px) { .skCard { width: 150px; } }

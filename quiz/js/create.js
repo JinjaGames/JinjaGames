@@ -4,13 +4,17 @@ import { searchArtists, searchTracks, artistInfo, artistTop, artistAlbums, album
 import { fetchCommunity, publishQuiz, removeQuiz, myPubkey, MIN_TRACKS, MAX_TRACKS } from "./community.js?v=4";
 import { TCATS, TART, EMOJIS, T_MIN, T_MAX, cleanItems, cleanCat, cleanEmoji, isTF, IMG } from "./trivia.js?v=2";
 import { cleanOps, RANK_PTS, OP_PTS } from "./engine.js?v=7";
-import { rankItems } from "./rank.js?v=2";
+import { rankItems } from "./rank.js?v=3";
 import { OP_MIN } from "./community.js?v=4";
 
 const $ = (s, r = document) => r.querySelector(s);
 const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
 const ic = (n) => `<i class="ic" aria-hidden="true" style="--i:url(/quiz/assets/icons/${/^[a-z0-9-]{1,32}$/.test(n) ? n : "music"}.svg)"></i>`;
 const spinner = () => `<span class="spin" aria-hidden="true"></span>`;
+// Yüklenirken iskelet görünüm (dönen simge yerine içeriğin taslağı)
+const skRows = (n = 4) => `<div class="skWrap" aria-busy="true" aria-label="Yükleniyor">${Array.from({ length: n }, (_, i) => `<div class="skRow" style="--i:${i}"><span class="sk skAv"></span><span class="skCol"><span class="sk skL" style="width:${60 - (i % 3) * 12}%"></span><span class="sk skL" style="width:${34 + (i % 2) * 10}%"></span></span></div>`).join("")}</div>`;
+const skCards = (n = 4) => Array.from({ length: n }, (_, i) => `<div class="skCard" style="--i:${i}" aria-hidden="true"><span class="sk skArt"></span><span class="sk skL" style="width:70%"></span><span class="sk skL" style="width:45%"></span></div>`).join("");
+
 const num = (v) => (Number.isFinite(Number(v)) ? Number(v) : 0);
 const app = $("#app");
 let toastT;
@@ -194,7 +198,7 @@ function rankMain() {
       <p class="muted">${esc(R.artist.name)} için en çok dinlenen 5 şarkı ve 15 şaşırtmaca şık hazırlandı. Cevapları sen de görmüyorsun; yayınladıktan sonra sen de oynayabilirsin.</p>
       <ol class="crRankTop hidden">${it.top.map(() => `<li><span class="crLock">${ic("eye-off")} Gizli</span></li>`).join("")}</ol>
       <p class="crRankPoolInfo">${ic("list-music")} ${it.pool.length} şık</p></div>`;
-  } else if (st.busy && !st.results) body = `<p class="muted crPad">${spinner()} Aranıyor…</p>`;
+  } else if (st.busy && !st.results) body = `<div class="crArtists skGrid" aria-busy="true" aria-label="Aranıyor">${skCards(8)}</div>`;
   else if (st.results)
     body = st.results.length
       ? `<div class="crArtists">${st.results.map((a, i) => `<button class="crArtist" data-rankartist="${i}">${a.picture ? `<img src="${esc(a.picture)}" alt="" loading="lazy">` : `<span class="noart">${ic("mic-vocal")}</span>`}<b>${esc(a.name)}</b><small>${num(a.fans).toLocaleString("tr")} hayran</small></button>`).join("")}</div>`
@@ -380,7 +384,7 @@ function mainHtml() {
     <form class="search" id="crSearch" role="search" autocomplete="off">${ic("search")}<input id="crq" type="search" value="${esc(st.q)}" placeholder="${st.tab === "artist" ? "Sanatçı ya da grup adı… (ör. Duman)" : "Şarkı adı ya da şarkı + sanatçı…"}">${st.busy ? spinner() : ""}<button class="btn soft" type="submit">Ara</button></form>
     <label class="crAlt"><input type="checkbox" id="hideAlt" ${st.hideAlt ? "checked" : ""}> Remix, canlı, hızlandırılmış ve benzeri sürümleri gizle</label>`;
   let body = "";
-  if (st.busy && !st.results) body = `<p class="muted crPad">${spinner()} Aranıyor…</p>`;
+  if (st.busy && !st.results) body = `<div class="crArtists skGrid" aria-busy="true" aria-label="Aranıyor">${skCards(8)}</div>`;
   else if (st.tab === "artist" && st.artist) body = artistHtml();
   else if (st.tab === "artist" && st.results)
     body = st.results.length
@@ -403,7 +407,7 @@ function artistHtml() {
     </div>
     <div class="crGroup">
       <div class="crGroupHead"><b>Popüler şarkılar ${top ? `<small>${top.length}</small>` : ""}</b>${top?.length ? `<span><button class="btn soft sm" data-do="addTop15">İlk 15'i ekle</button><button class="btn primary sm" data-do="addTop">${ic("list-plus")}Hepsini ekle</button></span>` : ""}</div>
-      ${top ? `<div class="crList">${rows(top)}</div>` : `<p class="muted crPad">${spinner()} Yükleniyor…</p>`}
+      ${top ? `<div class="crList">${rows(top)}</div>` : skRows(5)}
     </div>
     <div class="crGroup">
       <div class="crGroupHead"><b>Albümler ${A.albums ? `<small>${A.albums.length}</small>` : ""}</b>${A.albums?.length ? `<button class="btn primary sm" data-do="addAllAlbums" ${A.loadingAll ? "disabled" : ""}>${A.loadingAll ? `${spinner()} ${A.loadingAll}` : `${ic("list-plus")}Tüm albümlerdeki şarkıları ekle`}</button>` : ""}</div>
@@ -413,9 +417,9 @@ function artistHtml() {
         const vis = tr ? visible(tr) : null;
         return `<div class="crAlbum ${open ? "open" : ""}">
           <button class="crAlbumHead" data-album="${al.id}" aria-expanded="${open}">${al.cover ? `<img src="${esc(al.cover)}" alt="" loading="lazy">` : `<span class="noart">${ic("disc-3")}</span>`}<span class="crMeta"><b>${esc(al.title)}</b><small>${esc(al.year)}${al.type ? ` · ${esc(al.type === "single" ? "single" : al.type === "ep" ? "EP" : "albüm")}` : ""}</small></span>${ic("chevron-down")}</button>
-          ${open ? (vis ? `<div class="crAlbumBody"><div class="crGroupHead"><small class="muted">${vis.length} şarkı</small><button class="btn soft sm" data-addalbum="${al.id}">${ic("list-plus")}Albümü ekle</button></div><div class="crList">${rows(vis)}</div></div>` : `<p class="muted crPad">${spinner()} Yükleniyor…</p>`) : ""}
+          ${open ? (vis ? `<div class="crAlbumBody"><div class="crGroupHead"><small class="muted">${vis.length} şarkı</small><button class="btn soft sm" data-addalbum="${al.id}">${ic("list-plus")}Albümü ekle</button></div><div class="crList">${rows(vis)}</div></div>` : skRows(5)) : ""}
         </div>`;
-      }).join("") : `<p class="muted crPad">${spinner()} Yükleniyor…</p>`}
+      }).join("") : skRows(5)}
     </div>`;
 }
 
@@ -708,7 +712,7 @@ addEventListener("beforeunload", (e) => {
   }
   if (id.startsWith("nq-")) {
     const sel = app.querySelector("#crSel");
-    if (sel) sel.innerHTML = `<p class="muted">${spinner()} Quiz yükleniyor…</p>`;
+    if (sel) sel.innerHTML = skRows(4);
     try {
       const q = (await fetchCommunity()).find((x) => x.id === id && x.mine);
       if (!q) throw Error("Bu quiz bulunamadı ya da senin değil.");

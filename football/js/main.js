@@ -47,7 +47,13 @@ async function route() {
   for (const [re, loader] of ROUTES) {
     const m = path.match(re);
     if (!m) continue;
-    app.replaceChildren(h('div', { class: 'skel', style: 'width:260px;height:34px;margin-bottom:20px' }), h('div', { class: 'skel', style: 'height:320px;border-radius:18px' }));
+    // Yüklenirken sayfanın iskeleti: başlık, özet kartları ve satırlar (boş ekran yerine)
+    const sk = (st) => h('div', { class: 'skel', style: st });
+    app.replaceChildren(
+      sk('width:260px;height:34px;margin-bottom:10px'), sk('width:200px;height:14px;margin-bottom:22px'),
+      h('div', { style: 'display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin-bottom:16px' }, sk('height:96px;border-radius:16px'), sk('height:96px;border-radius:16px'), sk('height:96px;border-radius:16px'), sk('height:96px;border-radius:16px')),
+      ...[0, 1, 2, 3, 4].map(() => sk('height:64px;border-radius:14px;margin-bottom:10px')),
+    );
     try {
       const mod = await loader();
       if (token !== navToken) return;

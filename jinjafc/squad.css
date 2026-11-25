@@ -164,3 +164,4 @@
 @media (hover: none) { .rmX { opacity: .95; transform: scale(.85); width: 22px; height: 22px; } }
 .slot.on .fcc { outline: 0; filter: drop-shadow(0 0 .3rem var(--lime)) drop-shadow(0 0 .15rem var(--lime)); }
 @media (max-width: 900px) { .mgrSel select { max-width: 110px; } .mgrBest { margin-left: 0; } }
+.loading.skList { display: block; color: var(--ink2); }

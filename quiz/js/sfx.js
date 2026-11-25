@@ -5,8 +5,8 @@ const on = () => { try { return localStorage.getItem("jqSfx") !== "0"; } catch {
 export const sfxEnabled = on;
 export function setSfx(v) { try { localStorage.setItem("jqSfx", v ? "1" : "0"); } catch {} }
 // Efekt sesi, sağ üstteki ses düzeyine uyar (0-1).
-const BASE = 0.32;
-const level = () => { try { const v = Number(JSON.parse(localStorage.getItem("jqVolume"))); return Number.isFinite(v) ? Math.min(1, Math.max(0, v)) : 0.8; } catch { return 0.8; } };
+const BASE = 0.6; // çubuk en sağdayken efektlerin tam sesi
+const level = () => { try { const v = Number(JSON.parse(localStorage.getItem("jqVolume"))); const x = Number.isFinite(v) ? Math.min(1, Math.max(0, v)) : 0.8; return x <= 0.001 ? 0 : x * x; } catch { return 0.64; } };
 export function setSfxVolume(v) { if (master) master.gain.value = BASE * Math.min(1, Math.max(0, Number(v) || 0)); }
 
 function ac() {
@@ -70,7 +70,7 @@ const SOUNDS = {
   end: (t) => { [523, 659, 784].forEach((f, i) => tone(f, t + i * 0.12, 0.3, { type: "triangle", vol: 0.42 })); tone(1047, t + 0.36, 0.7, { type: "triangle", vol: 0.45 }); },
 };
 export function sfx(name) {
-  if (!on() || !SOUNDS[name]) return;
+  if (!on() || !SOUNDS[name] || level() === 0) return;
   const c = ac();
   if (!c || c.state !== "running") return;
   try { SOUNDS[name](c.currentTime + 0.01); } catch {}
