@@ -53,6 +53,13 @@ const SOUNDS = {
   // doğru / yanlış
   good: (t) => { tone(784, t, 0.12, { type: "triangle", vol: 0.5 }); tone(1175, t + 0.09, 0.28, { type: "triangle", vol: 0.5 }); },
   bad: (t) => { tone(220, t, 0.28, { type: "sawtooth", vol: 0.22, to: 140 }); },
+  // sıralamada şarkı yerine oturdu / çıkarıldı
+  pick: (t) => { tone(988, t, 0.05, { type: "triangle", vol: 0.3 }); tone(1319, t + 0.035, 0.07, { type: "triangle", vol: 0.25 }); },
+  unpick: (t) => { tone(740, t, 0.06, { type: "triangle", vol: 0.25, to: 520 }); },
+  // kısmen doğru (sıralamada birkaç yer, anime ya da şarkı)
+  partial: (t) => { tone(659, t, 0.12, { type: "triangle", vol: 0.45 }); tone(880, t + 0.1, 0.2, { type: "triangle", vol: 0.4 }); },
+  // tam isabet: kısa fanfar
+  perfect: (t) => { [784, 988, 1175, 1568].forEach((f, i) => tone(f, t + i * 0.08, 0.26, { type: "triangle", vol: 0.45 })); noise(t + 0.32, 0.4, 0.14, 6000); },
   // soru geçişi
   whoosh: (t) => { noise(t, 0.28, 0.22, 1200); tone(300, t, 0.25, { type: "sine", vol: 0.15, to: 900 }); },
   // sonuçlar

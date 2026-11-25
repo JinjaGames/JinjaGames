@@ -3,8 +3,11 @@
 // saklanan anahtarla imzalar; aynı quizi yalnızca o güncelleyebilir ya da kaldırabilir.
 // Gelen her kayıt imzası doğrulandıktan ve alan alan süzüldükten sonra kullanılır.
 import { schnorr, sha256, bytesToHex, hexToBytes } from "../vendor/nostr-sign.js";
-import { cdn } from "./music.js";
-import { cleanItems, cleanCat, cleanEmoji, T_MIN, T_MAX } from "./trivia.js";
+import { cdn } from "./music.js?v=3";
+import { cleanItems, cleanCat, cleanEmoji, T_MIN, T_MAX } from "./trivia.js?v=2";
+import { cleanRank, cleanOps } from "./engine.js?v=4";
+
+export const OP_MIN = 4; // anime opening quizinde en az (şıklar diğer openinglerden oluşur)
 
 export const RELAYS = globalThis.__JQ_TEST_RELAYS || ["wss://nos.lol", "wss://relay.primal.net", "wss://relay.damus.io", "wss://nostr.mom", "wss://relay.nostr.band", "wss://offchain.pub"];
 const KIND = 30078;
@@ -61,6 +64,18 @@ function parse(e) {
   if (!c || c.v !== 1 || c.deleted) return null;
   const id = "nq-" + e.pubkey.slice(0, 16) + "-" + d.slice(10);
   if (c.kind !== "trivia" && e.created_at < SONG_CUTOFF) return null;
+  if (c.kind === "rank" || c.kind === "op") {
+    const items = c.kind === "rank" ? cleanRank(c.items).slice(0, 1) : cleanOps(c.items);
+    const name = str(c.name, 60);
+    if (!name || items.length < (c.kind === "rank" ? 1 : OP_MIN)) return null;
+    return {
+      id, d, pubkey: e.pubkey, at: e.created_at, kind: c.kind,
+      name, desc: str(c.desc, 160), author: str(c.author, 24) || "Anonim",
+      emoji: c.kind === "op" ? cleanEmoji(c.emoji) : "", picture: c.kind === "rank" ? cdn(c.cover) : "",
+      artist: str(c.artist, 80), artistId: int(c.artistId), rcat: "Topluluk", cat: c.kind === "op" ? "Anime" : "",
+      genre: "Topluluk", items, mine: e.pubkey === myPubkey(),
+    };
+  }
   if (c.kind === "trivia") {
     const items = cleanItems(c.items);
     const name = str(c.name, 60);
@@ -153,9 +168,15 @@ export async function fetchCommunity({ limit = 300, ms = 6000 } = {}) {
 }
 
 /** Quizi yayınlar (aynı d ile tekrar çağırmak günceller). En az bir röle kabul ederse başarılıdır. */
-export async function publishQuiz({ d, name, desc, author, tracks, kind, items, cat, emoji, prevAt = 0 }) {
+export async function publishQuiz({ d, name, desc, author, tracks, kind, items, cat, emoji, artist, artistId, picture, prevAt = 0 }) {
   d ||= "jinjaquiz:" + bytesToHex(crypto.getRandomValues(new Uint8Array(8)));
-  const content = kind === "trivia" ? JSON.stringify({
+  const content = kind === "rank" ? JSON.stringify({
+    v: 1, kind: "rank", name: str(name, 60), desc: str(desc, 160), author: str(author, 24), artist: str(artist, 80), artistId: int(artistId), cover: cdn(picture),
+    items: cleanRank(items).slice(0, 1),
+  }) : kind === "op" ? JSON.stringify({
+    v: 1, kind: "op", name: str(name, 60), desc: str(desc, 160), author: str(author, 24), emoji: cleanEmoji(emoji),
+    items: cleanOps(items),
+  }) : kind === "trivia" ? JSON.stringify({
     v: 1, kind: "trivia", name: str(name, 60), desc: str(desc, 160), author: str(author, 24), cat: cleanCat(cat), emoji: cleanEmoji(emoji),
     items: cleanItems(items).slice(0, T_MAX),
   }) : JSON.stringify({

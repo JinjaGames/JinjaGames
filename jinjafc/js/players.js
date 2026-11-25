@@ -5,6 +5,7 @@ import { bestRole, grade, metaAt } from "./meta.js?v=2";
 import { esc } from "./util.js";
 
 const $ = (s) => document.querySelector(s);
+const $$ = (s) => [...document.querySelectorAll(s)];
 const opt = (v, t) => `<option value="${esc(v)}">${esc(t)}</option>`;
 const q = new URLSearchParams(location.search);
 const ATTR_TR = { acceleration: "Hızlanma", sprintSpeed: "Sprint hızı", positioning: "Pozisyon alma", finishing: "Bitiricilik", shotPower: "Şut gücü", longShots: "Uzaktan şut", volleys: "Vole",
@@ -42,7 +43,7 @@ function render() {
   history.replaceState(null, "", u.toString() ? "?" + u : location.pathname);
 }
 // ---------- oyuncu ayrıntısı ----------
-function detail(p) {
+function detailHtml(p) {
   const A = DB.attrNames || [];
   const gk = p.pos[0] === "GK";
   const groups = GROUPS.filter((g) => (gk ? g[0] === "Kalecilik" || g[0] === "Fizik" || g[0] === "Hız" : g[0] !== "Kalecilik"));
@@ -51,7 +52,7 @@ function detail(p) {
   // benzer oyuncular: aynı en iyi mevki, Meta Rating'i en yakın olanlar
   const sim = DB.players.filter((o) => o !== p && o.pos.includes(best.pos)).map((o) => ({ o, d: Math.abs(metaAt(o, best.pos) - best.v) + (o.women !== p.women ? 50 : 0) }))
     .sort((a, b) => a.d - b.d).slice(0, 6).map((x) => x.o);
-  $("#pdBody").innerHTML = `<div class="pdTop">
+  return `<button type="button" class="pdX" data-close aria-label="Kapat">✕</button><div class="pdTop">
       <div class="pdCard">${cardHtml(p, { pos: best.pos })}</div>
       <div class="pdInfo">
         <h2 id="pdTitle">${esc(p.name)}</h2>
@@ -70,12 +71,29 @@ function detail(p) {
     }).join("")}</div>
     <h4>Benzer oyuncular <small>(${POS_TR[best.pos]}, Meta Rating'i en yakın)</small></h4>
     <div class="pdSim">${sim.map((o) => `<button type="button" class="pdS" data-id="${o.id}" title="${esc(o.name)}">${cardHtml(o, { pos: best.pos, size: "s" })}<span class="meta"><i>M</i>${metaAt(o, best.pos).toFixed(1)}</span></button>`).join("")}</div>`;
-  const d = $("#pd");
-  if (!d.open) d.showModal();
-  d.scrollTop = 0;
+}
+// Ayrıntı ayrı bir pencerede değil, listenin içinde (tıklanan satırın hemen altında) açılır.
+function detail(p, row) {
+  const cur = $(".pdIn");
+  const same = cur && cur.dataset.id === String(p.id);
+  if (same && row) return closeDetail();
+  const box = cur && !row ? cur : document.createElement("section");
+  box.className = "pdIn";
+  box.dataset.id = p.id;
+  box.setAttribute("aria-label", `${p.name} ayrıntıları`);
+  box.innerHTML = detailHtml(p);
+  if (box !== cur) {
+    cur?.remove();
+    $$(".pr.open").forEach((x) => x.classList.remove("open"));
+    if (row) row.after(box), row.classList.add("open");
+    else $("#list").prepend(box);
+  }
+  requestAnimationFrame(() => box.scrollIntoView({ behavior: "smooth", block: row ? "nearest" : "start" }));
   const u = new URL(location.href); u.searchParams.set("id", p.id); history.replaceState(null, "", u);
 }
 function closeDetail() {
+  $(".pdIn")?.remove();
+  $$(".pr.open").forEach((x) => x.classList.remove("open"));
   const u = new URL(location.href); u.searchParams.delete("id"); history.replaceState(null, "", u);
 }
 
@@ -90,14 +108,14 @@ for (const [id, k] of [["#q", "q"], ["#fPos", "pos"], ["#fLeague", "league"], ["
 }
 $("#more").addEventListener("click", () => { limit += 60; render(); });
 render();
-const pd = $("#pd");
-pd.addEventListener("close", closeDetail);
-pd.addEventListener("click", (e) => {
-  if (e.target === pd || e.target.closest("#pdClose")) return pd.close();
+$("#list").addEventListener("click", (e) => {
+  if (e.target.closest(".pdIn [data-close]")) return closeDetail();
   const s = e.target.closest(".pdS");
-  if (s) detail(DB.byId.get(+s.dataset.id));
+  if (s) return detail(DB.byId.get(+s.dataset.id));
+  const r = e.target.closest(".pr");
+  if (r) detail(DB.byId.get(+r.dataset.id), r);
 });
-$("#list").addEventListener("click", (e) => { const r = e.target.closest(".pr"); if (r) detail(DB.byId.get(+r.dataset.id)); });
-$("#list").addEventListener("keydown", (e) => { const r = e.target.closest(".pr"); if (r && (e.key === "Enter" || e.key === " ")) { e.preventDefault(); detail(DB.byId.get(+r.dataset.id)); } });
+$("#list").addEventListener("keydown", (e) => { const r = e.target.closest(".pr"); if (r && (e.key === "Enter" || e.key === " ")) { e.preventDefault(); detail(DB.byId.get(+r.dataset.id), r); } });
+document.addEventListener("keydown", (e) => { if (e.key === "Escape" && $(".pdIn")) closeDetail(); });
 const openId = +q.get("id");
 if (openId && DB.byId.has(openId)) detail(DB.byId.get(openId));

@@ -1,9 +1,11 @@
-import { PRESETS, loadTracks, searchArtists, customLists, saveCustom, removeCustom, fold, cdn, realPic, loadPresetPictures } from "./music.js";
-import { sfx, sfxEnabled, setSfx } from "./sfx.js";
+import { PRESETS, MIXES, loadTracks, searchArtists, customLists, saveCustom, removeCustom, fold, cdn, realPic, loadPresetPictures } from "./music.js?v=3";
+import { sfx, sfxEnabled, setSfx } from "./sfx.js?v=2";
 import { randomName } from "./names.js";
-import { fetchCommunity, removeQuiz, hideQuiz, unhideQuiz, hiddenList } from "./community.js";
-import { Game, MAX_PLAYERS } from "./engine.js?v=2";
-import { TRIVIA, TCATS, TART, EMOJIS, cleanItems, IMG, FLAG, flagUrl, cleanEmo } from "./trivia.js";
+import { fetchCommunity, removeQuiz, hideQuiz, unhideQuiz, hiddenList } from "./community.js?v=2";
+import { Game, MAX_PLAYERS, RANK_PTS, OP_PTS } from "./engine.js?v=4";
+import { RANK_QUIZZES, RANK_CATS, rankItems } from "./rank.js";
+import { TRIVIA, TCATS, TART, EMOJIS, cleanItems, IMG, ANI_IMG, FLAG, flagUrl, cleanEmo } from "./trivia.js?v=2";
+import { ANIME_QUIZZES, ERAS, animeItems } from "./anime.js";
 import { NUMCATS, fmtNum, farEnough } from "./numdata.js";
 import { hostRoom, guestRoom, newCode, validCode } from "./net.js";
 
@@ -37,12 +39,15 @@ const uid = () => Math.random().toString(36).slice(2, 12);
 const AVATARS = ["headphones", "guitar", "mic-vocal", "disc-3", "radio", "drum"];
 const COLORS = ["coral", "violet", "mint", "gold", "sky", "rose"];
 const LEVELS = { 5: "Kolay", 3: "Orta", 1: "Zor" };
+// tersten çalınan quizde zorluklar: kolay 10, orta 5, zor 3 sn
+const RLEVELS = { 10: "Kolay", 5: "Orta", 3: "Zor" };
+const lvl = (clip, rev) => (rev ? RLEVELS : LEVELS)[clip] || "";
 const PHOTO = /^data:image\/(jpeg|png|webp);base64,[A-Za-z0-9+/=]{1,30000}$/;
 const num = (v) => (Number.isFinite(Number(v)) ? Number(v) : 0);
 
 // Kurucudan gelen oyun durumu (başka birinin tarayıcısı) tür tür süzülür: sayılar sayı, kimlikler
 // güvenli karakter, adresler yalnızca Deezer CDN'i, profil parçaları izin listesinden.
-const NUM = new Set(["rankAt", "pts", "count", "clip", "score", "round", "points", "ms", "index", "set", "seconds", "start", "end", "offset", "autoAt", "now", "streak"]);
+const NUM = new Set(["ys", "slots", "rankAt", "pts", "count", "clip", "score", "round", "points", "ms", "index", "set", "seconds", "start", "end", "offset", "autoAt", "now", "streak"]);
 const IDK = new Set(["id", "pid", "host", "me", "code"]);
 function cleanView(x, k = "", depth = 0) {
   if (depth > 10) return null;
@@ -59,14 +64,15 @@ function cleanView(x, k = "", depth = 0) {
   if (IDK.has(k)) return String(x ?? "").replace(/[^A-Za-z0-9_-]/g, "").slice(0, 40);
   if (k === "url" || k === "cover" || k === "picture") return cdn(x);
   if (k === "photo") return PHOTO.test(x || "") ? x : "";
-  if (k === "pic") return IMG.test(x || "") ? x : null;
+  if (k === "pic") return IMG.test(x || "") || ANI_IMG.test(x || "") ? x : null;
   if (k === "flag") return FLAG.test(x || "") ? x : null;
   if (k === "emo") return cleanEmo(x) || null;
   if (k === "avatar") return AVATARS.includes(x) ? x : "headphones";
   if (k === "color") return COLORS.includes(x) ? x : "coral";
   if (k === "art") return x === "hero" ? "hero" : "";
   if (k === "emoji") return EMOJIS.includes(x) ? x : "";
-  if (k === "kind") return x === "trivia" ? "trivia" : "song";
+  if (k === "kind") return ["trivia", "rank", "op"].includes(x) ? x : "song";
+  if (k === "yt") return /^[\w-]{11}$/.test(x || "") ? x : null;
   if (typeof x === "string") return x.slice(0, 300);
   return typeof x === "number" || typeof x === "boolean" || x === null ? x : null;
 }
@@ -164,18 +170,75 @@ function prime(url) {
 }
 function stopClip() {
   clearTimeout(player.stopT);
+  try { rsrc?.stop(); } catch {}
+  rsrc = null;
   if (player.playing) audio.pause();
   player.playing = false;
   document.body.classList.remove("playing");
 }
 const playsKey = (qid) => "jqPlays:" + qid;
 const playsUsed = (qid) => store.get(playsKey(qid), 0, sessionStorage);
+// Tersten çalma: önizleme indirilir, kesit ters çevrilip Web Audio ile çalınır.
+let rctx = null, rsrc = null;
+const rcache = new Map();
+async function reversedClip(url, offset, clip) {
+  rctx ??= new (window.AudioContext || window.webkitAudioContext)();
+  if (rctx.state === "suspended") await rctx.resume();
+  const key = `${url}|${offset}|${clip}`;
+  if (!rcache.has(key)) {
+    rcache.set(key, (async () => {
+      const buf = await (await fetch(url)).arrayBuffer();
+      const full = await rctx.decodeAudioData(buf);
+      const sr = full.sampleRate, a = Math.floor(offset * sr), len = Math.min(full.length - a, Math.floor(clip * sr));
+      const out = rctx.createBuffer(full.numberOfChannels, len, sr);
+      for (let ch = 0; ch < full.numberOfChannels; ch++) {
+        const src = full.getChannelData(ch).subarray(a, a + len), dst = out.getChannelData(ch);
+        for (let i = 0; i < len; i++) dst[i] = src[len - 1 - i];
+      }
+      return out;
+    })());
+    rcache.get(key).catch(() => rcache.delete(key));
+  }
+  return rcache.get(key);
+}
+async function listenReversed(q, auto) {
+  player.loading = true;
+  player.needTap = false;
+  paint();
+  try {
+    const buf = await reversedClip(cdn(q.url), q.offset, q.clip);
+    if (view?.question?.id !== q.id) { player.loading = false; return; }
+    if (rctx.state !== "running") throw Object.assign(Error("tap"), { name: "NotAllowedError" });
+    const g = rctx.createGain();
+    g.gain.value = volume();
+    rsrc = rctx.createBufferSource();
+    rsrc.buffer = buf;
+    rsrc.connect(g).connect(rctx.destination);
+    rsrc.start();
+  } catch (e) {
+    player.loading = false;
+    if (e.name === "NotAllowedError") player.needTap = true;
+    if (!auto) fail(e.name === "NotAllowedError" ? Error("Dinlemek için butona dokun.") : Error("Kesit yüklenemedi. Tekrar dinle'ye bas."));
+    paint();
+    return;
+  }
+  player.loading = false;
+  store.set(playsKey(q.id), playsUsed(q.id) + 1, sessionStorage);
+  player.playing = true;
+  player.qid = q.id;
+  player.startedAt = performance.now();
+  player.clip = q.clip * 1000;
+  document.body.classList.add("playing");
+  player.stopT = setTimeout(() => { stopClip(); paint(); }, q.clip * 1000);
+  paint();
+}
 async function listen(auto = false) {
   const q = view?.question;
   if (!q || view.phase !== "question" || !q.url || player.playing || q.mine) return;
   const now = hostNow();
   if (now < q.start || now >= q.end || playsUsed(q.id) >= 3) return;
   if (player.loading) return;
+  if (q.reverse) return listenReversed(q, auto);
   prime(q.url);
   player.loading = true;
   player.needTap = false;
@@ -416,7 +479,7 @@ function sfxTrack() {
   if (v.phase === "reveal" && q && snd.phase !== "reveal:" + q.id) {
     snd.phase = "reveal:" + q.id;
     const r = q.reveal?.results?.[v.me];
-    sfx(r?.correct ? "good" : "bad");
+    sfx(r?.correct ? (q.kind === "rank" ? "perfect" : "good") : r?.partial ? "partial" : "bad");
   }
   if ((v.phase === "done" || v.phase === "ranking") && !snd.done) { snd.done = true; sfx("end"); }
 }
@@ -431,7 +494,7 @@ function render() {
 }
 
 function allLists() {
-  return [...PRESETS, ...TRIVIA, ...(ui.community || []), ...customLists().map((l) => ({ ...l, genre: "Senin" }))];
+  return [...PRESETS, ...MIXES, ...RANK_QUIZZES, ...ANIME_QUIZZES, ...TRIVIA, ...(ui.community || []), ...customLists().map((l) => ({ ...l, genre: "Senin" }))];
 }
 const hue = (name) => {
   let h = 0;
@@ -453,7 +516,19 @@ function cover(l, cls = "", big = false) {
   const initials = name.split(/\s+/).filter(Boolean).slice(0, 2).map((w) => w[0]).join("").toLocaleUpperCase("tr") || "♪";
   return `<span class="${esc(cls)} noart mono" style="--h:${h % 360}">${esc(initials)}</span>`;
 }
+// Ana ekran arka planda (topluluk quizleri, görseller yüklenince) yeniden çizilebilir:
+// yazılmakta olan lobi kodunu, imleci ve odağı koru.
 function renderHome() {
+  const keep = ["joinCode", "search"].map((id) => { const el = document.getElementById(id); return el && { id, v: el.value, f: document.activeElement === el, a: el.selectionStart, b: el.selectionEnd }; }).filter(Boolean);
+  drawHome();
+  for (const k of keep) {
+    const el = document.getElementById(k.id);
+    if (!el) continue;
+    el.value = k.v;
+    if (k.f) { el.focus({ preventScroll: true }); try { el.setSelectionRange(k.a, k.b); } catch {} }
+  }
+}
+function drawHome() {
   const q = fold(ui.query);
   const mine = customLists().map((l) => ({ ...l, genre: "Senin" }));
   if (ui.genre === "Senin" && !mine.length) ui.genre = "Keşfet";
@@ -498,6 +573,9 @@ function renderHome() {
 
   <section class="hm-modes" aria-label="Oyun modları">
     <button class="mode m-song" data-tab="Müzik" data-scroll="1"><span class="modeIc">${ic("music")}</span><b>Şarkı Quizi</b><small>Bir saniyelik kesitten şarkıyı bil</small><i class="modeGo">${ic("chevron-right")}</i></button>
+    <button class="mode m-rev" data-tab="Tersten" data-scroll="1"><span class="modeIc">${ic("rewind")}</span><b>Tersten Şarkı <em>Yeni</em></b><small>${MIXES.length} karma liste, şarkı tersten çalar</small><i class="modeGo">${ic("chevron-right")}</i></button>
+    <button class="mode m-rank" data-tab="Sıralama" data-scroll="1"><span class="modeIc">${ic("list-ordered")}</span><b>Sıralama <em>Yeni</em></b><small>En çok dinlenen 5 şarkıyı sırala</small><i class="modeGo">${ic("chevron-right")}</i></button>
+    <button class="mode m-anime" data-tab="Anime" data-scroll="1"><span class="modeIc">${ic("tv")}</span><b>Anime <em>Yeni</em></b><small>Karakter, kapak ve yıl quizleri</small><i class="modeGo">${ic("chevron-right")}</i></button>
     <button class="mode m-trivia" data-tab="Trivia" data-scroll="1"><span class="modeIc">${ic("circle-help")}</span><b>Trivia</b><small>${TRIVIA.length} quiz, binlerce soru</small><i class="modeGo">${ic("chevron-right")}</i></button>
     <button class="mode m-num" data-do="numHome"><span class="modeIc">${ic("hash")}</span><b>Sayı Quizi <em>Yeni</em></b><small>Hangisi daha büyük? Seriyi bozma</small><i class="modeGo">${ic("chevron-right")}</i></button>
     <button class="mode m-party" data-do="create"><span class="modeIc">${ic("users")}</span><b>Arkadaşlarla</b><small>Lobi kur, 12 kişiye kadar oynayın</small><i class="modeGo">${ic("chevron-right")}</i></button>
@@ -527,6 +605,9 @@ function renderHome() {
           ${ui.genre === "Topluluk" ? communityState() : ""}
           ${!lists.length && !ui.results && (ui.genre !== "Topluluk" || ui.community?.length) ? `<p class="hm-empty">${ic("search")}<span>Burada bir şey yok.${ui.genre === "Keşfet" || ui.genre === "Müzik" ? ' "Sanatçı bul" ile Deezer\'da ara; binlerce sanatçı var.' : ""}</span></p>` : ""}`
         : `${rail("Popüler sanatçılar", "flame", PRESETS.map((l, k) => acard(l, k)).join(""), "Müzik")}
+          ${rail("Sıralama quizleri", "list-ordered", RANK_QUIZZES.slice(0, 24).map((l, k) => acard(l, k)).join(""), "Sıralama")}
+          ${rail("Tersten şarkı quizi", "rewind", MIXES.map((l, k) => acard(l, k)).join(""), "Tersten")}
+          ${rail("Anime quizleri", "tv", ANIME_QUIZZES.map((l, k) => qcard(l, k)).join(""), "Anime")}
           ${triviaRail(commTrivia)}
           ${numRail()}
           ${rail("Topluluk quizleri", "users", comm.slice(0, 12).map((l, k) => qcard(l, k)).join("") || communityState(), comm.length ? "Topluluk" : "")}
@@ -631,18 +712,24 @@ function keepVisible(sel) {
 const TABS = [
   ["Keşfet", "compass", "Ne oynamak istersin?"],
   ["Müzik", "music", "Ne dinlemek istersin?"],
+  ["Sıralama", "list-ordered", "En çok dinlenenleri doğru sırala"],
+  ["Tersten", "rewind", "Tersten dinle, şarkıyı bil"],
+  ["Anime", "tv", "Anime'yi ne kadar biliyorsun?"],
   ["Trivia", "circle-help", "Ne kadar biliyorsun?"],
   ["Sayı", "hash", "Hangisi daha büyük?"],
   ["Topluluk", "users", "Topluluğun quizleri"],
   ["Senin", "bookmark", "Senin quizlerin"],
 ];
-const SUBS = { Müzik: ["Rap", "Pop", "Rock"], Trivia: TCATS, Topluluk: ["Müzik", "Trivia"] };
+const SUBS = { Müzik: ["Rap", "Pop", "Rock"], Sıralama: RANK_CATS, Tersten: ["Pop", "Rap", "Rock"], Trivia: TCATS, Topluluk: ["Müzik", "Trivia"] };
 function inTab(l) {
   const trivia = l.kind === "trivia";
   const c = ui.cat;
   switch (ui.genre) {
-    case "Müzik": return !trivia && (!c || l.genre === c);
-    case "Trivia": return trivia && (!c || l.cat === c);
+    case "Müzik": return (!l.kind || l.kind === "song") && (!c || l.genre === c);
+    case "Sıralama": return l.kind === "rank" && (!c || l.rcat === c);
+    case "Tersten": return !!l.mix && (!c || l.genre === c);
+    case "Anime": return !!l.anime || l.kind === "op";
+    case "Trivia": return trivia && !l.anime && (!c || l.cat === c);
     case "Topluluk": return l.genre === "Topluluk" && (!c || (c === "Trivia") === trivia);
     case "Senin": return l.genre === "Senin";
     default: return true;
@@ -651,6 +738,9 @@ function inTab(l) {
 function tabCount(name, mine) {
   if (name === "Trivia") return TRIVIA.length + (ui.community || []).filter((l) => l.kind === "trivia").length;
   if (name === "Sayı") return NUMCATS.length;
+  if (name === "Tersten") return MIXES.length;
+  if (name === "Anime") return ANIME_QUIZZES.length + (ui.community || []).filter((l) => l.kind === "op").length;
+  if (name === "Sıralama") return RANK_QUIZZES.length + (ui.community || []).filter((l) => l.kind === "rank").length;
   if (name === "Topluluk") return ui.community?.length || 0;
   if (name === "Senin") return mine.length;
   return 0;
@@ -703,10 +793,14 @@ function qcard(l, k = 0) {
 function acard(l, k = 0) {
   return `<button class="acard" data-list="${esc(l.id)}" style="--i:${k}" aria-label="${esc(l.name)} quizini aç">
     <span class="acardArt">${cover(l, "acardImg")}</span>
-    <b>${esc(l.name)}</b><small>${esc(l.genre)}</small>
+    <b>${esc(l.name)}</b><small>${esc(l.kind === "rank" ? l.rcat || "Sıralama" : l.genre)}</small>
   </button>`;
 }
 function cardSub(l) {
+  if (l.anime) return "Anime · her açılışta yeni sorular";
+  if (l.kind === "rank") return l.genre === "Topluluk" ? `${ic("user")}${esc(l.author)} · Sıralama` : `${esc(l.rcat || "Sıralama")} · ilk 5 şarkı`;
+  if (l.kind === "op") return `${l.genre === "Topluluk" ? `${ic("user")}${esc(l.author)} · ` : ""}Anime opening · ${num(l.items?.length)} opening`;
+  if (l.mix) return `${esc(l.genre)} · ${num(l.artists?.length)} sanatçı`;
   const n = l.kind === "trivia" ? `${num(l.items?.length)} soru` : `${num(l.tracks?.length)} şarkı`;
   if (l.genre === "Topluluk") return `${ic("user")}${esc(l.author)} · ${l.kind === "trivia" ? esc(l.cat) + " · " : ""}${n}`;
   if (l.kind === "trivia") return `Trivia · ${n}`;
@@ -835,7 +929,7 @@ function lobbyHtml(v) {
                 .map(
                   (s, i) => `<li>
               ${cover(s, "qImg")}
-              <span class="qInfo"><b>${esc(s.name)}</b><small>${num(s.count)} soru · ${s.kind === "trivia" ? "Trivia" : `${s.mode === "text" ? "Yazarak" : "Şıklı"} · ${LEVELS[s.clip] || ""} (${num(s.clip)} sn)`}</small></span>
+              <span class="qInfo"><b>${esc(s.name)}</b><small>${num(s.count)} soru · ${s.kind === "rank" || s.kind === "op" ? kindName(s.kind) : s.kind === "trivia" ? "Trivia" : `${s.reverse ? "Tersten · " : ""}${s.mode === "text" ? "Yazarak" : "Şıklı"} · ${lvl(s.clip, s.reverse)} (${num(s.clip)} sn)`}</small></span>
               ${
                 host
                   ? `<span class="qBtns">
@@ -922,7 +1016,7 @@ function gameHtml(v) {
   const myRes = reveal ? q?.reveal?.results?.[v.me] : null;
   const myPts = meP ? num(v.solo ? meP.score : meP.round) : 0;
   const head = `<div class="gameBar">
-      <span class="gq">${cover(set, "gImg")}<span><b>${esc(set.name)}</b><small>Soru ${num(v.index) + 1}/${num(set.count)} · ${set.kind === "trivia" ? "Trivia" : `${LEVELS[set.clip] || ""} ${num(set.clip)} sn`}</small></span></span>
+      <span class="gq">${cover(set, "gImg")}<span><b>${esc(set.name)}</b><small>Soru ${num(v.index) + 1}/${num(set.count)} · ${set.kind === "rank" || set.kind === "op" ? kindName(set.kind) : set.kind === "trivia" ? "Trivia" : `${set.reverse ? "Tersten · " : ""}${lvl(set.clip, set.reverse)} ${num(set.clip)} sn`}</small></span></span>
       <span class="gEnd">
         <span class="myScore ${myRes?.correct ? "up" : ""}" title="Bu quizdeki puanın"><b>${myPts}</b><small>puan</small>${myRes ? `<i class="plus ${myRes.correct ? "" : "zero"}">+${num(myRes.points)}</i>` : ""}</span>
         <button class="icon sm sfxBtn" data-do="sfx" aria-pressed="${sfxEnabled()}" aria-label="Ses efektleri ${sfxEnabled() ? "açık" : "kapalı"}" title="Ses efektleri">${ic(sfxEnabled() ? "volume-2" : "volume-x")}</button>
@@ -938,15 +1032,18 @@ function gameHtml(v) {
   const trivia = q.kind === "trivia";
   // Geri sayım ilk çizimden itibaren açık olsun: şıklar bir an bile okunmasın.
   const pre0 = !reveal && q.start && hostNow() < q.start;
-  const intro = num(v.index) === 0 && !reveal ? `<div class="introCard" aria-hidden="true"><div class="inArt">${cover(set, "inImg", true)}</div><span class="kicker">${set.kind === "trivia" ? "Trivia" : "Şarkı quizi"}${set.survival ? " · Hayatta Kalma" : ""}</span><h2>${esc(set.name)}</h2><p>${num(set.count)} ${set.kind === "trivia" ? "soru" : "şarkı"} · ${set.survival ? "ilk yanlışta oyun biter" : "hızlı olan kazanır"}</p><b class="inNum" id="inNum"></b></div>` : "";
+  const cdHtml = `<div class="countdown ${pre0 ? "on" : ""}" id="countdown" aria-hidden="true"><div class="cdRing"><svg viewBox="0 0 100 100"><circle cx="50" cy="50" r="46" pathLength="100"/><circle class="cdArc" id="cdArc" cx="50" cy="50" r="46" pathLength="100"/></svg><b id="cdNum"></b><small>Başlıyor</small></div></div>`;
+  const intro = num(v.index) === 0 && !reveal ? `<div class="introCard" aria-hidden="true"><div class="inArt">${cover(set, "inImg", true)}</div><span class="kicker">${kindName(set.kind)}${set.survival ? " · Hayatta Kalma" : ""}</span><h2>${esc(set.name)}</h2><p>${set.kind === "rank" ? "İlk 5'i doğru sırala · tam isabete +300" : `${num(set.count)} ${set.kind === "trivia" ? "soru" : set.kind === "op" ? "opening" : "şarkı"} · ${set.survival ? "ilk yanlışta oyun biter" : "hızlı olan kazanır"}`}</p><b class="inNum" id="inNum"></b></div>` : "";
   let stage;
-  if (trivia) {
+  if (q.kind === "rank") stage = rankStage(v, q, reveal, cdHtml);
+  else if (q.kind === "op") stage = opStage(v, q, reveal, cdHtml);
+  else if (trivia) {
     const r = reveal ? q.reveal.results[v.me] : null;
     const verdict = !reveal ? "" : r?.correct ? `<span class="verdict good">${ic("check")} +${num(r.points)}</span>` : r ? `<span class="verdict bad">${ic("x")} Yanlış</span>` : `<span class="verdict">${ic("timer")} Süre doldu</span>`;
     stage = `<div class="tq ${reveal ? "done" : ""}">
       <div class="countdown ${pre0 ? "on" : ""}" id="countdown" aria-hidden="true"><div class="cdRing"><svg viewBox="0 0 100 100"><circle cx="50" cy="50" r="46" pathLength="100"/><circle class="cdArc" id="cdArc" cx="50" cy="50" r="46" pathLength="100"/></svg><b id="cdNum"></b><small>Başlıyor</small></div></div>
       <span class="tqNo">${ic("circle-help")} Soru ${num(v.index) + 1}</span>
-      ${q.pic ? `<img class="tqPic" src="${esc(q.pic)}" alt="">` : ""}
+      ${q.pic ? `<img class="tqPic${/^https:/.test(q.pic) ? " big" : ""}" src="${esc(q.pic)}" alt="" referrerpolicy="no-referrer">` : ""}
       <h2 class="tqText">${esc(q.text)}</h2>
       ${reveal ? `<div class="tqAns ${tqVisual(q.reveal) ? "hasVis" : ""}">${tqVisual(q.reveal)}<span class="tqAnsText"><small>Doğru cevap</small><b>${esc(q.reveal.title)}</b>${verdict}</span></div>` : `<div class="tqAns slot" aria-hidden="true"></div>`}
     </div>`;
@@ -975,7 +1072,9 @@ function gameHtml(v) {
   }
 
   let answers = "";
-  if (q.mode === "choice") {
+  if (q.kind === "rank") answers = rankAnswers(v, q, reveal);
+  else if (q.kind === "op") answers = opAnswers(v, q, reveal);
+  else if (q.mode === "choice") {
     answers = `<div class="answers ${v.solo ? "" : "multi"}">${q.options
       .map((o, i) => {
         const right = reveal && o === q.reveal.title;
@@ -1014,8 +1113,8 @@ function gameHtml(v) {
     foot = `<div class="block board"><div class="blockHead"><h2>Quiz sıralaması</h2><small class="muted">Bu soru · Toplam</small></div>${rows
       .map(
         ({ p, r }, i) => `<div class="row ${p.pid === v.me ? "me" : ""}" style="--i:${i}">${avatar(p, "sm")}<span class="rowName"><b>${esc(p.name)}</b>
-        <span class="meter"><span style="width:${top ? Math.max(2, (num(p.round) / top) * 100) : 0}%"></span>${r?.correct ? `<span class="gain" style="left:${((num(p.round) - num(r.points)) / top) * 100}%;width:${(num(r.points) / top) * 100}%"></span>` : ""}</span></span>
-        <span class="pts ${r?.correct ? "good" : ""}">${r?.correct ? "+" + num(r.points) : r ? "0" : "—"}${r?.correct ? `<small>${(num(r.ms) / 1000).toFixed(1)} sn</small>` : ""}</span><b class="tot" data-count="${num(p.round)}">${num(p.round)}</b></div>`,
+        <span class="meter"><span style="width:${top ? Math.max(2, (num(p.round) / top) * 100) : 0}%"></span>${num(r?.points) > 0 ? `<span class="gain" style="left:${((num(p.round) - num(r.points)) / top) * 100}%;width:${(num(r.points) / top) * 100}%"></span>` : ""}</span></span>
+        <span class="pts ${num(r?.points) > 0 ? "good" : ""}">${num(r?.points) > 0 ? "+" + num(r.points) : r ? "0" : "—"}${num(r?.points) > 0 ? `<small>${(num(r.ms) / 1000).toFixed(1)} sn</small>` : ""}</span><b class="tot" data-count="${num(p.round)}">${num(p.round)}</b></div>`,
       )
       .join("")}</div>`;
   }
@@ -1029,6 +1128,154 @@ function gameHtml(v) {
   return `${mode.lost ? `<div class="banner">${spinner()} Kurucunun bağlantısı koptu, bekleniyor…</div>` : ""}
     <section class="game ${reveal ? "isReveal" : ""}">${head}${stage}${answers}${foot}${intro}</section>
     <div class="dock split">${dock}</div>`;
+}
+
+// ---------- Sıralama sorusu ----------
+const rk = { qid: "", picks: [] };
+function rkPicks(q) {
+  if (rk.qid !== q.id) { rk.qid = q.id; rk.picks = []; }
+  return rk.picks;
+}
+function rankStage(v, q, reveal, cdHtml) {
+  const pic = q.picture ? `<img class="rkPic" src="${esc(q.picture)}" alt="" referrerpolicy="no-referrer">` : `<span class="rkPic noart">${ic("mic-vocal")}</span>`;
+  return `<div class="rk ${reveal ? "done" : ""}">
+    ${reveal ? "" : cdHtml}
+    <div class="rkHead">${pic}<div><span class="tqNo">${ic("list-ordered")} Sıralama</span><h2>${esc(q.artist || "")}</h2><p>${esc(q.text || "")}</p></div></div>
+    <div id="rkBody">${rankBody(v, q, reveal)}</div>
+  </div>`;
+}
+function rankBody(v, q, reveal) {
+  const n = num(q.slots) || 5;
+  if (reveal) {
+    const r = q.reveal.results[v.me];
+    const order = q.reveal.order || [];
+    const mineA = Array.isArray(r?.answer) ? r.answer : [];
+    const rows = order.map((t, i) => {
+      const said = mineA[i];
+      const m = r?.marks?.[i];
+      const cls = m === 2 ? "ok" : m === 1 ? "near" : said ? "miss" : "";
+      return `<li class="rkRow ${cls}" style="--i:${i}"><b class="rkN">${i + 1}</b><span class="rkT">${esc(t)}</span>${said ? `<span class="rkSaid">${m === 2 ? ic("check") : m === 1 ? "~" : ic("x")}<small>${m === 2 ? "Doğru" : esc(said)}</small></span>` : ""}</li>`;
+    }).join("");
+    const perfect = r?.correct;
+    const verdict = !r ? `<span class="verdict">${ic("timer")} Süre doldu</span>` : perfect ? `<span class="verdict good big">${ic("trophy")} Tam isabet! +${num(r.points)}</span>` : num(r.points) > 0 ? `<span class="verdict mid">+${num(r.points)}</span>` : `<span class="verdict bad">${ic("x")} Hiçbiri tutmadı</span>`;
+    return `<div class="rkVerdict">${verdict}</div><ol class="rkList reveal">${rows}</ol>${perfect ? confetti() : ""}`;
+  }
+  const mineA = Array.isArray(q.mine?.answer) ? q.mine.answer : null;
+  const picks = mineA || rkPicks(q);
+  const slots = Array.from({ length: n }, (_, i) => {
+    const t = picks[i];
+    return t
+      ? `<li><button class="rkSlot full" data-rs="${i}" ${mineA ? "disabled" : ""} aria-label="${i + 1}. sıradan çıkar"><b class="rkN">${i + 1}</b><span class="rkT">${esc(t)}</span>${mineA ? "" : `<i class="rkX">${ic("x")}</i>`}</button></li>`
+      : `<li><div class="rkSlot ${i === picks.length ? "next" : ""}"><b class="rkN">${i + 1}</b><span class="rkT">${i === picks.length ? "Sıradaki şarkıyı seç" : "Boş"}</span></div></li>`;
+  }).join("");
+  const pool = mineA ? "" : `<div class="rkPool">${(q.options || []).map((o, i) => {
+    const at = picks.indexOf(o);
+    return `<button class="rkOpt ${at >= 0 ? "used" : ""}" data-rk="${i}" ${at >= 0 ? `aria-pressed="true"` : ""}>${at >= 0 ? `<b>${at + 1}</b>` : ""}${esc(o)}</button>`;
+  }).join("")}</div>`;
+  return `<ol class="rkList">${slots}</ol>${pool}`;
+}
+function rankAnswers(v, q, reveal) {
+  if (reveal || q.mine) return q.mine && !reveal ? `<div class="locked">${ic("check")} Sıralaman kilitlendi</div>` : "";
+  const full = rkPicks(q).length >= (num(q.slots) || 5);
+  return `<div class="rkDock"><button class="btn ghost" data-do="rkclear" ${rkPicks(q).length ? "" : "disabled"}>${ic("rotate-ccw")}Temizle</button><button class="btn primary lg" data-do="rkgo" id="rkGo" ${full ? "" : "disabled"}>${ic("check")}Sıralamayı kilitle</button></div>`;
+}
+function rankRedraw() {
+  const q = view?.question;
+  if (!q || q.kind !== "rank") return;
+  const b = $("#rkBody");
+  if (b) b.innerHTML = rankBody(view, q, false);
+  const d = $(".rkDock");
+  if (d) d.outerHTML = rankAnswers(view, q, false);
+}
+
+// ---------- Anime opening sorusu (YouTube) ----------
+const op = { qid: "", a: null, s: null };
+function opPicks(q) {
+  if (op.qid !== q.id) Object.assign(op, { qid: q.id, a: null, s: null });
+  return op;
+}
+function opStage(v, q, reveal, cdHtml) {
+  return `<div class="opq ${reveal ? "done" : ""}">
+    ${reveal ? "" : cdHtml}
+    <span class="tqNo">${ic("tv")} Opening ${num(v.index) + 1}</span>
+    <div class="opScreen" id="ytSlot"></div>
+    ${reveal ? `<div class="tqAns"><span class="tqAnsText"><small>Doğru cevap</small><b>${esc(q.reveal.title)}</b><small>${ic("music")} ${esc(q.reveal.song || "")}</small>${opVerdict(q.reveal.results[v.me])}</span></div>` : `<button class="btn soft sm opTap" data-do="ytplay">${ic("volume-2")}Ses gelmiyor mu? Dokun</button>`}
+  </div>`;
+}
+function opVerdict(r) {
+  if (!r) return `<span class="verdict">${ic("timer")} Süre doldu</span>`;
+  if (r.correct) return `<span class="verdict good">${ic("sparkles")} İkisi de doğru! +${num(r.points)}</span>`;
+  if (r.partial) return `<span class="verdict mid">${r.hit?.anime ? "Anime doğru" : "Şarkı doğru"} · +${num(r.points)}</span>`;
+  return `<span class="verdict bad">${ic("x")} Yanlış</span>`;
+}
+function opAnswers(v, q, reveal) {
+  const p = opPicks(q);
+  const mineA = q.mine?.answer && typeof q.mine.answer === "object" ? q.mine.answer : null;
+  const row = (opts, key, title, icon, right, picked) => `<div class="opRow"><h3>${ic(icon)}${title}</h3><div class="answers ${v.solo ? "" : "multi"}">${(opts || [])
+    .map((o, i) => {
+      const isRight = reveal && o === right;
+      const isPicked = picked === o;
+      const cls = isRight ? "right" : reveal && isPicked ? "wrong" : isPicked ? "picked" : "";
+      return `<button class="ans ${cls}" data-${key}="${i}" ${reveal || mineA ? "disabled" : ""}><kbd>${key === "oa" ? "ABCD"[i] : i + 1}</kbd><span class="ansText">${esc(o)}</span></button>`;
+    })
+    .join("")}</div></div>`;
+  const myA = reveal ? q.reveal.results[v.me]?.answer : mineA;
+  return `<div class="opAns">${row(q.options, "oa", "Anime", "tv", reveal ? q.reveal.title : null, myA?.anime ?? p.a)}${row(q.options2, "os", "Şarkı", "music", reveal ? q.reveal.song : null, myA?.song ?? p.s)}</div>`;
+}
+// YouTube oynatıcı: yeniden çizimlerde kesilmesin diye #app dışında, sabit konumda durur ve soru alanının üstüne hizalanır.
+const yt = { host: null, frame: null, qid: "", ready: false, playing: false, want: false };
+function ytCmd(func, args = []) {
+  try { yt.frame?.contentWindow?.postMessage(JSON.stringify({ event: "command", func, args }), "https://www.youtube-nocookie.com"); } catch {}
+}
+function ytEnsure(q) {
+  if (!yt.host) {
+    yt.host = document.createElement("div");
+    yt.host.className = "ytHost";
+    yt.host.innerHTML = `<div class="ytCover"><span class="eq"><i></i><i></i><i></i><i></i><i></i></span><b>Dinle</b><small>Görüntü kapalı</small></div>`;
+    document.body.append(yt.host);
+  }
+  if (yt.qid === q.id) return;
+  yt.frame?.remove();
+  Object.assign(yt, { qid: q.id, ready: false, playing: false, want: false });
+  const f = document.createElement("iframe");
+  f.title = "Anime opening";
+  f.allow = "autoplay; encrypted-media";
+  f.referrerPolicy = "strict-origin-when-cross-origin";
+  f.src = `https://www.youtube-nocookie.com/embed/${q.yt}?enablejsapi=1&controls=0&disablekb=1&fs=0&iv_load_policy=3&modestbranding=1&playsinline=1&rel=0&cc_load_policy=0&start=${num(q.ys)}&origin=${encodeURIComponent(location.origin)}`;
+  f.addEventListener("load", () => {
+    yt.ready = true;
+    try { f.contentWindow.postMessage(JSON.stringify({ event: "listening", id: 1, channel: "widget" }), "https://www.youtube-nocookie.com"); } catch {}
+    if (yt.want) ytPlay();
+  });
+  yt.frame = f;
+  yt.host.prepend(f);
+}
+function ytPlay() {
+  yt.want = true;
+  if (!yt.ready) return;
+  ytCmd("setVolume", [Math.round(volume() * 100)]);
+  ytCmd("unMute");
+  ytCmd("playVideo");
+  yt.playing = true;
+}
+function ytStop() {
+  if (!yt.host) return;
+  yt.frame?.remove();
+  Object.assign(yt, { frame: null, qid: "", ready: false, playing: false, want: false });
+  yt.host.hidden = true;
+}
+function ytPaint() {
+  const q = view?.question;
+  const slot = screen === "room" && q?.kind === "op" && ["question", "reveal"].includes(view.phase) ? $("#ytSlot") : null;
+  if (!slot) return yt.qid && ytStop();
+  ytEnsure(q);
+  const r = slot.getBoundingClientRect();
+  Object.assign(yt.host.style, { top: `${r.top}px`, left: `${r.left}px`, width: `${r.width}px`, height: `${r.height}px` });
+  yt.host.hidden = false;
+  const pre = view.phase === "question" && hostNow() < q.start;
+  yt.host.classList.toggle("covered", view.phase === "question" && (!q.video || pre));
+  yt.host.classList.toggle("pre", pre);
+  if (!pre && !yt.want) ytPlay();
 }
 
 function rankingHtml(v) {
@@ -1174,9 +1421,10 @@ function paint() {
     const cd = $("#countdown");
     if (cd) {
       // ilk soruda önce quiz kartı görünür; sayı yalnızca son 3 saniyede çıkar
+      // soru, geri sayım bitene kadar hiç görünmez; sayı yalnızca son 3 saniyede çıkar
       const cdOn = pre && q.start - now <= 3000;
       const s = cdOn ? String(Math.ceil((q.start - now) / 1000)) : "";
-      cd.classList.toggle("on", cdOn);
+      cd.classList.toggle("on", pre);
       const n = $("#cdNum");
       const inN = $("#inNum");
       if (inN && inN.textContent !== s) inN.textContent = s;
@@ -1240,6 +1488,7 @@ function paint() {
 }
 (function loop() {
   paint();
+  ytPaint();
   requestAnimationFrame(loop);
 })();
 setInterval(() => {
@@ -1323,6 +1572,7 @@ function justPublished() {
   try {
     const q = JSON.parse(sessionStorage.getItem("jqJustPublished"));
     if (q && q.id && q.kind === "trivia") return { ...q, items: cleanItems(q.items), mine: true, genre: "Topluluk" };
+    if (q && q.id && (q.kind === "rank" || q.kind === "op")) return { ...q, items: Array.isArray(q.items) ? q.items.slice(0, 100) : [], picture: cdn(q.picture), mine: true, genre: "Topluluk" };
     return q && q.id && Array.isArray(q.tracks) ? { ...q, tracks: cleanTracksLite(q.tracks), mine: true, genre: "Topluluk" } : null;
   } catch {
     return null;
@@ -1359,21 +1609,49 @@ function setupFoot(enqueue, disabled = "") {
     : `<button class="btn ghost" data-do="soloGo" ${disabled}>${ic("play")}Solo oyna</button><button class="btn primary" data-do="hostGo" ${disabled}>${ic("users")}Arkadaşlarla oyna</button>`;
 }
 // Quiz ayarları (soru sayısı, cevap türü, kesit, şarkı seçimi): hem lobideki pencerede hem detay sayfasında
+const ITEM_KINDS = ["trivia", "rank", "op"];
+const kindName = (k) => ({ trivia: "Trivia", rank: "Sıralama quizi", op: "Anime opening quizi" })[k] || "Şarkı quizi";
 function optsHtml(l) {
+  if ((l.anime || l.kind === "rank") && !l.items) return `<div class="opts"><p class="muted">${spinner()} ${l.kind === "rank" ? "En çok dinlenen şarkılar getiriliyor…" : "Sorular hazırlanıyor…"}</p></div>`;
+  if (l.kind === "rank") {
+    if (!l.items.length) return `<div class="opts"><p class="muted">Bu sanatçı için sıralama hazırlanamadı. Biraz sonra tekrar dene.</p></div>`;
+    return `<div class="opts"><div class="rkRules">
+      <span>${ic("check")}<b>+${RANK_PTS.exact}</b> doğru yerdeki her şarkı</span>
+      <span>${ic("list-ordered")}<b>+${RANK_PTS.near}</b> ilk 5'te ama yeri yanlış</span>
+      <span>${ic("trophy")}<b>+${RANK_PTS.perfect}</b> sıranın tamamı doğruysa</span>
+    </div></div>`;
+  }
+  if (l.kind === "op") {
+    const n = num(l.items?.length);
+    const counts = [5, 10, 15, 20].filter((c) => c < n);
+    if (!counts.includes(sheetCtx.count) && sheetCtx.count !== n) sheetCtx.count = Math.min(10, n);
+    return `<div class="opts">
+        <div class="opt"><span>Görüntü</span><div class="seg" data-opt="video"><button data-v="0" aria-pressed="${!sheetCtx.video}">${ic("volume-2")}Sadece ses</button><button data-v="1" aria-pressed="${!!sheetCtx.video}">${ic("eye")}Video açık</button></div></div>
+        <div class="opt optCount"><span>Soru sayısı</span><div class="seg" data-opt="count">${[...counts, n].map((c) => `<button data-v="${c}" aria-pressed="${sheetCtx.count === c}">${c === n ? `Hepsi (${c})` : c}</button>`).join("")}</div></div>
+        <div class="rkRules"><span>${ic("tv")}<b>+${OP_PTS.anime}</b> anime</span><span>${ic("music")}<b>+${OP_PTS.song}</b> şarkı</span><span>${ic("sparkles")}<b>+${OP_PTS.both}</b> ikisi birden</span></div>
+      </div>`;
+  }
   if (l.kind === "trivia") {
     const n = num(l.items?.length);
     const counts = [5, 10, 15, 20, 30].filter((c) => c < n);
     if (!counts.includes(sheetCtx.count) && sheetCtx.count !== n) sheetCtx.count = Math.min(10, n);
     return `<div class="opts">
+        ${l.anime ? `<div class="opt"><span>Dönem</span><div class="seg" data-opt="era">${ERAS.map(([v, t]) => `<button data-v="${v}" aria-pressed="${(l.era || "pop") === v}">${t}</button>`).join("")}</div></div>` : ""}
         <div class="opt optCount"><span>Soru sayısı</span><div class="seg" data-opt="count">${[...counts, n].map((c) => `<button data-v="${c}" aria-pressed="${sheetCtx.count === c}">${c === n ? `Hepsi (${c})` : c}</button>`).join("")}</div></div>
       </div>`;
   }
   return `<div class="opts">
       <div class="opt"><span>Soru sayısı</span><div class="seg" data-opt="count">${[5, 10, 15, 20, 30].map((n) => `<button data-v="${n}" aria-pressed="${sheetCtx.count === n}">${n}</button>`).join("")}</div></div>
       <div class="opt"><span>Cevap</span><div class="seg" data-opt="mode"><button data-v="choice" aria-pressed="${sheetCtx.mode === "choice"}">Şıklı</button><button data-v="text" aria-pressed="${sheetCtx.mode === "text"}">Yazarak</button></div></div>
-      <div class="opt"><span>Kesit uzunluğu</span><div class="seg" data-opt="clip">${[5, 3, 1].map((n) => `<button data-v="${n}" aria-pressed="${sheetCtx.clip === n}">${LEVELS[n]} · ${n} sn</button>`).join("")}</div></div>
+      <div class="opt"><span>Çalış</span><div class="seg" data-opt="rev"><button data-v="0" aria-pressed="${!sheetCtx.rev}">Normal</button><button data-v="1" aria-pressed="${!!sheetCtx.rev}">${ic("rewind")}Tersten</button></div></div>
+      <div class="opt"><span>Kesit uzunluğu</span>${clipSeg()}</div>
     </div>
     <details class="tracks" id="tracksBox"><summary>${ic("list-music")} Şarkıları seç <span id="selCount"></span></summary><div id="trackList"><p class="muted">${spinner()}</p></div></details>`;
+}
+function clipSeg() {
+  const rev = !!sheetCtx.rev, opts = rev ? [10, 5, 3] : [5, 3, 1];
+  if (!opts.includes(sheetCtx.clip)) sheetCtx.clip = rev ? 5 : 3;
+  return `<div class="seg" data-opt="clip" id="clipSeg">${opts.map((n) => `<button data-v="${n}" aria-pressed="${sheetCtx.clip === n}">${lvl(n, rev)} · ${n} sn</button>`).join("")}</div>`;
 }
 async function fillTracks(l, ok) {
   try {
@@ -1392,12 +1670,12 @@ async function fillTracks(l, ok) {
 async function setupSheet() {
   const l = sheetCtx.list;
   const enqueue = mode && mode.role !== "solo" && isHost();
-  if (l.kind === "trivia") {
+  if (ITEM_KINDS.includes(l.kind)) {
     const n = num(l.items?.length);
-    sheetBody.innerHTML = `<div class="sheetHead setupHead">${cover(l, "sImg")}<div><small class="kicker">Trivia · ${esc(l.cat || "")}</small><h2>${esc(l.name)}</h2><small class="muted">${n} soru${l.author ? ` · ${esc(l.author)}` : ""}</small></div><button class="icon" data-close aria-label="Kapat">${ic("x")}</button></div>
+    sheetBody.innerHTML = `<div class="sheetHead setupHead">${cover(l, "sImg")}<div><small class="kicker">${l.kind === "trivia" ? `Trivia · ${esc(l.cat || "")}` : kindName(l.kind)}</small><h2>${esc(l.name)}</h2><small class="muted">${l.kind === "rank" ? "20 şık · 5 sıra" : `${n} ${l.kind === "op" ? "opening" : "soru"}`}${l.author ? ` · ${esc(l.author)}` : ""}</small></div><button class="icon" data-close aria-label="Kapat">${ic("x")}</button></div>
       ${l.desc ? `<p class="muted">${esc(l.desc)}</p>` : ""}
       ${optsHtml(l)}
-      <p class="hint">Süre bitmeden doğru şıkkı seç; ne kadar hızlıysan o kadar puan. Cevap süresini lobiden değiştirebilirsin.</p>
+      <p class="hint">${l.kind === "rank" ? "Şıklara dokunarak 1'den 5'e sırayla yerleştir, sonra kilitle." : l.kind === "op" ? "Opening çalarken hem animeyi hem şarkıyı seç; birini bilmek de puan getirir." : "Süre bitmeden doğru şıkkı seç; ne kadar hızlıysan o kadar puan. Cevap süresini lobiden değiştirebilirsin."}</p>
       <div class="sheetFoot">${setupFoot(enqueue)}</div>`;
     return;
   }
@@ -1413,8 +1691,9 @@ const bests = () => store.get("jqBest", {});
 function renderDetail() {
   const l = sheetCtx.list;
   const trivia = l.kind === "trivia";
+  const ik = ITEM_KINDS.includes(l.kind);
   const b = bests()[l.id] || {};
-  const n = trivia ? num(l.items?.length) : num(l.tracks?.length);
+  const n = ik ? num(l.items?.length) : num(l.tracks?.length);
   const surv = trivia && sheetCtx.gmode === "survival";
   app.innerHTML = `<section class="dt" data-g="${surv ? "survival" : "normal"}" data-play="${esc(sheetCtx.play)}">
     <button class="dtBack" data-go="home">${ic("arrow-left")}Tüm quizler</button>
@@ -1425,17 +1704,17 @@ function renderDetail() {
         <div class="dtCardInfo">
           <h1>${esc(l.name)}</h1>
           <div class="dtStats">
-            <span>${ic(trivia ? "circle-help" : "list-music")}<b id="trackCount">${trivia ? `${n} soru` : n ? `${n} şarkı` : `${spinner()} şarkılar`}</b></span>
-            <span>${ic("layers")}${esc(trivia ? l.cat || "Trivia" : l.genre || "Müzik")}</span>
+            <span>${ic(l.kind === "rank" ? "list-ordered" : l.kind === "op" ? "tv" : trivia ? "circle-help" : "list-music")}<b id="trackCount">${l.kind === "rank" ? "İlk 5 · 20 şık" : l.kind === "op" ? `${n} opening` : trivia ? `${n} soru` : n ? `${n} şarkı` : `${spinner()} şarkılar`}</b></span>
+            <span>${ic("layers")}${esc(l.kind === "rank" ? l.rcat || "Sıralama" : l.kind === "op" ? "Anime" : trivia ? l.cat || "Trivia" : l.genre || "Müzik")}</span>
             ${b.score ? `<span>${ic("trophy")}${num(b.score)}</span>` : ""}
           </div>
           ${l.author ? `<div class="dtBy">${ic("user")}<span><small>Oluşturan</small><b>${esc(l.author)}</b></span></div>` : ""}
         </div>
       </aside>
       <div class="dtPanel">
-        <span class="kicker">${trivia ? "Trivia" : "Şarkı quizi"}</span>
+        <span class="kicker">${kindName(l.kind)}</span>
         <h2>${esc(l.name)}</h2>
-        ${l.desc ? `<p class="dtDesc">${esc(l.desc)}</p>` : `<p class="dtDesc">${trivia ? "Dört şıktan doğrusunu süre bitmeden bul; ne kadar hızlıysan o kadar puan." : "Kesiti dinle, şarkının adını herkesten önce bul."}</p>`}
+        ${l.desc ? `<p class="dtDesc">${esc(l.desc)}</p>` : `<p class="dtDesc">${l.kind === "rank" ? `${esc(l.name)} için en çok dinlenen 5 şarkıyı 20 şık arasından bul ve doğru sıraya diz.` : l.kind === "op" ? "Opening'i dinle; animeyi ve şarkının adını bul. İkisini birden bilen en çok puanı alır." : trivia ? "Dört şıktan doğrusunu süre bitmeden bul; ne kadar hızlıysan o kadar puan." : "Kesiti dinle, şarkının adını herkesten önce bul."}</p>`}
         <div class="dtLabel">Nasıl oynamak istersin?</div>
         <div class="dtChoice" data-opt="play">
           <button data-v="solo" aria-pressed="${sheetCtx.play === "solo"}">${ic("user")}<span><b>Solo</b><small>Tek başına oyna</small></span></button>
@@ -1447,12 +1726,12 @@ function renderDetail() {
           <button data-v="survival" aria-pressed="${surv}" class="onlySolo">${ic("heart")}<span><b>Hayatta Kalma</b><small>İlk yanlışta oyun biter${b.streak ? ` · rekorun ${num(b.streak)}` : ""}</small></span></button>
         </div>` : ""}
         <div class="dtOpts">${optsHtml(l)}</div>
-        <button class="btn primary xl wide dtStart" data-do="detailGo" ${trivia ? "" : "disabled data-needtracks=1"}>${ic("sparkles")}Başla</button>
+        <button class="btn primary xl wide dtStart" data-do="detailGo" ${ik ? "" : "disabled data-needtracks=1"}>${ic("sparkles")}Başla</button>
         ${b.score || b.streak ? `<div class="dtRec">${ic("trophy")}<span>Rekorların: ${b.score ? `<b>${num(b.score)}</b> puan` : ""}${b.score && b.streak ? " · " : ""}${b.streak ? `<b>${num(b.streak)}</b> soruluk seri` : ""}</span></div>` : ""}
       </div>
     </div>
   </section>`;
-  if (!trivia) fillTracks(l, () => screen === "detail");
+  if (!ik) fillTracks(l, () => screen === "detail");
 }
 function drawTracks() {
   const { tracks, ids } = sheetCtx;
@@ -1463,7 +1742,11 @@ function drawTracks() {
       .join("")}</div>`;
 }
 function setupPayload() {
-  const { list, tracks, ids, count, mode: m, clip } = sheetCtx;
+  const { list, tracks, ids, count, mode: m, clip, rev } = sheetCtx;
+  if (list.kind === "rank" || list.kind === "op") {
+    if (!list.items?.length) throw Error(list.items ? "Bu quiz için soru bulunamadı." : "Sorular hazırlanıyor, birazdan tekrar dene.");
+    return { type: "add", kind: list.kind, list: { name: list.name, emoji: list.emoji || "", picture: list.picture || "" }, items: list.items, count: list.kind === "rank" ? list.items.length : count, mode: list.kind, clip: 0, video: !!sheetCtx.video };
+  }
   if (list.kind === "trivia") {
     const survival = sheetCtx.gmode === "survival" && sheetCtx.play !== "party";
     return { type: "add", kind: "trivia", list: { name: list.name, emoji: list.emoji || "" }, items: list.items, count: survival ? list.items.length : count, mode: "choice", clip: 0, survival };
@@ -1478,13 +1761,39 @@ function setupPayload() {
     count,
     mode: m,
     clip,
+    reverse: !!rev,
   };
+}
+async function loadAnime(l, era) {
+  l.era = era;
+  l.items = null;
+  try {
+    l.items = await animeItems(l.anime, era);
+    if (!l.items.length) throw Error("Bu dönem için soru bulunamadı.");
+  } catch (e) {
+    l.items = [];
+    toast(e.message || "Anime verisine şu an ulaşılamadı.", "bad");
+  }
+  if (sheetCtx?.list === l) { sheetCtx.count = Math.min(10, l.items.length || 10); const o = $(".opts"); if (o) o.outerHTML = optsHtml(l); }
+}
+async function loadRank(l) {
+  l.items = null;
+  try {
+    l.items = await rankItems(l.artistId, l.name, l.picture);
+  } catch (e) {
+    l.items = [];
+    toast(e.message || "Sıralama verisine şu an ulaşılamadı.", "bad");
+  }
+  if (sheetCtx?.list === l) { const o = $(".opts"); if (o) o.outerHTML = optsHtml(l); }
 }
 function openList(id) {
   const l = allLists().find((x) => String(x.id) === String(id));
   if (!l) return;
+  if (l.anime && !l.items) loadAnime(l, l.era || "pop");
+  if (l.kind === "rank" && !l.items?.length) loadRank(l);
   const last = store.get("jqSetup", {});
-  const ctx = { list: l, count: last.count || 10, mode: last.mode || "choice", clip: last.clip || 3, play: "solo", gmode: "normal" };
+  const rev = l.mix && ui.genre === "Tersten" ? 1 : 0;
+  const ctx = { list: l, count: last.count || 10, mode: last.mode || "choice", clip: rev ? 5 : last.clip || 3, rev, play: "solo", gmode: "normal" };
   // Lobide kurucu quiz eklerken pencere; ana sayfada tam detay sayfası
   if (mode && mode.role !== "solo" && isHost()) return openSheet("setup", ctx);
   sheetCtx = ctx;
@@ -1495,16 +1804,43 @@ function openList(id) {
 
 // ---------- Sayı Quizi: "hangisi daha büyük?" (solo, seri) ----------
 let nq = null;
+// Eşleştirme kuralı: rakip, sıralamada yakın (değeri yakın) öğelerden seçilir; seri uzadıkça pencere daralır,
+// sorular zorlaşır. Kazanan yalnızca yakınında hem büyük hem küçük rakip varsa kalır ve rakibin büyük ya da
+// küçük çıkması yarı yarıyadır; böylece "balina"dan sonra hep küçük gelen anlamsız sorular olmaz.
 function pickPair(cat, keep) {
-  const items = cat.items;
-  for (let t = 0; t < 400; t++) {
-    const a = keep || items[Math.floor(Math.random() * items.length)];
-    const b = items[Math.floor(Math.random() * items.length)];
-    if (a === b || !farEnough(cat, a, b)) continue;
-    if (nq?.recent?.includes(b.n) && t < 300) continue;
+  const sorted = cat.items.slice().sort((x, y) => x.v - y.v);
+  const rank = new Map(sorted.map((x, i) => [x, i]));
+  const n = sorted.length, streak = nq?.streak || 0;
+  const win = Math.max(2, Math.round(n * 0.3 * Math.pow(0.88, streak))); // sıralama farkı en çok bu kadar
+  const recent = nq?.recent || [];
+  const near = (a, dir) => sorted.filter((b) => {
+    const d = rank.get(b) - rank.get(a);
+    return b !== a && (dir > 0 ? d > 0 : d < 0) && Math.abs(d) <= win && farEnough(cat, a, b) && closeEnough(a, b);
+  });
+  // iki değer arasındaki fark da sınırlı: seri uzadıkça daha yakın değerler gelir
+  function closeEnough(a, b) {
+    if (cat.abs) return Math.abs(a.v - b.v) <= Math.max(cat.gap * 2, 120 * Math.pow(0.9, streak));
+    const r = Math.max(a.v, b.v) / Math.max(1e-9, Math.min(a.v, b.v));
+    return r <= Math.max(cat.gap * 1.4, 6 * Math.pow(0.88, streak));
+  }
+  const fresh = (l) => { const f = l.filter((b) => !recent.includes(b.n)); return f.length ? f : l; };
+  const any = (l) => l[Math.floor(Math.random() * l.length)];
+  if (keep) {
+    const up = fresh(near(keep, 1)), down = fresh(near(keep, -1));
+    if (up.length && down.length) {
+      const b = any(Math.random() < 0.5 ? up : down);
+      return Math.random() < 0.5 ? [keep, b] : [b, keep];
+    }
+  }
+  for (let t = 0; t < 200; t++) {
+    const a = any(sorted);
+    if (recent.includes(a.n) && t < 150) continue;
+    const opts = fresh([...near(a, 1), ...near(a, -1)]);
+    if (!opts.length) continue;
+    const b = any(opts);
     return Math.random() < 0.5 ? [a, b] : [b, a];
   }
-  return [items[0], items[items.length - 1]];
+  return [sorted[0], sorted[n - 1]];
 }
 function startNumber(id) {
   const cat = NUMCATS.find((c) => c.id === id);
@@ -1587,6 +1923,19 @@ async function doAction(a, el) {
   switch (a) {
     case "create":
       return startHost();
+    case "rkgo": {
+      const q = view?.question;
+      if (!q || q.mine || rkPicks(q).length < (num(q.slots) || 5)) return;
+      sfx("lock");
+      return act({ type: "answer", q: q.id, answer: [...rkPicks(q)] });
+    }
+    case "rkclear":
+      if (view?.question) rkPicks(view.question).length = 0;
+      sfx("unpick");
+      return rankRedraw();
+    case "ytplay":
+      yt.want = false;
+      return ytPlay();
     case "detailGo":
       if (sheetCtx.list?.kind === "trivia") sheetCtx.survival = sheetCtx.gmode === "survival";
       return doAction(sheetCtx.play === "party" ? "hostGo" : "soloGo");
@@ -1793,6 +2142,37 @@ document.addEventListener("click", async (e) => {
     }
     if (d.hit) return pickHit(Number(d.hit));
     if (d.pressed) return; // basıldığı anda işlendi
+    if (d.rk !== undefined) {
+      const q = view?.question;
+      if (!q || q.mine || view.phase !== "question" || hostNow() < q.start) return;
+      const picks = rkPicks(q), o = q.options[Number(d.rk)];
+      const at = picks.indexOf(o);
+      if (at >= 0) { picks.splice(at, 1); sfx("unpick"); }
+      else if (picks.length < (num(q.slots) || 5)) { picks.push(o); sfx("pick"); }
+      return rankRedraw();
+    }
+    if (d.rs !== undefined) {
+      const q = view?.question;
+      if (!q || q.mine) return;
+      rkPicks(q).splice(Number(d.rs), 1);
+      sfx("unpick");
+      return rankRedraw();
+    }
+    if (d.oa !== undefined || d.os !== undefined) {
+      const q = view?.question;
+      if (!q || q.mine || view.phase !== "question" || hostNow() < q.start) return;
+      const p = opPicks(q);
+      if (d.oa !== undefined) p.a = q.options[Number(d.oa)];
+      else p.s = q.options2[Number(d.os)];
+      sfx("pick");
+      $$("[data-oa]").forEach((b) => b.classList.toggle("picked", q.options[Number(b.dataset.oa)] === p.a));
+      $$("[data-os]").forEach((b) => b.classList.toggle("picked", q.options2[Number(b.dataset.os)] === p.s));
+      if (p.a && p.s) {
+        sfx("lock");
+        return act({ type: "answer", q: q.id, answer: { anime: p.a, song: p.s } });
+      }
+      return;
+    }
     if (d.ans !== undefined) {
       sfx("lock");
       const q = view.question;
@@ -1820,6 +2200,9 @@ document.addEventListener("click", async (e) => {
       const dt = $(".dt");
       if (dt && k === "gmode") dt.dataset.g = d.v;
       if (dt && k === "play") dt.dataset.play = d.v;
+      if (k === "rev") { const cs = $("#clipSeg"); if (cs) cs.outerHTML = clipSeg(); }
+      if (k === "video") sheetCtx.video = d.v === "1";
+      if (k === "era" && sheetCtx.list?.anime) { const o = $(".opts"); if (o) o.innerHTML = `<p class="muted">${spinner()} Sorular hazırlanıyor…</p>`; loadAnime(sheetCtx.list, d.v); }
       return;
     }
     if (d.tracks) {

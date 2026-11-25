@@ -1,7 +1,7 @@
 // Oyun motoru. Kurucunun tarayıcısında çalışır ve tek doğruluk kaynağıdır.
 // Diğer oyuncular yalnızca kendilerine özel durum özetini (view) alır.
-import { fold, preview } from "./music.js";
-import { cleanItems, cleanEmoji } from "./trivia.js";
+import { fold, preview } from "./music.js?v=3";
+import { cleanItems, cleanEmoji } from "./trivia.js?v=2";
 
 export const MAX_PLAYERS = 12;
 const PLAYS = 3;
@@ -9,6 +9,36 @@ const COUNTDOWN = 3000;
 const INTRO = 2500;
 const AUTO_NEXT = 3000; // çok oyunculu: sonuç ekranı bu kadar sonra kendiliğinden geçer
 const NEXT_QUIZ = 30000; // çok oyunculu: quiz arası sıralama ekranı bu kadar sonra kendiliğinden geçer
+const RANK_N = 5; // sıralama quizi: kaç şarkı sıralanır
+const RANK_SECS = 60; // sıralama sorusu için süre (en az)
+const OP_SECS = 30; // anime opening sorusu için süre (en az)
+
+// Sıralama quizi puanları: doğru yerdeki her şarkı 100, ilk 5'te ama yanlış yerde 30, sıranın tamamı doğruysa +300.
+export const RANK_PTS = { exact: 100, near: 30, perfect: 300 };
+// Anime opening: animeyi bilmek 50, şarkıyı bilmek 50, ikisini birden bilmek +50 (hıza göre %60-100 arası)
+export const OP_PTS = { anime: 50, song: 50, both: 50 };
+
+const txt = (v, n = 120) => (typeof v === "string" ? v.trim().slice(0, n) : "");
+const YT = /^[\w-]{11}$/;
+/** Sıralama quizi soruları: { q, artist, cover, top: [5 doğru sıra], pool: [20 şık] } */
+export function cleanRank(items) {
+  return (Array.isArray(items) ? items : [])
+    .slice(0, 20)
+    .map((it) => {
+      const top = [...new Set((it?.top || []).map((x) => txt(x)).filter(Boolean))].slice(0, RANK_N);
+      const pool = [...new Set([...top, ...(it?.pool || []).map((x) => txt(x)).filter(Boolean)])].slice(0, 20);
+      return { q: txt(it?.q, 160), artist: txt(it?.artist, 80), cover: txt(it?.cover, 300), top, pool };
+    })
+    .filter((it) => it.q && it.top.length === RANK_N && it.pool.length >= 8);
+}
+/** Anime opening soruları: { yt: YouTube video kimliği, s: başlangıç sn, anime, song } */
+export function cleanOps(items) {
+  return (Array.isArray(items) ? items : [])
+    .slice(0, 100)
+    .map((it) => ({ yt: YT.test(it?.yt || "") ? it.yt : "", s: Math.max(0, Math.min(600, Math.round(Number(it?.s) || 0))), anime: txt(it?.anime, 80), song: txt(it?.song, 80) }))
+    .filter((it) => it.yt && it.anime && it.song);
+}
+const distinct = (arr, not, n) => shuffle([...new Map(arr.filter((x) => x.toLowerCase() !== not.toLowerCase()).map((x) => [x.toLowerCase(), x])).values()]).slice(0, n);
 
 const shuffle = (a) => {
   a = [...a];
@@ -119,8 +149,28 @@ export class Game {
   }
 
   // ---- kuyruk ----
-  addSet({ list, tracks, ids, count, mode, clip, kind, items, survival }) {
+  addSet({ list, tracks, ids, count, mode, clip, kind, items, survival, reverse, video }) {
     if (this.queue.length >= 12) throw Error("Kuyrukta en fazla 12 quiz olabilir.");
+    if (kind === "rank" || kind === "op") {
+      const pool = kind === "rank" ? cleanRank(items) : cleanOps(items);
+      if (!pool.length) throw Error(kind === "rank" ? "Bu sıralama quizi hazırlanamadı." : "Bu quizde oynanabilir opening yok.");
+      if (kind === "op" && pool.length < 2) throw Error("Anime opening quizinde en az 2 opening olmalı.");
+      const n = Math.max(1, Math.min(pool.length, Number(count) || 10, 100));
+      this.queue.push({
+        id: uid(),
+        kind,
+        name: list.name,
+        art: "",
+        picture: list.picture || "",
+        emoji: list.emoji ? cleanEmoji(list.emoji) : "",
+        tracks: pool,
+        questions: shuffle(pool).slice(0, n),
+        mode: kind,
+        clip: 0,
+        video: !!video,
+      });
+      return;
+    }
     if (kind === "trivia") {
       const pool = cleanItems(items);
       if (pool.length < 2) throw Error("Bu triviada yeterli soru yok.");
@@ -154,7 +204,9 @@ export class Game {
       tracks,
       questions: shuffle(pool).slice(0, n),
       mode: mode === "text" ? "text" : "choice",
-      clip: [1, 3, 5].includes(clip) ? clip : 3,
+      // tersten çalınan quizde kesit daha uzun: kolay 10, orta 5, zor 3 sn
+      reverse: !!reverse,
+      clip: reverse ? ([3, 5, 10].includes(clip) ? clip : 5) : [1, 3, 5].includes(clip) ? clip : 3,
     });
   }
 
@@ -184,12 +236,39 @@ export class Game {
         count: set.questions.length,
         top: [...this.players].sort((a, b) => b.round - a.round).map((p) => ({ pid: p.pid, name: p.name, pts: p.round })),
         emoji: set.emoji || "",
-        set: { kind: set.kind, emoji: set.emoji, name: set.name, art: set.art, picture: set.picture, tracks: set.tracks, pool: set.questions.length, mode: set.mode, clip: set.clip },
+        set: { kind: set.kind, emoji: set.emoji, name: set.name, art: set.art, picture: set.picture, tracks: set.tracks, pool: set.questions.length, mode: set.mode, clip: set.clip, reverse: !!set.reverse, video: !!set.video },
       });
       if (this.history.length > 10) this.history.shift();
       this.rankAt = this.phase === "ranking" && !this.solo ? Date.now() + NEXT_QUIZ : null;
       this.schedule();
       this.question = null;
+      this.emit();
+      return;
+    }
+    if (set.kind === "rank") {
+      const item = set.questions[this.index];
+      const start = Date.now() + this.lead();
+      this.question = { id: uid(), item, options: shuffle(item.pool), answers: {}, start, end: start + Math.max(RANK_SECS, this.seconds * 3) * 1000 };
+      this.phase = "question";
+      this.schedule();
+      this.emit();
+      return;
+    }
+    if (set.kind === "op") {
+      const item = set.questions[this.index];
+      const start = Date.now() + this.lead();
+      const animes = set.tracks.map((t) => t.anime), songs = set.tracks.map((t) => t.song);
+      this.question = {
+        id: uid(),
+        item,
+        options: shuffle([item.anime, ...distinct(animes, item.anime, 3)]),
+        options2: shuffle([item.song, ...distinct(songs, item.song, 3)]),
+        answers: {},
+        start,
+        end: start + Math.max(OP_SECS, this.seconds) * 1000,
+      };
+      this.phase = "question";
+      this.schedule();
       this.emit();
       return;
     }
@@ -283,11 +362,34 @@ export class Game {
     if (this.phase !== "question" || now < q.start) throw Error("Bu soru cevap almıyor.");
     if (q.answers[pid]) return;
     const set = this.queue[this.set];
+    const left = 1 - (now - q.start) / (q.end - q.start);
+    if (set.kind === "rank") {
+      const order = Array.isArray(text) ? text.map((x) => String(x ?? "").slice(0, 120)) : [];
+      if (order.length !== RANK_N || new Set(order).size !== RANK_N || !order.every((x) => q.options.includes(x))) throw Error(`${RANK_N} farklı şarkı seçip sırala.`);
+      const top = q.item.top;
+      const marks = order.map((x, i) => (top[i] === x ? 2 : top.includes(x) ? 1 : 0));
+      const perfect = marks.every((m) => m === 2);
+      const points = marks.reduce((a, m) => a + (m === 2 ? RANK_PTS.exact : m === 1 ? RANK_PTS.near : 0), 0) + (perfect ? RANK_PTS.perfect : 0);
+      q.answers[pid] = { answer: order, marks, correct: perfect, partial: points > 0, points, ms: now - q.start };
+      if (this.solo) this.reveal();
+      else if (!this.checkAllAnswered()) this.emit();
+      return;
+    }
+    if (set.kind === "op") {
+      const anime = String(text?.anime ?? ""), song = String(text?.song ?? "");
+      if (!q.options.includes(anime) || !q.options2.includes(song)) throw Error("Hem animeyi hem şarkıyı seç.");
+      const a = anime === q.item.anime, b = song === q.item.song;
+      const base = (a ? OP_PTS.anime : 0) + (b ? OP_PTS.song : 0) + (a && b ? OP_PTS.both : 0);
+      const points = Math.round(base * (0.6 + 0.4 * Math.max(0, left)));
+      q.answers[pid] = { answer: { anime, song }, hit: { anime: a, song: b }, correct: a && b, partial: a || b, points, ms: now - q.start };
+      if (this.solo) this.reveal();
+      else if (!this.checkAllAnswered()) this.emit();
+      return;
+    }
     const answer = String(text ?? "").trim().slice(0, 120);
     if (!answer) throw Error("Bir cevap yaz.");
     if (set.mode === "choice" && !q.options.includes(answer)) throw Error("Geçerli bir şık seç.");
     const correct = set.kind === "trivia" ? answer === q.item.a[0] : set.mode === "choice" ? answer === q.track.title : matches(answer, q.track);
-    const left = 1 - (now - q.start) / (q.end - q.start);
     const points = correct ? Math.max(10, Math.min(100, Math.round(10 + 90 * left))) : 0;
     q.answers[pid] = { answer, correct, points, ms: now - q.start };
     if (this.solo) this.reveal();
@@ -415,6 +517,8 @@ export class Game {
           questions: shuffle(pool).slice(0, h.set.pool),
           mode: h.set.mode,
           clip: h.set.clip,
+          reverse: !!h.set.reverse,
+          video: !!h.set.video,
         });
         break;
       }
@@ -467,6 +571,8 @@ export class Game {
         streak: s.streak || 0,
         mode: s.mode,
         clip: s.clip,
+        reverse: !!s.reverse,
+        video: !!s.video,
       })),
       set: this.set,
       index: this.index,
@@ -477,16 +583,24 @@ export class Game {
           ? {
               id: q.id,
               kind: set.kind || "song",
-              text: set.kind === "trivia" ? q.item.q : null,
+              text: set.kind === "trivia" || set.kind === "rank" ? q.item.q : set.kind === "op" ? "Bu opening hangi animenin, şarkının adı ne?" : null,
+              picture: set.kind === "rank" ? q.item.cover || set.picture : null,
+              artist: set.kind === "rank" ? q.item.artist : null,
+              slots: set.kind === "rank" ? RANK_N : null,
+              yt: set.kind === "op" ? q.item.yt : null,
+              ys: set.kind === "op" ? q.item.s : null,
+              video: set.kind === "op" ? !!set.video : null,
+              options2: set.kind === "op" ? q.options2 : null,
               pic: set.kind === "trivia" && q.item.iw === "q" ? q.item.img : null,
               url: this.phase === "preparing" ? null : q.url,
               offset: q.offset,
               clip: set.clip,
+              reverse: !!set.reverse,
               mode: set.mode,
               start: q.start,
               end: q.end,
               autoAt: reveal && !this.solo ? q.autoAt : null,
-              options: set.mode === "choice" ? q.options : null,
+              options: ["choice", "rank", "op"].includes(set.mode) ? q.options : null,
               answered: Object.keys(q.answers),
               mine: mine ? (reveal ? mine : { answer: mine.answer }) : null,
               votes:
@@ -495,17 +609,19 @@ export class Game {
                   : {},
               reveal: reveal
                 ? {
-                    title: set.kind === "trivia" ? q.item.a[0] : q.track.title,
+                    title: set.kind === "trivia" ? q.item.a[0] : set.kind === "rank" ? q.item.artist : set.kind === "op" ? q.item.anime : q.track.title,
+                    song: set.kind === "op" ? q.item.song : null,
+                    order: set.kind === "rank" ? q.item.top : null,
                     flag: set.kind === "trivia" ? q.item.f || null : null,
                     emo: set.kind === "trivia" ? q.item.e || null : null,
                     pic: set.kind === "trivia" && q.item.iw !== "q" ? q.item.img || null : null,
-                    artist: set.kind === "trivia" ? "" : q.track.artist,
+                    artist: set.kind === "trivia" || set.kind === "rank" || set.kind === "op" ? "" : q.track.artist,
                     cover: q.cover,
                     album: q.album,
                     results: Object.fromEntries(
                       Object.entries(q.answers).map(([k, v]) => [
                         k,
-                        { answer: v.answer, correct: v.correct, points: v.points, ms: v.ms },
+                        { answer: v.answer, correct: v.correct, partial: !!v.partial, marks: v.marks || null, hit: v.hit || null, points: v.points, ms: v.ms },
                       ]),
                     ),
                   }

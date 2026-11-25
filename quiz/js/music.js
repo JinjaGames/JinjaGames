@@ -78,6 +78,23 @@ export const PRESETS = [
   { id: "duman", name: "Duman", genre: "Rock", artists: [14826], picture: "https://cdn-images.dzcdn.net/images/artist/420bd789cacec4d562f981f6eae6c76e/500x500-000000-80-0-0.jpg" },
 ];
 
+// Karma listeler: bir türden birçok sanatçının en bilinen şarkıları (sanatçı başına en çok `per` şarkı).
+// Normal ya da tersten çalınarak oynanır.
+export const MIXES = [
+  { id: "mx-trpop", name: "Türkçe Pop", genre: "Pop", mix: true, emoji: "🎤", artists: [3254, 9289, 211393, 4317, 10819570, 1385987, 124797, 1381155, 91598, 4313, 1171997, 1511107], picture: "https://cdn-images.dzcdn.net/images/artist/71f42a0742089955587933a5e97c41e7/1000x1000-000000-80-0-0.jpg" },
+  { id: "mx-trrap", name: "Türkçe Rap", genre: "Rap", mix: true, emoji: "🎧", artists: [8354140, 14546, 12934, 14414849, 250495, 72196, 1666381, 575796, 72272502, 389038, 1550629, 11818971], picture: "https://cdn-images.dzcdn.net/images/artist/86897403b02175990e9d84322a94654a/1000x1000-000000-80-0-0.jpg" },
+  { id: "mx-trrock", name: "Türkçe Rock", genre: "Rock", mix: true, emoji: "🎸", artists: [14826, 16758, 12018, 15049, 299117, 97094, 13877, 124344, 12875, 6696895, 343660, 6433], picture: "https://cdn-images.dzcdn.net/images/artist/420bd789cacec4d562f981f6eae6c76e/1000x1000-000000-80-0-0.jpg" },
+  { id: "mx-enpop", name: "İngilizce Pop", genre: "Pop", mix: true, emoji: "✨", artists: [12246, 384236, 8706544, 4050205, 1562681, 9635624, 5313805, 288166, 429675, 75491, 564, 1176900], picture: "https://cdn-images.dzcdn.net/images/artist/cc2495870fe1a792ad0cdb05501ad5ec/1000x1000-000000-80-0-0.jpg" },
+  { id: "mx-enrap", name: "İngilizce Rap", genre: "Rap", mix: true, emoji: "🔥", artists: [13, 246791, 525046, 4495513, 230, 66, 7543848, 339209, 74309, 3, 165930, 6853403], picture: "https://cdn-images.dzcdn.net/images/artist/0f30bbd33a680030054af004d698d6ac/1000x1000-000000-80-0-0.jpg" },
+  { id: "mx-kpop", name: "K-Pop", genre: "Pop", mix: true, emoji: "💜", artists: [6982223, 10803980, 161553, 13923487, 178008437, 88684, 240582, 113547672, 168158797, 3649631, 65209, 9172904], picture: "https://cdn-images.dzcdn.net/images/artist/b5c64fa8216ca158e52b4d88bd9388ff/1000x1000-000000-80-0-0.jpg" },
+  { id: "mx-arabesk", name: "Arabesk & Fantezi", genre: "Pop", mix: true, emoji: "🥀", artists: [99563, 97092, 113766, 254617, 97973, 1382158, 16665, 97047, 98036, 101748], picture: "https://cdn-images.dzcdn.net/images/artist/e2f90f2f5ff19404cb530422c42b53ab/1000x1000-000000-80-0-0.jpg" },
+  { id: "mx-tr2000", name: "2000'ler Türkçe Pop", genre: "Pop", mix: true, emoji: "📼", artists: [4318, 1385347, 97007, 13855, 101076, 13128, 1412102, 4507310, 6015, 16505, 347253, 16628], picture: "https://cdn-images.dzcdn.net/images/artist/7174fef98d267c96a5d38ff7615727a3/1000x1000-000000-80-0-0.jpg" },
+  { id: "mx-rock", name: "Rock Klasikleri", genre: "Rock", mix: true, emoji: "🤘", artists: [412, 415, 115, 663, 119, 92, 1, 848, 860, 637, 182, 892], picture: "https://cdn-images.dzcdn.net/images/artist/71eeb9e2eeb375df35a3c0654a5a01ab/1000x1000-000000-80-0-0.jpg" },
+  { id: "mx-latin", name: "Latin & Reggaeton", genre: "Pop", mix: true, emoji: "💃", artists: [10583405, 160, 4860761, 3839, 554792, 5297021, 4937383, 1424602, 2792, 6707], picture: "https://cdn-images.dzcdn.net/images/artist/044a3f315b041864887a8dd8709e6926/1000x1000-000000-80-0-0.jpg" },
+  { id: "mx-edm", name: "Elektronik & Dans", genre: "Pop", mix: true, emoji: "🎛️", artists: [542, 12178, 293585, 3968561, 7890702, 4768753, 27, 4999707, 407188, 434], picture: "https://cdn-images.dzcdn.net/images/artist/2d527fa03e106ed82a28f161694278d3/1000x1000-000000-80-0-0.jpg" },
+  { id: "mx-anadolu", name: "Anadolu Rock & Efsaneler", genre: "Rock", mix: true, emoji: "🪕", artists: [13758, 6435, 328791, 459471, 111965, 325135, 69872, 96340, 1561028, 114917], picture: "https://cdn-images.dzcdn.net/images/artist/4198b876473e604e493f0c0573349ca8/1000x1000-000000-80-0-0.jpg" },
+].map((m) => ({ ...m, per: 20 }));
+
 // Hazır listelerin sanatçı görselleri sitede kopya olarak tutulmaz; Deezer'ın kendi görseli
 // açılışta bir kez istenir (aranan sanatçılarda olduğu gibi).
 // Hazır listelerin görselleri: önce cihazdaki son bilinen adres (yoksa gömülü olan) hemen kullanılır,
@@ -123,8 +140,10 @@ export async function loadTracks(list) {
     );
     const seen = new Set();
     const out = [];
-    for (const page of pages)
+    for (const page of pages) {
+      let taken = 0;
       for (const t of page.data || []) {
+        if (list.per && taken >= list.per) break;
         if (!list.artists.includes(int(t.artist?.id))) continue; // konuk olunan başka sanatçı şarkıları
         const title = (t.title_short || t.title || "").trim();
         const k = fold(title);
@@ -138,6 +157,7 @@ export async function loadTracks(list) {
         )
           continue;
         seen.add(k);
+        taken++;
         out.push({
           id: int(t.id),
           title: str(title),
@@ -145,6 +165,7 @@ export async function loadTracks(list) {
           cover: cdn(t.album?.cover_medium),
         });
       }
+    }
     if (!out.length) throw Error("Bu liste için çalınabilir şarkı bulunamadı.");
     return out;
   })();
@@ -229,7 +250,7 @@ export async function preview(trackId) {
   };
 }
 
-import { cleanItems, cleanCat, cleanEmoji } from "./trivia.js";
+import { cleanItems, cleanCat, cleanEmoji } from "./trivia.js?v=2";
 
 // Kullanıcının bulduğu sanatçılar ve kendi (yalnızca bende) quizleri tarayıcıda saklanır.
 const KEY = "jqCustomLists";
@@ -247,6 +268,19 @@ export function customLists() {
         cat: cleanCat(l.cat),
         emoji: cleanEmoji(l.emoji),
         items: cleanItems(l.items),
+        genre: "Senin",
+      } : l.kind === "rank" || l.kind === "op" ? {
+        // sıralama ve anime opening: sorular oyuna eklenirken motor tarafından ayrıca temizlenir
+        id: str(l.id, 40).replace(/[^A-Za-z0-9_-]/g, ""),
+        kind: l.kind,
+        name: str(l.name, 80),
+        desc: str(l.desc, 160),
+        cat: l.kind === "op" ? "Anime" : "",
+        emoji: l.kind === "op" ? cleanEmoji(l.emoji) : "",
+        picture: cdn(l.picture),
+        artist: str(l.artist, 80),
+        artistId: int(l.artistId),
+        items: Array.isArray(l.items) ? l.items.slice(0, 100) : [],
         genre: "Senin",
       } : ({
         id: str(l.id, 40).replace(/[^A-Za-z0-9_-]/g, ""),

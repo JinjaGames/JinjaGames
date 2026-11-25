@@ -42,9 +42,6 @@
 .pr:hover { transform: translateY(-1px); }
 .pr:focus-visible { outline: 2px solid var(--lime); outline-offset: 2px; }
 /* oyuncu ayrıntısı */
-.pd { width: min(920px, calc(100vw - 24px)); max-height: calc(100dvh - 24px); padding: 22px; border: 1px solid var(--line2); border-radius: 22px; background: #0b1a15; color: #fff; overflow: auto; }
-.pd::backdrop { background: #02080699; backdrop-filter: blur(6px); }
-.pd[open] { animation: pdIn .22s ease-out; }
 @keyframes pdIn { from { opacity: 0; transform: translateY(14px) scale(.98); } }
 .pdX { position: sticky; top: 0; float: right; width: 38px; height: 38px; border-radius: 50%; border: 1px solid var(--line2); background: #07130f; color: #fff; font-size: 16px; cursor: pointer; z-index: 3; }
 .pdTop { display: grid; grid-template-columns: 220px minmax(0, 1fr); gap: 24px; align-items: start; }
@@ -53,8 +50,8 @@
 .pdInfo p { color: var(--ink2); font-size: 14px; margin: 3px 0; }
 .pdFacts { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; margin: 14px 0 6px; }
 .pdFacts span { display: grid; gap: 2px; padding: 9px 10px; border-radius: 12px; background: #07130f; border: 1px solid var(--line); font: 800 16px var(--disp); }
-.pdFacts em, .pd h4 small { font: 600 11.5px var(--sans); font-style: normal; color: var(--muted); }
-.pd h4 { font: 800 15px var(--disp); margin: 18px 0 8px; }
+.pdFacts em, .pdIn h4 small { font: 600 11.5px var(--sans); font-style: normal; color: var(--muted); }
+.pdIn h4 { font: 800 15px var(--disp); margin: 18px 0 8px; }
 .pdRoles { display: flex; flex-wrap: wrap; gap: 6px; }
 .pdRoles > span { display: inline-flex; align-items: center; gap: 8px; padding: 6px 10px; border-radius: 12px; background: #07130f; border: 1px solid var(--line); }
 .pdRoles > span.on { border-color: var(--gold); box-shadow: 0 0 0 3px #ffcf5c1f; }
@@ -75,7 +72,7 @@
 .pdS { display: grid; justify-items: center; gap: 6px; padding: 0; border: 0; background: none; color: #fff; cursor: pointer; transition: transform .15s; }
 .pdS:hover { transform: translateY(-3px); }
 @media (max-width: 760px) {
-  .pd { padding: 16px; }
+  .pdIn { padding: 16px; }
   .pdTop { grid-template-columns: 130px minmax(0, 1fr); gap: 14px; }
   .pdFacts { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .pdAttrs { grid-template-columns: 1fr 1fr; }
@@ -86,3 +83,10 @@
 @media (max-width: 1100px) {
   .prBest { grid-column: 1 / -1; display: flex; flex-wrap: wrap; justify-content: flex-start; align-items: center; gap: 10px; padding-top: 2px; }
 }
+
+/* oyuncu ayrıntısı: listenin içinde açılan bölüm (ayrı pencere ya da bulanık arka plan yok) */
+.pdIn { position: relative; padding: 22px; border-radius: 20px; background: linear-gradient(180deg, #0f2219, #0b1a15); border: 1px solid #4ef08a55; box-shadow: 0 18px 40px -24px #000; animation: pdOpen .28s ease-out; scroll-margin: 140px 0 24px; }
+@keyframes pdOpen { from { opacity: 0; transform: translateY(-8px); } }
+.pdIn .pdX { position: absolute; top: 14px; right: 14px; float: none; }
+.pr.open { border-color: #4ef08a88; border-bottom-left-radius: 8px; border-bottom-right-radius: 8px; }
+@media (max-width: 760px) { .pdIn { padding: 16px; } }

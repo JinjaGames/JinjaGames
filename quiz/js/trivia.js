@@ -12,6 +12,7 @@ export const EMOJIS = ["🧠", "🔥", "🌍", "🏛️", "🎖️", "📜", "�
 
 // Kapak görselleri: kategori başına renk tonu ve süs simgeleri
 export const TART = {
+  Anime: [330, "⚔️", "🌸"],
   "Genel Kültür": [265, "💡", "❓"],
   Tarih: [32, "⚔️", "🏺"],
   Coğrafya: [168, "🧭", "🏔️"],
@@ -32,6 +33,8 @@ const key = (v) => v.toLocaleLowerCase("tr").replace(/\s+/g, "");
 // (data: adresi), iw = görsel ne zaman görünsün ("q" soruyla, "a" cevap açılınca).
 export const FLAG = /^[a-z]{2}(-[a-z]{2,3})?$/;
 export const IMG = /^data:image\/(jpeg|png|webp);base64,[A-Za-z0-9+/=]{1,24000}$/;
+// Anime quizlerinin görselleri: yalnızca AniList'in görsel sunucusu
+export const ANI_IMG = /^https:\/\/s4\.anilist\.co\/file\/anilistcdn\/[\w\/.-]{1,200}$/;
 const EMO = /^[\p{Extended_Pictographic}\p{Regional_Indicator}‍️⃣\p{Emoji_Modifier}#*0-9]{1,16}$/u;
 export const flagUrl = (f) => (FLAG.test(f || "") ? `https://flagcdn.com/w320/${f}.png` : "");
 export const cleanEmo = (e) => (typeof e === "string" && EMO.test(e) ? e : "");
@@ -46,7 +49,7 @@ export function cleanItems(arr) {
     const o = { q, a };
     if (FLAG.test(it?.f || "")) o.f = it.f;
     if (cleanEmo(it?.e)) o.e = it.e;
-    if (typeof it?.img === "string" && IMG.test(it.img)) {
+    if (typeof it?.img === "string" && (IMG.test(it.img) || ANI_IMG.test(it.img))) {
       o.img = it.img;
       o.iw = it.iw === "q" ? "q" : "a";
     }
