@@ -27,7 +27,9 @@ export function cleanRank(items) {
     .map((it) => {
       const top = [...new Set((it?.top || []).map((x) => txt(x)).filter(Boolean))].slice(0, RANK_N);
       const pool = [...new Set([...top, ...(it?.pool || []).map((x) => txt(x)).filter(Boolean)])].slice(0, 20);
-      return { q: txt(it?.q, 160), artist: txt(it?.artist, 80), cover: txt(it?.cover, 300), top, pool };
+      // n: ilk 5'in dinlenme sayıları (veri varsa); çözümde yanlarında gösterilir
+      const n = Array.isArray(it?.n) ? it.n.slice(0, RANK_N).map((x) => (Number.isSafeInteger(Number(x)) && Number(x) >= 0 ? Number(x) : 0)) : null;
+      return { q: txt(it?.q, 160), artist: txt(it?.artist, 80), cover: txt(it?.cover, 300), top, pool, ...(n && n.some(Boolean) ? { n } : {}) };
     })
     .filter((it) => it.q && it.top.length === RANK_N && it.pool.length >= 8);
 }
@@ -614,6 +616,7 @@ export class Game {
                     title: set.kind === "trivia" ? q.item.a[0] : set.kind === "rank" ? q.item.artist : set.kind === "op" ? q.item.anime : q.track.title,
                     song: set.kind === "op" ? q.item.song : null,
                     order: set.kind === "rank" ? q.item.top : null,
+                    plays: set.kind === "rank" ? q.item.n || null : null,
                     flag: set.kind === "trivia" ? q.item.f || null : null,
                     emo: set.kind === "trivia" ? q.item.e || null : null,
                     pic: set.kind === "trivia" && q.item.iw !== "q" ? q.item.img || null : null,

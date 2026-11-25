@@ -1,11 +1,11 @@
 // JinjaQuiz: quiz oluşturma sayfası (/quiz/create/). Sanatçı ve şarkı araması ayrı sekmelerde;
 // sanatçının popüler şarkıları ve tüm albümleri tek tek ya da topluca eklenebilir.
 import { searchArtists, searchTracks, artistInfo, artistTop, artistAlbums, albumTracks, ownTracks, isAlternate, customLists, saveCustom, removeCustom, cleanTracks, fold, cdn } from "./music.js?v=4";
-import { fetchCommunity, publishQuiz, removeQuiz, myPubkey, MIN_TRACKS, MAX_TRACKS } from "./community.js?v=3";
+import { fetchCommunity, publishQuiz, removeQuiz, myPubkey, MIN_TRACKS, MAX_TRACKS } from "./community.js?v=4";
 import { TCATS, TART, EMOJIS, T_MIN, T_MAX, cleanItems, cleanCat, cleanEmoji, isTF, IMG } from "./trivia.js?v=2";
-import { cleanOps, RANK_PTS, OP_PTS } from "./engine.js?v=6";
+import { cleanOps, RANK_PTS, OP_PTS } from "./engine.js?v=7";
 import { rankItems } from "./rank.js?v=2";
-import { OP_MIN } from "./community.js?v=3";
+import { OP_MIN } from "./community.js?v=4";
 
 const $ = (s, r = document) => r.querySelector(s);
 const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
@@ -189,10 +189,11 @@ function rankMain() {
   if (R?.busy) body = `<div class="crBuild">${R.artist.picture ? `<img src="${esc(R.artist.picture)}" alt="">` : ""}<div class="crBuildSteps"><b>${esc(R.artist.name)}</b><span class="on">${spinner()} Dinlenme verileri alınıyor</span><span>En çok dinlenen 5 şarkı sıralanıyor</span><span>15 şaşırtmaca şık seçiliyor</span></div></div>`;
   else if (R?.items) {
     const it = R.items[0];
+    // Oluşturan da cevapları görmesin: yalnızca hazır olduğu ve kaç şık olduğu gösterilir.
     body = `<div class="crRankDone"><div class="crGroupHead"><b>${ic("check")} Quiz hazır</b><button class="btn soft sm" data-do="rankRefresh">${ic("rotate-ccw")}Şıkları yeniden karıştır</button></div>
-      <p class="muted">Oyuncular bu 5 şarkıyı aşağıdaki 20 şık arasından bulup doğru sıraya dizecek.</p>
-      <ol class="crRankTop">${it.top.map((t) => `<li>${esc(t)}</li>`).join("")}</ol>
-      <div class="crRankPool">${it.pool.map((t) => `<span class="${it.top.includes(t) ? "top" : ""}">${esc(t)}</span>`).join("")}</div></div>`;
+      <p class="muted">${esc(R.artist.name)} için en çok dinlenen 5 şarkı ve 15 şaşırtmaca şık hazırlandı. Cevapları sen de görmüyorsun; yayınladıktan sonra sen de oynayabilirsin.</p>
+      <ol class="crRankTop hidden">${it.top.map(() => `<li><span class="crLock">${ic("eye-off")} Gizli</span></li>`).join("")}</ol>
+      <p class="crRankPoolInfo">${ic("list-music")} ${it.pool.length} şık</p></div>`;
   } else if (st.busy && !st.results) body = `<p class="muted crPad">${spinner()} Aranıyor…</p>`;
   else if (st.results)
     body = st.results.length

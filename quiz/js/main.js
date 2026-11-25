@@ -1,11 +1,11 @@
 import { PRESETS, MIXES, loadTracks, searchArtists, customLists, saveCustom, removeCustom, fold, cdn, realPic, loadPresetPictures } from "./music.js?v=4";
 import { sfx, sfxEnabled, setSfx, setSfxVolume } from "./sfx.js?v=3";
 import { randomName } from "./names.js";
-import { fetchCommunity, removeQuiz, hideQuiz, unhideQuiz, hiddenList } from "./community.js?v=3";
-import { Game, MAX_PLAYERS, RANK_PTS, OP_PTS } from "./engine.js?v=6";
+import { fetchCommunity, removeQuiz, hideQuiz, unhideQuiz, hiddenList } from "./community.js?v=4";
+import { Game, MAX_PLAYERS, RANK_PTS, OP_PTS } from "./engine.js?v=7";
 import { RANK_QUIZZES, RANK_CATS, rankItems } from "./rank.js?v=2";
 import { TRIVIA, TCATS, TART, EMOJIS, cleanItems, IMG, ANI_IMG, FLAG, flagUrl, cleanEmo } from "./trivia.js?v=2";
-import { ANIME_QUIZZES, ERAS, animeItems } from "./anime.js";
+import { ANIME_QUIZZES, ERAS, animeItems } from "./anime.js?v=2";
 import { NUMCATS, fmtNum, farEnough } from "./numdata.js";
 import { hostRoom, guestRoom, newCode, validCode } from "./net.js";
 
@@ -797,7 +797,7 @@ function acard(l, k = 0) {
   </button>`;
 }
 function cardSub(l) {
-  if (l.anime) return "Anime · her açılışta yeni sorular";
+  if (l.anime) return l.items?.length ? `Anime · ${l.items.length} soru` : "Anime trivia";
   if (l.kind === "rank") return l.genre === "Topluluk" ? `${ic("user")}${esc(l.author)} · Sıralama` : `${esc(l.rcat || "Sıralama")} · ilk 5 şarkı`;
   if (l.kind === "op") return `${l.genre === "Topluluk" ? `${ic("user")}${esc(l.author)} · ` : ""}Anime opening · ${num(l.items?.length)} opening`;
   if (l.mix) return `${esc(l.genre)} · ${num(l.artists?.length)} sanatçı`;
@@ -1132,6 +1132,8 @@ function gameHtml(v) {
 }
 
 // ---------- Sıralama sorusu ----------
+// 57M, 840K, 1B gibi küsuratsız kısa sayı
+const shortNum = (n) => (n >= 1e9 ? `${Math.round(n / 1e9)}B` : n >= 1e6 ? `${Math.round(n / 1e6)}M` : n >= 1e3 ? `${Math.round(n / 1e3)}K` : String(Math.round(n)));
 // Sıralar sabit yerlidir (boşluk kalabilir). Tıklayınca şarkı, en son konulan yerden sonraki ilk boşluğa
 // (yoksa baştaki ilk boşluğa) gider; ilk şarkı 1. sıraya. Sürükle-bırak ile istenen sıraya da konur.
 const rk = { qid: "", picks: [], last: -1 };
@@ -1179,7 +1181,8 @@ function rankBody(v, q, reveal) {
       const said = mineA[i];
       const m = r?.marks?.[i];
       const cls = m === 2 ? "ok" : m === 1 ? "near" : said ? "miss" : "";
-      return `<li class="rkRow ${cls}" style="--i:${i}"><b class="rkN">${i + 1}</b><span class="rkT">${esc(t)}</span>${said ? `<span class="rkSaid">${m === 2 ? ic("check") : m === 1 ? "~" : ic("x")}<small>${m === 2 ? "Doğru" : esc(said)}</small></span>` : ""}</li>`;
+      const pc = num(q.reveal.plays?.[i]);
+      return `<li class="rkRow ${cls}" style="--i:${i}"><b class="rkN">${i + 1}</b><span class="rkT">${esc(t)}${pc ? `<small class="rkPlays">${ic("headphones")}${shortNum(pc)}</small>` : ""}</span>${said ? `<span class="rkSaid">${m === 2 ? ic("check") : m === 1 ? "~" : ic("x")}<small>${m === 2 ? "Doğru" : esc(said)}</small></span>` : ""}</li>`;
     }).join("");
     const perfect = r?.correct;
     const verdict = !r ? `<span class="verdict">${ic("timer")} Süre doldu</span>` : perfect ? `<span class="verdict good big">${ic("trophy")} Tam isabet! +${num(r.points)}</span>` : num(r.points) > 0 ? `<span class="verdict mid">+${num(r.points)}</span>` : `<span class="verdict bad">${ic("x")} Hiçbiri tutmadı</span>`;
@@ -1572,6 +1575,11 @@ function paint() {
     }
   }
 }
+// telefonda sekme şeridi sona kaydırılınca sağdaki soluklaşma kalksın
+document.addEventListener("scroll", (e) => {
+  const t = e.target;
+  if (t?.classList?.contains("hm-tabs") || t?.classList?.contains("subChips")) t.classList.toggle("atEnd", t.scrollLeft + t.clientWidth >= t.scrollWidth - 4);
+}, true);
 (function loop() {
   paint();
   ytPaint();
@@ -1723,7 +1731,7 @@ function optsHtml(l) {
     const counts = [5, 10, 15, 20, 30].filter((c) => c < n);
     if (!counts.includes(sheetCtx.count) && sheetCtx.count !== n) sheetCtx.count = Math.min(10, n);
     return `<div class="opts">
-        ${l.anime ? `<div class="opt"><span>Dönem</span><div class="seg" data-opt="era">${ERAS.map(([v, t]) => `<button data-v="${v}" aria-pressed="${(l.era || "pop") === v}">${t}</button>`).join("")}</div></div>` : ""}
+        ${l.anime && ERAS.length ? `<div class="opt"><span>Dönem</span><div class="seg" data-opt="era">${ERAS.map(([v, t]) => `<button data-v="${v}" aria-pressed="${(l.era || "pop") === v}">${t}</button>`).join("")}</div></div>` : ""}
         <div class="opt optCount"><span>Soru sayısı</span><div class="seg" data-opt="count">${[...counts, n].map((c) => `<button data-v="${c}" aria-pressed="${sheetCtx.count === c}">${c === n ? `Hepsi (${c})` : c}</button>`).join("")}</div></div>
       </div>`;
   }
