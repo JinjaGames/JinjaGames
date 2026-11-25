@@ -2,7 +2,8 @@
 import * as C from './core.js';
 import { PeerSession, S, buildIceServers } from './session.js';
 import { TransferService, isFinal, makeZip } from './transfer.js';
-import { t, setLangCode, getLang, applyStatic } from './i18n.js';
+import { t, setLangCode, getLang, applyStatic } from './i18n.js?v=2';
+import { publishShort, fetchShort, findShort, prettyShort } from './short.js?v=1';
 
 const $ = (id) => document.getElementById(id);
 const root = document.documentElement;
@@ -118,8 +119,10 @@ function setTheme(th) {
 }
 
 /* ---------- views ---------- */
+// Tarayıcının geri tuşu (fare 4/5 dahil) siteden çıkmak yerine başlangıç ekranına döner.
 function showView(name) {
   view = name;
+  if (name !== 'start' && !(history.state && history.state.peer)) { try { history.pushState({ peer: 1 }, ''); } catch {} }
   for (const v of ['start', 'invite', 'join', 'live']) $('view-' + v).hidden = v !== name;
   $('steps').hidden = name === 'start';
   $('hero').hidden = name !== 'start';
@@ -137,6 +140,15 @@ function codeErr(e) { return e && e.key ? t('e.' + e.key, e.params) : String(e &
 function sesErr(err) { return err ? t('e.' + err.key, err.params) : ''; }
 
 function resetAll() {
+  if (history.state && history.state.peer) { history.back(); return; } // popstate sıfırlar
+  doReset();
+}
+window.addEventListener('popstate', () => {
+  if (view === 'start') return;
+  if (view === 'live' && session && !confirm(getLang() === 'tr' ? 'Bağlantı kapatılsın mı?' : 'Close the connection?')) { try { history.pushState({ peer: 1 }, ''); } catch {} return; }
+  doReset();
+});
+function doReset() {
   if (session) { const s = session; session = null; s.onended = null; s.onchange = null; s.close('userClosed'); svc.sessionEnded(s); }
   clearInterval(expiryTimer); lostInfo = null;
   $('inv-setup').hidden = false; $('inv-code').hidden = true; $('inv-answer').hidden = true;
@@ -146,6 +158,8 @@ function resetAll() {
   $('inv-create').disabled = false; $('join-go').disabled = false; $('ans-go').disabled = false;
   status($('inv-status'), ''); status($('join-status'), ''); status($('join-wait'), '');
   $('lost').hidden = true; $('send-card').hidden = false;
+  for (const p of ['inv', 'join']) { shortOf[p] = ''; shortFor[p] = null; $(p + '-short').textContent = ''; $(p + '-shortnote').textContent = ''; $(p + '-shortwrap').hidden = false; $(p + '-long').open = false; }
+  $('inv-qrlongbox').hidden = true; lastShortTried = '';
   joinParsed = null; queue = []; renderQueue();
   showView('start');
 }
@@ -153,6 +167,39 @@ document.querySelectorAll('[data-back]').forEach((b) => b.addEventListener('clic
 
 /* ---------- code boxes (copy / share / qr / expiry) ---------- */
 function linkFor(code) { return location.origin + location.pathname + '#' + code; }
+/* ---------- kısa kod (short.js): varsayılan; uzun kod uygulamalar için katlanır bölümde ---------- */
+const shortOf = { inv: '', join: '' };
+const shortFor = { inv: null, join: null };
+let lastShortTried = '';
+const isCodeLike = (txt) => /JP1[IA]-/.test(txt) || !!findShort(txt);
+async function showShort(p, kind, myCode) {
+  shortOf[p] = ''; shortFor[p] = myCode;
+  const box = $(p + '-short'), note = $(p + '-shortnote');
+  $(p + '-shortwrap').hidden = false; $(p + '-long').open = false;
+  box.textContent = '····-····-····'; box.classList.add('pending'); note.textContent = t('shortMaking');
+  try {
+    const c = await publishShort(kind, myCode.encoded, myCode.expiresAt);
+    if (shortFor[p] !== myCode) return;
+    shortOf[p] = c;
+    box.textContent = prettyShort(c); box.classList.remove('pending'); note.textContent = t('shortReady');
+    if (p === 'inv') renderQr(linkFor(prettyShort(c)), 'inv-qr', 'inv-qrbox');
+  } catch {
+    if (shortFor[p] !== myCode) return;
+    $(p + '-shortwrap').hidden = true; $(p + '-long').open = true;
+    toast(t('shortFail'), 'error');
+  }
+}
+const bestCode = (p, longId) => (shortOf[p] ? prettyShort(shortOf[p]) : $(longId).value);
+/** Kısa kod girildiyse uzun kodu rölelerden bulur; değilse metni olduğu gibi döndürür. Bulunamazsa null. */
+async function resolveShort(raw, kind, out) {
+  const sc = findShort(raw);
+  if (!sc) return raw;
+  status(out, t('shortLooking'), 'wait');
+  const long = await fetchShort(kind, sc);
+  if (!long) { status(out, t('shortNotFound'), 'err'); return null; }
+  status(out, '');
+  return long;
+}
 function fillCodeBox(outId, countId, code) {
   $(outId).value = code;
   $(countId).textContent = t('charCount', { n: code.length.toLocaleString(getLang() === 'tr' ? 'tr-TR' : 'en-US') });
@@ -173,21 +220,30 @@ document.querySelectorAll('[data-copy]').forEach((btn) => btn.addEventListener('
   if (await copyText(ta.value, ta)) flashCopied(btn); else toast(t('copyFail'), 'error');
 }));
 $('inv-copylink').addEventListener('click', async (e) => {
+  if (await copyText(linkFor(bestCode('inv', 'inv-out')))) flashCopied(e.currentTarget); else toast(t('copyFail'), 'error');
+});
+$('inv-copylonglink').addEventListener('click', async (e) => {
   if (await copyText(linkFor($('inv-out').value))) flashCopied(e.currentTarget); else toast(t('copyFail'), 'error');
+});
+$('inv-copyshort').addEventListener('click', async (e) => {
+  if (await copyText(bestCode('inv', 'inv-out'))) flashCopied(e.currentTarget); else toast(t('copyFail'), 'error');
+});
+$('join-copyshort').addEventListener('click', async (e) => {
+  if (await copyText(bestCode('join', 'join-out'))) flashCopied(e.currentTarget); else toast(t('copyFail'), 'error');
 });
 async function doShare(data) { try { await navigator.share(data); } catch { /* canceled */ } }
 if (FEAT.share) {
   $('inv-share').hidden = false; $('join-share').hidden = false;
-  $('inv-share').addEventListener('click', () => doShare({ title: t('sharedCodeTitle'), text: t('shareText'), url: linkFor($('inv-out').value) }));
-  $('join-share').addEventListener('click', () => doShare({ title: t('sharedCodeTitle'), text: $('join-out').value }));
+  $('inv-share').addEventListener('click', () => doShare({ title: t('sharedCodeTitle'), text: t('shareText'), url: linkFor(bestCode('inv', 'inv-out')) }));
+  $('join-share').addEventListener('click', () => doShare({ title: t('sharedCodeTitle'), text: bestCode('join', 'join-out') }));
 }
-async function renderQr(code) {
-  const box = $('inv-qrbox'); box.hidden = true;
+async function renderQr(code, imgId = 'inv-qr', boxId = 'inv-qrbox') {
+  const box = $(boxId); box.hidden = true;
   if (code.length > 2300) return;
   try {
     const { qrcode } = await import('./vendor/qr.js');
-    const q = qrcode(0, 'L'); q.addData(code, 'Byte'); q.make();
-    $('inv-qr').src = q.createDataURL(4, 8); box.hidden = false;
+    const q = qrcode(0, code.length < 200 ? 'M' : 'L'); q.addData(code, 'Byte'); q.make();
+    $(imgId).src = q.createDataURL(4, 8); box.hidden = false;
   } catch { box.hidden = true; }
 }
 
@@ -250,14 +306,23 @@ $('inv-create').addEventListener('click', async () => {
   $('inv-setup').hidden = true; $('inv-code').hidden = false; $('inv-answer').hidden = false;
   fillCodeBox('inv-out', 'inv-count', s.myCode.encoded);
   startExpiry('inv-expiry', s.myCode.expiresAt);
-  renderQr(s.myCode.encoded);
+  $('inv-qrbox').hidden = true;
+  renderQr(s.myCode.encoded, 'inv-qrlong', 'inv-qrlongbox');
+  showShort('inv', 'i', s.myCode);
   setSteps(2); $('steps').querySelector('[data-step="1"]').classList.add('ok');
   status($('inv-status'), t('waitingAnswer'), 'wait');
 });
 
 async function connectWithAnswer(raw) {
-  const text = C.extractCode(raw);
   const out = $('inv-status');
+  if (findShort(raw)) {
+    if (!session || session.role !== 'inviter') { status(out, t('e.notWaiting'), 'err'); return; }
+    $('ans-go').disabled = true;
+    raw = await resolveShort(raw, 'a', out).catch(() => null);
+    $('ans-go').disabled = false;
+    if (!raw) return;
+  }
+  const text = C.extractCode(raw);
   if (!text) { status(out, t('pasteCodeFirst'), 'err'); return; }
   if (C.sniffKind(text) === 'invite') {
     status(out, t('inviteInAnswer'), 'err'); return;
@@ -274,12 +339,12 @@ async function connectWithAnswer(raw) {
 $('ans-go').addEventListener('click', () => connectWithAnswer($('ans-in').value));
 $('ans-in').addEventListener('paste', (e) => {
   const txt = (e.clipboardData && e.clipboardData.getData('text')) || '';
-  if (/JP1[IA]-/.test(txt)) { e.preventDefault(); $('ans-in').value = C.extractCode(txt); connectWithAnswer(txt); }
+  if (isCodeLike(txt)) { e.preventDefault(); $('ans-in').value = findShort(txt) ? prettyShort(findShort(txt)) : C.extractCode(txt); connectWithAnswer(txt); }
 });
 $('ans-paste').addEventListener('click', async () => {
   const txt = await readClip();
   if (txt === null) { $('ans-in').focus(); toast(t('pasteFail')); return; }
-  $('ans-in').value = C.extractCode(txt); connectWithAnswer(txt);
+  $('ans-in').value = findShort(txt) ? prettyShort(findShort(txt)) : C.extractCode(txt); connectWithAnswer(txt);
 });
 
 /* ---------- joiner ---------- */
@@ -287,9 +352,24 @@ let joinParsed = null;
 $('go-join').addEventListener('click', () => { showView('join'); setSteps(1); $('join-code').focus(); });
 
 async function handleJoinText(raw, auto) {
-  const text = C.extractCode(raw);
-  $('join-count').textContent = text ? t('charCount', { n: text.length }) : '';
   const out = $('join-status');
+  const sc = findShort(raw);
+  if (sc) {
+    joinParsed = null; $('join-who').textContent = ''; $('join-pw-wrap').hidden = true;
+    $('join-count').textContent = t('shortTyped');
+    if (sc === lastShortTried) return;
+    lastShortTried = sc;
+    let long = await resolveShort(raw, 'i', out).catch(() => null);
+    if (!long && session && session.role === 'inviter' && session.state === S.WAITING_ANSWER) {
+      // davet edenin ekranı yerine buraya yazılmış bir yanıt kodu olabilir
+      long = await fetchShort('a', sc).catch(() => null);
+    }
+    if (findShort($('join-code').value) !== sc) return; // bu arada başka bir şey yazıldı
+    if (!long) { lastShortTried = ''; return; }
+    raw = long;
+  }
+  const text = C.extractCode(raw);
+  if (!sc) $('join-count').textContent = text ? t('charCount', { n: text.length }) : '';
   joinParsed = null; $('join-who').textContent = ''; $('join-pw-wrap').hidden = true;
   if (!text) { status(out, ''); return; }
   const kind = C.sniffKind(text);
@@ -311,20 +391,20 @@ async function handleJoinText(raw, auto) {
     else if (auto) doJoin();
   } catch (e) { status(out, codeErr(e), 'err'); }
 }
-$('join-code').addEventListener('input', () => handleJoinText($('join-code').value, false));
+$('join-code').addEventListener('input', () => handleJoinText($('join-code').value, !!findShort($('join-code').value)));
 $('join-code').addEventListener('paste', (e) => {
   const txt = (e.clipboardData && e.clipboardData.getData('text')) || '';
-  if (/JP1[IA]-/.test(txt)) { e.preventDefault(); $('join-code').value = C.extractCode(txt); handleJoinText(txt, true); }
+  if (isCodeLike(txt)) { e.preventDefault(); $('join-code').value = findShort(txt) ? prettyShort(findShort(txt)) : C.extractCode(txt); handleJoinText(txt, true); }
 });
 $('join-paste').addEventListener('click', async () => {
   const txt = await readClip();
   if (txt === null) { $('join-code').focus(); toast(t('pasteFail')); return; }
-  $('join-code').value = C.extractCode(txt); handleJoinText(txt, true);
+  $('join-code').value = findShort(txt) ? prettyShort(findShort(txt)) : C.extractCode(txt); handleJoinText(txt, true);
 });
 async function doJoin() {
   if (!supportedOrWarn()) return;
   const out = $('join-status');
-  if (!joinParsed) { await handleJoinText($('join-code').value, false); if (!joinParsed) { if (!$('join-code').value.trim()) status(out, t('pasteCodeFirst'), 'err'); return; } }
+  if (!joinParsed) { lastShortTried = ''; await handleJoinText($('join-code').value, false); if (!joinParsed) { if (!$('join-code').value.trim()) status(out, t('pasteCodeFirst'), 'err'); return; } }
   const pw = $('join-pw').value;
   if (joinParsed.passwordRequired && !pw) { status(out, t('needPw'), 'err'); $('join-pw').focus(); return; }
   if (session) return;
@@ -337,6 +417,7 @@ async function doJoin() {
   $('join-in').hidden = true; $('join-out-card').hidden = false;
   fillCodeBox('join-out', 'join-out-count', s.myCode.encoded);
   startExpiry('join-out-expiry', s.myCode.expiresAt);
+  showShort('join', 'a', s.myCode);
   setSteps(2); $('steps').querySelector('[data-step="1"]').classList.add('ok');
   status($('join-wait'), t('waitInviter'), 'wait');
 }
@@ -348,18 +429,21 @@ document.addEventListener('paste', (e) => {
   const tag = (document.activeElement && document.activeElement.tagName) || '';
   if (tag === 'INPUT' || tag === 'TEXTAREA') return;
   const txt = (e.clipboardData && e.clipboardData.getData('text')) || '';
-  if (!/JP1[IA]-/.test(txt)) return;
+  if (!isCodeLike(txt)) return;
   e.preventDefault();
+  const shown = findShort(txt) ? prettyShort(findShort(txt)) : C.extractCode(txt);
   if (view === 'start') { showView('join'); setSteps(1); }
-  if (view === 'join') { $('join-code').value = C.extractCode(txt); handleJoinText(txt, true); }
-  else if (view === 'invite' && !$('inv-answer').hidden) { $('ans-in').value = C.extractCode(txt); connectWithAnswer(txt); }
+  if (view === 'join') { $('join-code').value = shown; handleJoinText(txt, true); }
+  else if (view === 'invite' && !$('inv-answer').hidden) { $('ans-in').value = shown; connectWithAnswer(txt); }
 });
 function consumeHash() {
   const m = /^#?(JP1[IA]-[A-Za-z0-9_\-]+)/.exec(location.hash || '');
-  if (!m) return;
+  const sc = m ? '' : findShort(location.hash || '');
+  if (!m && !sc) return;
   history.replaceState(null, '', location.pathname + location.search); // fragment never leaves the browser; drop it from the bar
   showView('join'); setSteps(1);
-  $('join-code').value = m[1]; handleJoinText(m[1], true);
+  const v = m ? m[1] : prettyShort(sc);
+  $('join-code').value = v; handleJoinText(v, true);
 }
 
 /* ---------- live: peer + verification ---------- */

@@ -1,0 +1,71 @@
+# JinjaQuiz günlük yedeği: topluluk quizleri (community.json) ve puan sıralaması (scores.json)
+# her gün "yedek" dalına tarihli bir klasör olarak işlenir (yedek/quiz/YYYY-MM-DD/).
+# Ana daldaki arşiv bozulsa ya da yanlışlıkla silinse bile her günün kopyası kalır.
+# Ayrıca her yedek 90 gün saklanan bir Actions dosyası olarak da yüklenir (ikinci kopya).
+# Geri yükleme: git fetch origin yedek && git checkout origin/yedek -- quiz/<tarih>/community.json
+name: Günlük quiz yedeği
+
+on:
+  schedule:
+    - cron: "15 3 * * *"
+  workflow_dispatch: {}
+
+permissions:
+  contents: write
+
+concurrency:
+  group: quiz-daily-backup
+  cancel-in-progress: false
+
+jobs:
+  backup:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Rölelerdeki en güncel kayıtları arşive ekle
+        run: node tools/archive_community.mjs
+
+      - name: Yedek dalına tarihli kopya işle
+        run: |
+          set -e
+          DAY=$(date -u +%F)
+          SRC=$(mktemp -d)
+          cp quiz/data/community.json "$SRC/"
+          [ -f quiz/data/scores.json ] && cp quiz/data/scores.json "$SRC/"
+          git config --global user.name "jinjagames-bot"
+          git config --global user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          DIR=$(mktemp -d)/yedek
+          if git ls-remote --exit-code --heads origin yedek >/dev/null 2>&1; then
+            git fetch --depth=1 origin yedek
+            git worktree add -B yedek "$DIR" origin/yedek
+          else
+            git worktree add --detach "$DIR"
+            cd "$DIR"
+            git switch --orphan yedek
+            cd -
+          fi
+          cd "$DIR"
+          mkdir -p "quiz/$DAY"
+          cp "$SRC"/*.json "quiz/$DAY/"
+          printf '%s\n' "# JinjaQuiz yedekleri" "" "Her gün .github/workflows/quiz-daily-backup.yml tarafından yazılır." "quiz/<tarih>/community.json: topluluk quizleri, quiz/<tarih>/scores.json: puan sıralaması." > README.md
+          git add -A
+          if git diff --cached --quiet; then
+            echo "Bugünün yedeği zaten var."
+          else
+            git commit -q -m "Yedek: $DAY"
+            git push origin yedek
+          fi
+
+      - name: Actions dosyası olarak da sakla (90 gün)
+        uses: actions/upload-artifact@v4
+        with:
+          name: jinjaquiz-yedek
+          path: |
+            quiz/data/community.json
+            quiz/data/scores.json
+          retention-days: 90

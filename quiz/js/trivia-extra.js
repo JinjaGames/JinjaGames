@@ -1,15 +1,16 @@
 // Trivia soru havuzlarını büyütür: her quizde en az 50 soru olsun ki oyuncular ezberleyemesin.
 // Parça dosyaları (trivia-x*.js) quiz kimliğine göre ek sorular verir; trivia.js bunları birleştirir.
-import X1 from "./trivia-x1.js";
-import X2 from "./trivia-x2.js";
-import X3 from "./trivia-x3.js";
-import X4 from "./trivia-x4.js";
-import X5 from "./trivia-x5.js";
-import X6 from "./trivia-x6.js";
-import X7 from "./trivia-x7.js";
+import X1 from "./trivia-x1.js?v=2";
+import X2 from "./trivia-x2.js?v=2";
+import X3 from "./trivia-x3.js?v=2";
+import X4 from "./trivia-x4.js?v=2";
+import X5 from "./trivia-x5.js?v=2";
+import X6 from "./trivia-x6.js?v=2";
+import X7 from "./trivia-x7.js?v=2";
+import X8 from "./trivia-x8.js?v=2";
 
 export const EXTRA = {};
-for (const part of [X1, X2, X3, X4, X5, X6, X7])
+for (const part of [X1, X2, X3, X4, X5, X6, X7, X8])
   for (const [id, items] of Object.entries(part)) (EXTRA[id] ||= []).push(...items);
 
 // Ülke ve başkent adından bayrak kodu (cevap açılınca bayrağı göstermek için).

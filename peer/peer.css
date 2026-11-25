@@ -231,3 +231,15 @@ dialog::backdrop{background:rgba(0,0,0,.45)}
 @media(max-width:760px){.hero{grid-template-columns:1fr;padding-top:26px}.pv{max-width:420px}.how{grid-template-columns:1fr}.path{min-height:0}}
 @media(max-width:520px){.paths{grid-template-columns:1fr}}
 @media(prefers-reduced-motion:reduce){.pv-file i,.pv-ok,.pv-beam i{animation:none;opacity:1}}
+
+/* kısa kod */
+.shortwrap{margin-top:14px;padding:18px 16px 12px;border-radius:16px;background:var(--brand-soft);border:1px dashed var(--brand)}
+.shortcode{display:block;text-align:center;font-family:var(--f-mono);font-weight:700;font-size:clamp(26px,7.4vw,42px);letter-spacing:.08em;color:var(--ink);line-height:1.2;-webkit-user-select:all;user-select:all;overflow-wrap:anywhere}
+.shortcode.pending{color:var(--ink-3);animation:pulse 1.2s ease-in-out infinite}
+@keyframes pulse{50%{opacity:.45}}
+@media(prefers-reduced-motion:reduce){.shortcode.pending{animation:none}}
+.shortwrap .meta{justify-content:space-between;margin-top:10px}
+.codein{font-size:16px;letter-spacing:.02em}
+.long{margin-top:16px;border-top:1px solid var(--line);padding-top:4px}
+.long>summary{cursor:pointer;min-height:44px;display:flex;align-items:center;font-weight:600;color:var(--ink-2)}
+.long[open]>summary{color:var(--ink)}

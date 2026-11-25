@@ -3125,3 +3125,43 @@ body.rkDragging, body.rkDragging * { cursor: grabbing !important; -webkit-user-s
 .skGrid .skCard { width: auto; }
 .skNote { margin: 0 0 10px; }
 @media (max-width: 600px) { .skCard { width: 150px; } }
+
+/* --- puan sıralaması (quiz detayı ve quiz sonu) --- */
+.lb { display: grid; gap: 12px; width: 100%; padding: 20px; border-radius: 26px; background: var(--s1); border: 1px solid #ffffff12; text-align: left; }
+.lbHead { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.lbHead h3 { display: flex; align-items: center; gap: 8px; margin: 0; min-width: 0; font: 800 22px/1 var(--display); text-transform: uppercase; letter-spacing: 0.02em; }
+.lbHead h3 span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.lbHead h3 .ic { flex: none; color: var(--gold); }
+.lbHead small { flex: none; padding: 4px 10px; border-radius: 999px; background: var(--s2); color: var(--muted); font-size: 12px; font-weight: 700; }
+.lbNote { display: flex; align-items: center; gap: 8px; padding: 10px 12px; border-radius: 14px; background: color-mix(in srgb, var(--gold) 10%, var(--s2)); color: #ffd77a; font-size: 14px; line-height: 1.35; }
+.lbNote .ic { flex: none; }
+.lbList { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px; }
+.lbList li { display: grid; grid-template-columns: 28px auto minmax(0, 1fr) auto auto; align-items: center; gap: 10px; min-height: 44px; padding: 6px 12px 6px 8px; border-radius: 12px; background: var(--s2); }
+.lbList li b { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 600; }
+.lbN { text-align: center; font: 800 18px var(--display); color: var(--muted); }
+.lbS { font: 800 20px var(--display); font-variant-numeric: tabular-nums; }
+.lbList li em { font-style: normal; font-size: 11px; font-weight: 800; letter-spacing: 0.06em; text-transform: uppercase; padding: 3px 7px; border-radius: 999px; background: #5aa0ff; color: #08121f; }
+.lbList li.t1 .lbN { color: var(--gold); }
+.lbList li.t2 .lbN { color: #d6dbe4; }
+.lbList li.t3 .lbN { color: #e0a272; }
+.lbList li.me { background: color-mix(in srgb, #5aa0ff 18%, var(--s2)); box-shadow: inset 0 0 0 1.5px #5aa0ff; }
+.lbList li.me b, .lbList li.me .lbS { color: #b9d6ff; }
+.lbList li.lbGap { display: flex; justify-content: center; gap: 5px; min-height: 18px; padding: 0; background: none; }
+.lbGap i { width: 4px; height: 4px; border-radius: 50%; background: var(--muted); opacity: 0.6; }
+.lbEmpty { display: flex; align-items: center; gap: 10px; padding: 14px; border-radius: 14px; background: var(--s2); color: var(--muted); font-size: 14px; }
+.lbEmpty .ic { flex: none; color: var(--gold); }
+.lbRule { color: var(--muted); font-size: 12.5px; line-height: 1.45; }
+.lbRule b { color: var(--ink); }
+.lb .skWrap { gap: 4px; }
+.seg button.lbTen::after { content: ""; display: inline-block; width: 6px; height: 6px; margin-left: 6px; border-radius: 50%; background: var(--gold); vertical-align: middle; }
+.ranking .lb { width: min(460px, 100%); margin-top: 18px; }
+/* detay sayfası: geniş ekranda üçüncü sütun, daha darda panellerin altında */
+.dtBoard { grid-column: 1 / -1; }
+@media (min-width: 1280px) {
+  .wrap:has(> .dt.hasLb) { max-width: 1440px; }
+  .dt.hasLb .dtGrid { grid-template-columns: minmax(0, 0.82fr) minmax(0, 1fr) minmax(300px, 0.72fr); }
+  .dt.hasLb .dtBoard { grid-column: auto; position: sticky; top: 84px; }
+}
+@media (max-width: 520px) { .lb { padding: 14px; border-radius: 20px; } .lbList li { gap: 8px; padding: 6px 10px 6px 6px; } .lbHead h3 { font-size: 20px; } }
+/* telefonda alt bilgi bağlantılarına rahat dokunulsun (en az ~40px yükseklik) */
+@media (pointer: coarse) { footer a { display: inline-block; padding: 11px 2px; border-bottom: 0; text-decoration: underline; text-decoration-color: #ffffff2a; text-underline-offset: 4px; } }

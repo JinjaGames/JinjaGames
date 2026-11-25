@@ -1,7 +1,7 @@
 // Oyun motoru. Kurucunun tarayıcısında çalışır ve tek doğruluk kaynağıdır.
 // Diğer oyuncular yalnızca kendilerine özel durum özetini (view) alır.
 import { fold, preview } from "./music.js?v=4";
-import { cleanItems, cleanEmoji } from "./trivia.js?v=2";
+import { cleanItems, cleanEmoji } from "./trivia.js?v=3";
 
 export const MAX_PLAYERS = 12;
 const PLAYS = 3;
@@ -17,6 +17,17 @@ const OP_SECS = 30; // anime opening sorusu için süre (en az)
 export const RANK_PTS = { exact: 100, near: 30, perfect: 300 };
 // Anime opening: animeyi bilmek 50, şarkıyı bilmek 50, ikisini birden bilmek +50 (hıza göre %60-100 arası)
 export const OP_PTS = { anime: 50, song: 50, both: 50 };
+// Sıralama puanı (puan tablosu): oyundaki puanla aynı mantık, ama süre ayarından bağımsız.
+// Hız her zaman 20 sn'lik (opening'de 30 sn) standart süreye göre ölçülür; şarkı quizlerinde zorluk
+// (yazarak cevap, kısa kesit, tersten) puanı orantılı artırır, kolaylık azaltır.
+const LB_REF = 20000, LB_REF_OP = 30000;
+const lbKeyOf = (id) => { const k = String(id ?? "").toLowerCase(); return /^[a-z0-9][a-z0-9-]{0,63}$/.test(k) ? k : ""; };
+export function lbMult(set) {
+  if (!set || set.kind === "trivia" || set.kind === "rank") return 1;
+  if (set.kind === "op") return set.video ? 0.9 : 1;
+  const clip = set.reverse ? { 3: 1.3, 5: 1.15, 10: 1 }[set.clip] : { 1: 1.2, 3: 1, 5: 0.9 }[set.clip];
+  return (set.mode === "text" ? 1.25 : 1) * (clip || 1);
+}
 
 const txt = (v, n = 120) => (typeof v === "string" ? v.trim().slice(0, n) : "");
 const YT = /^[\w-]{11}$/;
@@ -151,7 +162,8 @@ export class Game {
   }
 
   // ---- kuyruk ----
-  addSet({ list, tracks, ids, count, mode, clip, kind, items, survival, reverse, video }) {
+  addSet({ list, tracks, ids, count, mode, clip, kind, items, survival, reverse, video, lid }) {
+    lid = lbKeyOf(lid);
     if (this.queue.length >= 12) throw Error("Kuyrukta en fazla 12 quiz olabilir.");
     if (kind === "rank" || kind === "op") {
       const pool = kind === "rank" ? cleanRank(items) : cleanOps(items);
@@ -170,6 +182,7 @@ export class Game {
         mode: kind,
         clip: 0,
         video: !!video,
+        lid,
       });
       return;
     }
@@ -192,6 +205,7 @@ export class Game {
         questions: shuffle(pool).slice(0, n),
         mode: "choice",
         clip: 0,
+        lid,
       });
       return;
     }
@@ -209,6 +223,7 @@ export class Game {
       // tersten çalınan quizde kesit daha uzun: kolay 10, orta 5, zor 3 sn
       reverse: !!reverse,
       clip: reverse ? ([3, 5, 10].includes(clip) ? clip : 5) : [1, 3, 5].includes(clip) ? clip : 3,
+      lid,
     });
   }
 
@@ -219,7 +234,7 @@ export class Game {
     this.rankAt = null;
     this.set++;
     this.index = -1;
-    for (const p of this.players) p.round = 0;
+    for (const p of this.players) (p.round = 0), (p.lbr = 0), (p.hits = 0);
     this.advance();
   }
   advance() {
@@ -238,7 +253,7 @@ export class Game {
         count: set.questions.length,
         top: [...this.players].sort((a, b) => b.round - a.round).map((p) => ({ pid: p.pid, name: p.name, pts: p.round })),
         emoji: set.emoji || "",
-        set: { kind: set.kind, emoji: set.emoji, name: set.name, art: set.art, picture: set.picture, tracks: set.tracks, pool: set.questions.length, mode: set.mode, clip: set.clip, reverse: !!set.reverse, video: !!set.video },
+        set: { kind: set.kind, emoji: set.emoji, name: set.name, art: set.art, picture: set.picture, tracks: set.tracks, pool: set.questions.length, mode: set.mode, clip: set.clip, reverse: !!set.reverse, video: !!set.video, lid: set.lid || "" },
       });
       if (this.history.length > 10) this.history.shift();
       this.rankAt = this.phase === "ranking" && !this.solo ? Date.now() + NEXT_QUIZ : null;
@@ -385,7 +400,8 @@ export class Game {
       const a = anime === q.item.anime, b = song === q.item.song;
       const base = (a ? OP_PTS.anime : 0) + (b ? OP_PTS.song : 0) + (a && b ? OP_PTS.both : 0);
       const points = Math.round(base * (0.6 + 0.4 * Math.max(0, left)));
-      q.answers[pid] = { answer: { anime, song }, hit: { anime: a, song: b }, correct: a && b, partial: a || b, points, ms: now - q.start };
+      const lb = Math.round(base * (0.6 + 0.4 * Math.max(0, 1 - (now - q.start) / LB_REF_OP)) * lbMult(set));
+      q.answers[pid] = { answer: { anime, song }, hit: { anime: a, song: b }, correct: a && b, partial: a || b, points, lb, ms: now - q.start };
       if (this.solo) this.reveal();
       else if (!this.checkAllAnswered()) this.emit();
       return;
@@ -395,7 +411,8 @@ export class Game {
     if (set.mode === "choice" && !q.options.includes(answer)) throw Error("Geçerli bir şık seç.");
     const correct = set.kind === "trivia" ? answer === q.item.a[0] : set.mode === "choice" ? answer === q.track.title : matches(answer, q.track);
     const points = correct ? Math.max(10, Math.min(100, Math.round(10 + 90 * left))) : 0;
-    q.answers[pid] = { answer, correct, points, ms: now - q.start };
+    const lb = correct ? Math.round(Math.max(10, Math.min(100, 10 + 90 * (1 - (now - q.start) / LB_REF))) * lbMult(set)) : 0;
+    q.answers[pid] = { answer, correct, points, lb, ms: now - q.start };
     if (this.solo) this.reveal();
     else if (!this.checkAllAnswered()) this.emit();
   }
@@ -416,9 +433,12 @@ export class Game {
     const cur = this.queue[this.set];
     if (cur?.survival && q.answers[this.hostId]?.correct) cur.streak++;
     for (const p of this.players) {
-      const pts = q.answers[p.pid]?.points || 0;
+      const ans = q.answers[p.pid];
+      const pts = ans?.points || 0;
       p.score += pts;
       p.round += pts;
+      p.lbr = (p.lbr || 0) + (ans?.lb || 0);
+      p.hits = (p.hits || 0) + (ans?.correct ? 1 : 0);
     }
     this.schedule();
     this.emit();
@@ -488,7 +508,7 @@ export class Game {
         this.set = -1;
         this.index = -1;
         this.question = null;
-        for (const p of this.players) (p.score = 0), (p.round = 0);
+        for (const p of this.players) (p.score = 0), (p.round = 0), (p.lbr = 0), (p.hits = 0);
         this.queue = this.queue.map((s) => ({ ...s, id: uid(), streak: 0, questions: shuffle(s.survival ? s.tracks : s.questions) }));
         break;
       case "lobby":
@@ -501,7 +521,7 @@ export class Game {
         this.set = -1;
         this.index = -1;
         this.question = null;
-        for (const p of this.players) p.round = 0;
+        for (const p of this.players) (p.round = 0), (p.lbr = 0), (p.hits = 0);
         break;
       case "requeue": {
         needHost();
@@ -523,6 +543,7 @@ export class Game {
           clip: h.set.clip,
           reverse: !!h.set.reverse,
           video: !!h.set.video,
+          lid: h.set.lid || "",
         });
         break;
       }
@@ -553,7 +574,7 @@ export class Game {
       seconds: this.seconds,
       autoNext: this.autoNext,
       now: Date.now(),
-      players: this.players.map(({ pid, name, avatar, color, photo, score, round, online }) => ({
+      players: this.players.map(({ pid, name, avatar, color, photo, score, round, lbr, hits, online }) => ({
         pid,
         name,
         avatar,
@@ -561,6 +582,8 @@ export class Game {
         photo,
         score,
         round,
+        lbr: lbr || 0,
+        hits: hits || 0,
         online,
       })),
       queue: this.queue.map((s) => ({
@@ -577,6 +600,7 @@ export class Game {
         clip: s.clip,
         reverse: !!s.reverse,
         video: !!s.video,
+        lid: s.lid || "",
       })),
       set: this.set,
       index: this.index,

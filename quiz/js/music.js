@@ -250,7 +250,7 @@ export async function preview(trackId) {
   };
 }
 
-import { cleanItems, cleanCat, cleanEmoji } from "./trivia.js?v=2";
+import { cleanItems, cleanCat, cleanEmoji } from "./trivia.js?v=3";
 
 // Kullanıcının bulduğu sanatçılar ve kendi (yalnızca bende) quizleri tarayıcıda saklanır.
 const KEY = "jqCustomLists";

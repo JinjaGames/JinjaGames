@@ -4,8 +4,8 @@
 // Gelen her kayıt imzası doğrulandıktan ve alan alan süzüldükten sonra kullanılır.
 import { schnorr, sha256, bytesToHex, hexToBytes } from "../vendor/nostr-sign.js";
 import { cdn } from "./music.js?v=4";
-import { cleanItems, cleanCat, cleanEmoji, T_MIN, T_MAX } from "./trivia.js?v=2";
-import { cleanRank, cleanOps } from "./engine.js?v=7";
+import { cleanItems, cleanCat, cleanEmoji, T_MIN, T_MAX } from "./trivia.js?v=3";
+import { cleanRank, cleanOps } from "./engine.js?v=8";
 
 export const OP_MIN = 4; // anime opening quizinde en az (şıklar diğer openinglerden oluşur)
 
@@ -35,8 +35,8 @@ function secret() {
 }
 export const myPubkey = () => bytesToHex(schnorr.getPublicKey(secret()));
 
-const eventId = (e) => bytesToHex(sha256(enc.encode(JSON.stringify([0, e.pubkey, e.created_at, e.kind, e.tags, e.content]))));
-function sign(kind, tags, content, after = 0) {
+export const eventId = (e) => bytesToHex(sha256(enc.encode(JSON.stringify([0, e.pubkey, e.created_at, e.kind, e.tags, e.content]))));
+export function sign(kind, tags, content, after = 0) {
   const sk = secret();
   // Değiştirilebilir kayıtta en yeni zaman damgası kazanır: önceki sürümden kesinlikle sonra olmalı.
   const e = { pubkey: bytesToHex(schnorr.getPublicKey(sk)), created_at: Math.max(Math.floor(Date.now() / 1000), after + 1), kind, tags, content };
@@ -44,7 +44,7 @@ function sign(kind, tags, content, after = 0) {
   e.sig = bytesToHex(schnorr.sign(e.id, sk));
   return e;
 }
-function valid(e) {
+export function valid(e) {
   try {
     if (!e || typeof e !== "object" || e.kind !== KIND || typeof e.content !== "string" || e.content.length > 60000) return false;
     if (!/^[0-9a-f]{64}$/.test(e.pubkey) || !/^[0-9a-f]{64}$/.test(e.id) || !/^[0-9a-f]{128}$/.test(e.sig)) return false;
@@ -102,7 +102,7 @@ function parse(e) {
   };
 }
 
-function relayCall(url, onOpen, onMsg, ms) {
+export function relayCall(url, onOpen, onMsg, ms) {
   return new Promise((resolve) => {
     let ws;
     const done = (v) => { clearTimeout(t); try { ws.close(); } catch {} resolve(v); };
@@ -125,6 +125,18 @@ async function archived() {
   } catch {
     return [];
   }
+}
+// Site engel listesi (quiz/data/blocked.json): kaldırma talebi gelen quizler ve oyuncular gösterilmez.
+let blockedP = null;
+export function blocked() {
+  blockedP ??= fetch(new URL("../data/blocked.json", import.meta.url), { cache: "no-cache" })
+    .then((r) => (r.ok ? r.json() : {}))
+    .then((j) => ({
+      quizzes: new Set((Array.isArray(j?.quizzes) ? j.quizzes : []).map(String)),
+      pubkeys: new Set((Array.isArray(j?.pubkeys) ? j.pubkeys : []).map((x) => String(x).toLowerCase())),
+    }))
+    .catch(() => ({ quizzes: new Set(), pubkeys: new Set() }));
+  return blockedP;
 }
 const dOf = (e) => (e.tags.find((t) => t[0] === "d") || [])[1] || "";
 // NIP-01: daha yeni olan, eşitse kimliği küçük olan kazanır.
@@ -159,10 +171,11 @@ export async function fetchCommunity({ limit = 300, ms = 6000 } = {}) {
   }
   if (answered.some(Boolean)) for (const e of heal.slice(0, 20)) sendToRelays(e).catch(() => {});
   const hidden = hiddenSet();
+  const bl = await blocked();
   const out = [];
   for (const e of found.values()) {
     const q = parse(e);
-    if (q && !hidden.has(q.id)) out.push(q);
+    if (q && !hidden.has(q.id) && !bl.quizzes.has(q.id) && !bl.pubkeys.has(q.pubkey)) out.push(q);
   }
   return out.sort((a, b) => b.at - a.at);
 }
@@ -200,7 +213,7 @@ export async function removeQuiz(q) {
   if (!ok) throw Error("Kaldırılamadı. Bağlantını kontrol et.");
 }
 
-async function sendToRelays(e) {
+export async function sendToRelays(e) {
   const results = await Promise.all(RELAYS.map((url) => relayCall(url,
     (ws) => ws.send(JSON.stringify(["EVENT", e])),
     (x) => (x[0] === "OK" && x[1] === e.id ? !!x[2] : undefined), 7000)));

@@ -2,7 +2,7 @@
 <html lang="en" data-lang="en" data-theme="light">
 <head>
 <meta charset="utf-8" />
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data: blob:; font-src 'self'; connect-src 'self'; media-src 'self'; worker-src 'self' blob:; object-src 'none'; base-uri 'none'; form-action 'none'" />
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data: blob:; font-src 'self'; connect-src 'self' wss://nos.lol wss://relay.primal.net wss://relay.damus.io wss://nostr.mom wss://offchain.pub; media-src 'self'; worker-src 'self' blob:; object-src 'none'; base-uri 'none'; form-action 'none'" />
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
 <meta name="referrer" content="no-referrer" />
 <title>JinjaPeer | Send files directly, end to end encrypted</title>
@@ -23,7 +23,7 @@
 <link rel="preload" as="font" type="font/woff2" href="../assets/fonts/inter-latin-400.woff2" crossorigin />
 <link rel="stylesheet" href="../assets/fonts.css?v=20261012d" />
 <script src="boot.js?v=1"></script>
-<link rel="stylesheet" href="peer.css?v=2" />
+<link rel="stylesheet" href="peer.css?v=3" />
 </head>
 <body>
 <a class="skip" href="#main" data-i18n="skip">Skip to content</a>
@@ -121,13 +121,13 @@
 
       <div class="card" id="inv-code" hidden>
         <h2 data-i18n="invCodeTitle">1. Send this code to the other person</h2>
-        <div class="codewrap">
-          <label class="sr" for="inv-out" data-i18n="invCodeLabel">Your invite code</label>
-          <textarea id="inv-out" class="codebox" readonly rows="5" spellcheck="false" autocomplete="off"></textarea>
-          <div class="meta"><span id="inv-count"></span><span id="inv-expiry" class="expiry"></span></div>
+        <p class="hint" data-i18n="invCodeHint">They open jinjagames.com/peer, choose "Join with a code" and type it, or simply open the link.</p>
+        <div class="shortwrap" id="inv-shortwrap">
+          <output class="shortcode pending" id="inv-short" aria-live="polite"></output>
+          <div class="meta"><span id="inv-shortnote"></span><span id="inv-expiry" class="expiry"></span></div>
         </div>
         <div class="actions">
-          <button class="btn p" data-copy="inv-out" type="button"><span data-i18n="copyCode">Copy code</span></button>
+          <button class="btn p" id="inv-copyshort" type="button"><span data-i18n="copyCode">Copy code</span></button>
           <button class="btn" id="inv-copylink" type="button"><span data-i18n="copyLink">Copy link</span></button>
           <button class="btn" id="inv-share" type="button" hidden><span data-i18n="share">Share</span></button>
         </div>
@@ -135,16 +135,34 @@
         <details class="qr" id="inv-qrbox" hidden>
           <summary data-i18n="qrShow">Show QR code</summary>
           <img id="inv-qr" alt="" width="260" height="260" />
-          <p class="hint" data-i18n="qrHint">Scan it with the JinjaPeer app on a phone.</p>
+          <p class="hint" data-i18n="qrHint">Scan it with the phone camera; the link opens with the code ready.</p>
         </details>
-        <p class="hint" data-i18n="linkHint">The link opens this page with the code ready on the other side. The part after # never reaches any server.</p>
+        <p class="hint" data-i18n="linkHint">With a short code, the long code waits encrypted on public Nostr relays until it expires; the relays cannot read it.</p>
+        <details class="long" id="inv-long">
+          <summary data-i18n="longShow">Long code (for the Windows / Android app)</summary>
+          <p class="hint" data-i18n="longHint">Use it with the JinjaPeer app, or if you want to connect without the code passing through any server.</p>
+          <div class="codewrap">
+            <label class="sr" for="inv-out" data-i18n="invCodeLabel">Your invite code</label>
+            <textarea id="inv-out" class="codebox" readonly rows="4" spellcheck="false" autocomplete="off"></textarea>
+            <div class="meta"><span id="inv-count"></span></div>
+          </div>
+          <div class="actions">
+            <button class="btn" data-copy="inv-out" type="button"><span data-i18n="copyLong">Copy long code</span></button>
+            <button class="btn" id="inv-copylonglink" type="button"><span data-i18n="copyLongLink">Copy long link</span></button>
+          </div>
+          <details class="qr" id="inv-qrlongbox" hidden>
+            <summary data-i18n="qrLongShow">QR for the app</summary>
+            <img id="inv-qrlong" alt="" width="260" height="260" />
+            <p class="hint" data-i18n="qrLongHint">Scan it with the JinjaPeer app on a phone.</p>
+          </details>
+        </details>
       </div>
 
       <div class="card" id="inv-answer" hidden>
         <h2 data-i18n="ansTitle">2. Paste the reply code</h2>
         <p class="hint" data-i18n="ansIntro">When the other person sends their reply code (starts with JP1A-), paste it here.</p>
         <label class="sr" for="ans-in" data-i18n="ansLabel">Reply code</label>
-        <textarea id="ans-in" class="codebox" rows="4" spellcheck="false" autocomplete="off" autocapitalize="off" data-i18n-attr="placeholder:ansPh"></textarea>
+        <textarea id="ans-in" class="codebox codein" rows="2" spellcheck="false" autocomplete="off" autocapitalize="off" data-i18n-attr="placeholder:ansPh"></textarea>
         <div class="actions">
           <button class="btn" id="ans-paste" type="button" data-i18n="paste">Paste</button>
           <button class="btn p" id="ans-go" type="button" data-i18n="connect">Connect</button>
@@ -160,7 +178,7 @@
         <h2 data-i18n="joinTitle">1. Paste the invite code</h2>
         <p class="hint" data-i18n="joinIntro">Paste the code that starts with JP1I- (or the whole link). It is recognised automatically.</p>
         <label class="sr" for="join-code" data-i18n="joinLabel">Invite code</label>
-        <textarea id="join-code" class="codebox" rows="5" spellcheck="false" autocomplete="off" autocapitalize="off" data-i18n-attr="placeholder:joinPh"></textarea>
+        <textarea id="join-code" class="codebox codein" rows="2" spellcheck="false" autocomplete="off" autocapitalize="off" data-i18n-attr="placeholder:joinPh"></textarea>
         <div class="meta"><span id="join-count"></span><span id="join-who" class="expiry"></span></div>
         <label class="field" id="join-pw-wrap" hidden><span data-i18n="pwNeeded">This invite needs a password</span>
           <input id="join-pw" type="password" autocomplete="off" maxlength="128" />
@@ -175,16 +193,25 @@
       <div class="card" id="join-out-card" hidden>
         <h2 data-i18n="replyTitle">2. Send this reply code back</h2>
         <p class="hint" data-i18n="replyIntro">Give it to the person who invited you. The connection starts as soon as they paste it.</p>
-        <div class="codewrap">
-          <label class="sr" for="join-out" data-i18n="replyLabel">Your reply code</label>
-          <textarea id="join-out" class="codebox" readonly rows="5" spellcheck="false" autocomplete="off"></textarea>
-          <div class="meta"><span id="join-out-count"></span><span id="join-out-expiry" class="expiry"></span></div>
+        <div class="shortwrap" id="join-shortwrap">
+          <output class="shortcode pending" id="join-short" aria-live="polite"></output>
+          <div class="meta"><span id="join-shortnote"></span><span id="join-out-expiry" class="expiry"></span></div>
         </div>
         <div class="actions">
-          <button class="btn p" data-copy="join-out" type="button"><span data-i18n="copyCode">Copy code</span></button>
+          <button class="btn p" id="join-copyshort" type="button"><span data-i18n="copyCode">Copy code</span></button>
           <button class="btn" id="join-share" type="button" hidden><span data-i18n="share">Share</span></button>
           <button class="btn g" data-back type="button" data-i18n="cancel">Cancel</button>
         </div>
+        <details class="long" id="join-long">
+          <summary data-i18n="longShow">Long code (for the Windows / Android app)</summary>
+          <p class="hint" data-i18n="longHint">Use it with the JinjaPeer app, or if you want to connect without the code passing through any server.</p>
+          <div class="codewrap">
+            <label class="sr" for="join-out" data-i18n="replyLabel">Your reply code</label>
+            <textarea id="join-out" class="codebox" readonly rows="4" spellcheck="false" autocomplete="off"></textarea>
+            <div class="meta"><span id="join-out-count"></span></div>
+          </div>
+          <div class="actions"><button class="btn" data-copy="join-out" type="button"><span data-i18n="copyLong">Copy long code</span></button></div>
+        </details>
         <p class="status wait" id="join-wait" aria-live="polite"></p>
       </div>
     </div>
@@ -323,6 +350,6 @@
 </dialog>
 
 <div id="toasts" class="toasts" aria-live="polite" role="status"></div>
-<script type="module" src="app.js?v=1"></script>
+<script type="module" src="app.js?v=3"></script>
 </body>
 </html>

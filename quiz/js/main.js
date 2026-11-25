@@ -1,10 +1,12 @@
 import { PRESETS, MIXES, loadTracks, searchArtists, customLists, saveCustom, removeCustom, fold, cdn, realPic, loadPresetPictures } from "./music.js?v=4";
 import { sfx, sfxEnabled, setSfx, setSfxVolume } from "./sfx.js?v=4";
 import { randomName } from "./names.js";
-import { fetchCommunity, removeQuiz, hideQuiz, unhideQuiz, hiddenList } from "./community.js?v=4";
-import { Game, MAX_PLAYERS, RANK_PTS, OP_PTS } from "./engine.js?v=7";
+import { fetchCommunity, removeQuiz, hideQuiz, unhideQuiz, hiddenList } from "./community.js?v=5";
+import { Game, MAX_PLAYERS, RANK_PTS, OP_PTS } from "./engine.js?v=8";
+import { lbKey, loadBoard, peekBoard, submitScore, myBest, isMine, LB_TOP, LB_QUESTIONS } from "./board.js?v=1";
+import { maskName } from "./badwords.js?v=1";
 import { RANK_QUIZZES, RANK_CATS, rankItems } from "./rank.js?v=3";
-import { TRIVIA, TCATS, TART, EMOJIS, cleanItems, IMG, ANI_IMG, FLAG, flagUrl, cleanEmo } from "./trivia.js?v=2";
+import { TRIVIA, TCATS, TART, EMOJIS, cleanItems, IMG, ANI_IMG, FLAG, flagUrl, cleanEmo } from "./trivia.js?v=3";
 import { ANIME_QUIZZES, ERAS, animeItems, animeOps } from "./anime.js?v=3";
 import { NUMCATS, fmtNum, farEnough } from "./numdata.js";
 import { hostRoom, guestRoom, newCode, validCode } from "./net.js";
@@ -51,7 +53,7 @@ const num = (v) => (Number.isFinite(Number(v)) ? Number(v) : 0);
 
 // Kurucudan gelen oyun durumu (başka birinin tarayıcısı) tür tür süzülür: sayılar sayı, kimlikler
 // güvenli karakter, adresler yalnızca Deezer CDN'i, profil parçaları izin listesinden.
-const NUM = new Set(["ys", "slots", "rankAt", "pts", "count", "clip", "score", "round", "points", "ms", "index", "set", "seconds", "start", "end", "offset", "autoAt", "now", "streak"]);
+const NUM = new Set(["ys", "slots", "rankAt", "pts", "count", "clip", "score", "round", "points", "ms", "index", "set", "seconds", "start", "end", "offset", "autoAt", "now", "streak", "lbr", "hits"]);
 const IDK = new Set(["id", "pid", "host", "me", "code"]);
 function cleanView(x, k = "", depth = 0) {
   if (depth > 10) return null;
@@ -76,6 +78,7 @@ function cleanView(x, k = "", depth = 0) {
   if (k === "art") return x === "hero" ? "hero" : "";
   if (k === "emoji") return EMOJIS.includes(x) ? x : "";
   if (k === "kind") return ["trivia", "rank", "op"].includes(x) ? x : "song";
+  if (k === "lid") return lbKey(x);
   if (k === "yt") return /^[\w-]{11}$/.test(x || "") ? x : null;
   if (typeof x === "string") return x.slice(0, 300);
   return typeof x === "number" || typeof x === "boolean" || x === null ? x : null;
@@ -1375,6 +1378,66 @@ function ytPaint() {
   if (!pre && !yt.want) ytPlay();
 }
 
+// ---------- puan sıralaması: her quizde ilk 10 + (ilk 10'da değilse) kendi satırın ----------
+const TEN = ` class="lbTen" title="Puan sıralamasına girer"`;
+// Sıralaması olan quizler: hazır ve topluluk quizleri (kişisel listeler ve sanatçı sıralama quizleri hariç)
+const lbOf = (l) => (l && l.kind !== "rank" && l.genre !== "Senin" ? lbKey(l.id) : "");
+// İlk 20 gösterilir. Oyuncu ilk 20'de değilse sırası "–" olarak, bu cihazdaki en iyi puanıyla en altta görünür.
+function boardRows(rows, key) {
+  const meAt = rows.findIndex(isMine);
+  const best = myBest(key);
+  const mine = meAt >= LB_TOP ? rows[meAt] : meAt < 0 && best > 0 ? { s: best, n: profile?.name || "Sen", a: profile?.avatar, k: profile?.color, me: 1 } : null;
+  if (!rows.length && !mine) return `<p class="lbEmpty">${ic("trophy")}<span>Henüz kimse yok. 10 soruluk bir oyun bitir, ilk sen ol!</span></p>`;
+  const row = (r, i) =>
+    `<li class="${r.me || isMine(r) ? "me" : ""}${i >= 0 && i < 3 ? ` t${i + 1}` : ""}"><span class="lbN">${i >= 0 ? i + 1 : "–"}</span>${avatar({ avatar: r.a, color: r.k }, "xs")}<b>${esc(maskName(r.n))}</b>${r.me || isMine(r) ? `<em>Sen</em>` : ""}<span class="lbS">${num(r.s)}</span></li>`;
+  return `<ol class="lbList">${rows.slice(0, LB_TOP).map(row).join("")}${mine ? `<li class="lbGap" aria-hidden="true"><i></i><i></i><i></i></li>${row(mine, -1)}` : ""}</ol>`;
+}
+// note: güvenli HTML olmalı (yalnızca sayılar ve sabit metin)
+function boardHtml(key, { title = "Puan sıralaması", note = "" } = {}) {
+  if (!key) return "";
+  const rows = peekBoard(key);
+  loadBoard(key).then(() => fillBoards(key), () => fillBoards(key, true));
+  return `<section class="lb" data-lb="${esc(key)}">
+    <header class="lbHead"><h3>${ic("trophy")}<span>${esc(title)}</span></h3><small>İlk ${LB_TOP}</small></header>
+    ${note ? `<p class="lbNote">${note}</p>` : ""}
+    <div class="lbBody" aria-live="polite">${rows ? boardRows(rows, key) : skRows(5)}</div>
+    <p class="lbRule">Yalnızca <b>10 soruluk</b> oyunlar sıralamaya girer; puan, cevap süresi ayarından bağımsız hesaplanır.</p>
+  </section>`;
+}
+function fillBoards(key, failed = false) {
+  const rows = peekBoard(key);
+  for (const el of $$(".lb")) {
+    if (el.dataset.lb !== key) continue;
+    const body = el.querySelector(".lbBody");
+    const html = rows ? boardRows(rows, key) : failed ? `<p class="lbEmpty">Sıralama şu an yüklenemedi.</p>` : null;
+    if (html != null && body.innerHTML !== html) body.innerHTML = html;
+  }
+}
+// Quiz bitince: 10 soruluk oyunsa sonucu (rekorsa) gönder, sıralamayı göster.
+let lbDone = { sig: "", prev: 0 };
+function lbResult(v, set) {
+  const key = lbKey(set?.lid);
+  if (!key || set.kind === "rank" || set.survival) return "";
+  const me = v.players.find((p) => p.pid === v.me);
+  let note = "";
+  if (num(set.count) !== LB_QUESTIONS) note = `Bu oyun ${num(set.count)} soruluktu; sıralamaya yalnızca 10 soruluk oyunlar girer.`;
+  else if (me) {
+    const sig = v.code + ":" + set.id + ":" + me.pid;
+    const sc = num(me.lbr);
+    if (lbDone.sig !== sig) {
+      lbDone = { sig, prev: myBest(key) };
+      if (sc > lbDone.prev) submitScore({ key, score: sc, correct: num(me.hits), name: me.name, avatar: me.avatar, color: me.color }).then(() => fillBoards(key)).catch(() => {});
+    }
+    const prev = lbDone.prev;
+    note = sc > prev
+      ? `${ic("sparkles")}<span>${prev ? `Yeni rekor! Sıralama puanın <b>${sc}</b> (önceki ${prev})` : `Sıralama puanın <b>${sc}</b>`}</span>`
+      : !sc && !prev
+        ? `<span>Bu oyunda doğru cevap olmadığı için sıralamaya puan gitmedi. Bir tur daha?</span>`
+        : `<span>Sıralama puanın <b>${sc}</b> · rekorun <b>${prev}</b></span>`;
+  }
+  return boardHtml(key, { title: "Quiz sıralaması", note });
+}
+
 function rankingHtml(v) {
   const final = v.phase === "done";
   const host = isHost();
@@ -1400,6 +1463,7 @@ function rankingHtml(v) {
       ${rec.newScore ? `<p class="recNew">${ic("trophy")} Yeni rekor!</p>` : ""}
       <p class="muted">${sc >= maxQ * 0.7 ? (set?.kind === "trivia" ? "Bilgin sağlam!" : "Kulağın keskin!") : sc >= maxQ * 0.4 ? "Fena değil, bir tur daha?" : "Isınma turuydu sayalım."}</p>
       ${sc >= maxQ * 0.7 ? confetti() : ""}
+      ${lbResult(v, set)}
     </section>
     <div class="dock split">${
       final
@@ -1432,6 +1496,7 @@ function rankingHtml(v) {
             .join("")}</ol></div>`
         : ""
     }
+    ${lbResult(v, set)}
     ${next ? `<div class="nextCard">${cover(next, "qImg")}<span class="qInfo"><small>Sıradaki quiz</small><b>${esc(next.name)}</b><small>${num(next.count)} soru · ${next.kind === "trivia" ? "Trivia" : "Şarkı"}</small></span><span class="rankLeft" id="rankLeft2"></span></div>` : ""}
   </section>
   <div class="dock split">
@@ -1595,15 +1660,29 @@ function inGame() {
   return screen === "room" && !!view && ["preparing", "question", "reveal", "ranking"].includes(view.phase);
 }
 // Tarayıcının geri tuşu: oyun başlarken geçmişe bir adım eklenir; geri basılınca önce sorulur.
+// Lobi ekranında da (oyun başlamadan) geri tuşu önce sorar; yoksa lobi sessizce kapanırdı.
+const inLobby = () => screen === "room" && !!mode && mode.role !== "solo" && !inGame();
 setInterval(() => {
-  if (inGame() && !history.state?.jqGame) history.pushState({ jqGame: 1 }, "");
+  if ((inGame() || inLobby()) && !history.state?.jqGame) history.pushState({ jqGame: 1 }, "");
 }, 500);
 addEventListener("popstate", () => {
-  if (!inGame()) return;
-  if (confirm(LEAVE_Q)) {
-    if (screen === "number") { nq = null; screen = "home"; render(); }
-    else leaveRoom();
-  } else history.pushState({ jqGame: 1 }, "");
+  if (inGame() || inLobby()) {
+    if (confirm(inGame() ? LEAVE_Q : "Lobiden ayrılmak istediğine emin misin?")) {
+      if (screen === "number") showHomeFromHistory();
+      else leaveRoom();
+    } else history.pushState({ jqGame: 1 }, "");
+    return;
+  }
+  const st = history.state;
+  if (st?.jqScreen === "detail" && st.id) {
+    if (screen !== "detail" || String(sheetCtx.list?.id) !== st.id) {
+      if (screen === "home") homeY = scrollY;
+      openList(st.id, true);
+    }
+    return;
+  }
+  if (st?.jqScreen === "number") return; // ileri tuşu: sayı quizi yeniden başlamasın, olduğu yerde kal
+  if (screen !== "home" && !(screen === "room" && mode)) showHomeFromHistory();
 });
 
 (function loop() {
@@ -1749,7 +1828,7 @@ function optsHtml(l) {
     if (!counts.includes(sheetCtx.count) && sheetCtx.count !== n) sheetCtx.count = Math.min(10, n);
     return `<div class="opts">
         <div class="opt"><span>Görüntü</span><div class="seg" data-opt="video"><button data-v="0" aria-pressed="${!sheetCtx.video}">${ic("volume-2")}Sadece ses</button><button data-v="1" aria-pressed="${!!sheetCtx.video}">${ic("eye")}Video açık</button></div></div>
-        <div class="opt optCount"><span>Soru sayısı</span><div class="seg" data-opt="count">${[...counts, n].map((c) => `<button data-v="${c}" aria-pressed="${sheetCtx.count === c}">${c === n ? `Hepsi (${c})` : c}</button>`).join("")}</div></div>
+        <div class="opt optCount"><span>Soru sayısı</span><div class="seg" data-opt="count">${[...counts, n].map((c) => `<button data-v="${c}" aria-pressed="${sheetCtx.count === c}"${c === LB_QUESTIONS ? TEN : ""}>${c === n ? `Hepsi (${c})` : c}</button>`).join("")}</div></div>
         <div class="rkRules"><span>${ic("tv")}<b>+${OP_PTS.anime}</b> anime</span><span>${ic("music")}<b>+${OP_PTS.song}</b> şarkı</span><span>${ic("sparkles")}<b>+${OP_PTS.both}</b> ikisi birden</span></div>
       </div>`;
   }
@@ -1759,11 +1838,11 @@ function optsHtml(l) {
     if (!counts.includes(sheetCtx.count) && sheetCtx.count !== n) sheetCtx.count = Math.min(10, n);
     return `<div class="opts">
         ${l.anime && ERAS.length ? `<div class="opt"><span>Dönem</span><div class="seg" data-opt="era">${ERAS.map(([v, t]) => `<button data-v="${v}" aria-pressed="${(l.era || "pop") === v}">${t}</button>`).join("")}</div></div>` : ""}
-        <div class="opt optCount"><span>Soru sayısı</span><div class="seg" data-opt="count">${[...counts, n].map((c) => `<button data-v="${c}" aria-pressed="${sheetCtx.count === c}">${c === n ? `Hepsi (${c})` : c}</button>`).join("")}</div></div>
+        <div class="opt optCount"><span>Soru sayısı</span><div class="seg" data-opt="count">${[...counts, n].map((c) => `<button data-v="${c}" aria-pressed="${sheetCtx.count === c}"${c === LB_QUESTIONS ? TEN : ""}>${c === n ? `Hepsi (${c})` : c}</button>`).join("")}</div></div>
       </div>`;
   }
   return `<div class="opts">
-      <div class="opt"><span>Soru sayısı</span><div class="seg" data-opt="count">${[5, 10, 15, 20, 30].map((n) => `<button data-v="${n}" aria-pressed="${sheetCtx.count === n}">${n}</button>`).join("")}</div></div>
+      <div class="opt"><span>Soru sayısı</span><div class="seg" data-opt="count">${[5, 10, 15, 20, 30].map((n) => `<button data-v="${n}" aria-pressed="${sheetCtx.count === n}"${n === LB_QUESTIONS ? TEN : ""}>${n}</button>`).join("")}</div></div>
       <div class="opt"><span>Cevap</span><div class="seg" data-opt="mode"><button data-v="choice" aria-pressed="${sheetCtx.mode === "choice"}">Şıklı</button><button data-v="text" aria-pressed="${sheetCtx.mode === "text"}">Yazarak</button></div></div>
       <div class="opt"><span>Çalış</span><div class="seg" data-opt="rev"><button data-v="0" aria-pressed="${!sheetCtx.rev}">Normal</button><button data-v="1" aria-pressed="${!!sheetCtx.rev}">${ic("rewind")}Tersten</button></div></div>
       <div class="opt"><span>Kesit uzunluğu</span>${clipSeg()}</div>
@@ -1817,7 +1896,7 @@ function renderDetail() {
   const b = bests()[l.id] || {};
   const n = ik ? num(l.items?.length) : num(l.tracks?.length);
   const surv = trivia && sheetCtx.gmode === "survival";
-  app.innerHTML = `<section class="dt" data-g="${surv ? "survival" : "normal"}" data-play="${esc(sheetCtx.play)}">
+  app.innerHTML = `<section class="dt${lbOf(l) ? " hasLb" : ""}" data-g="${surv ? "survival" : "normal"}" data-play="${esc(sheetCtx.play)}">
     <button class="dtBack" data-go="home">${ic("arrow-left")}Tüm quizler</button>
     <div class="dtGrid">
       <aside class="dtCard">
@@ -1851,6 +1930,7 @@ function renderDetail() {
         <button class="btn primary xl wide dtStart" data-do="detailGo" ${ik ? "" : "disabled data-needtracks=1"}>${ic("sparkles")}Başla</button>
         ${b.score || b.streak ? `<div class="dtRec">${ic("trophy")}<span>Rekorların: ${b.score ? `<b>${num(b.score)}</b> puan` : ""}${b.score && b.streak ? " · " : ""}${b.streak ? `<b>${num(b.streak)}</b> soruluk seri` : ""}</span></div>` : ""}
       </div>
+      ${lbOf(l) ? `<div class="dtBoard">${boardHtml(lbOf(l))}</div>` : ""}
     </div>
   </section>`;
   if (!ik) fillTracks(l, () => screen === "detail");
@@ -1867,11 +1947,11 @@ function setupPayload() {
   const { list, tracks, ids, count, mode: m, clip, rev } = sheetCtx;
   if (list.kind === "rank" || list.kind === "op") {
     if (!list.items?.length) throw Error(list.items ? "Bu quiz için soru bulunamadı." : "Sorular hazırlanıyor, birazdan tekrar dene.");
-    return { type: "add", kind: list.kind, list: { name: list.name, emoji: list.emoji || "", picture: list.picture || "" }, items: list.items, count: list.kind === "rank" ? list.items.length : count, mode: list.kind, clip: 0, video: !!sheetCtx.video };
+    return { type: "add", kind: list.kind, list: { name: list.name, emoji: list.emoji || "", picture: list.picture || "" }, items: list.items, count: list.kind === "rank" ? list.items.length : count, mode: list.kind, clip: 0, video: !!sheetCtx.video, lid: lbOf(list) };
   }
   if (list.kind === "trivia") {
     const survival = sheetCtx.gmode === "survival" && sheetCtx.play !== "party";
-    return { type: "add", kind: "trivia", list: { name: list.name, emoji: list.emoji || "" }, items: list.items, count: survival ? list.items.length : count, mode: "choice", clip: 0, survival };
+    return { type: "add", kind: "trivia", list: { name: list.name, emoji: list.emoji || "" }, items: list.items, count: survival ? list.items.length : count, mode: "choice", clip: 0, survival, lid: lbOf(list) };
   }
   if (!tracks) throw Error("Şarkılar henüz yüklenmedi.");
   if (!ids.size) throw Error("En az bir şarkı seç.");
@@ -1884,6 +1964,7 @@ function setupPayload() {
     mode: m,
     clip,
     reverse: !!rev,
+    lid: lbOf(list),
   };
 }
 async function loadAnime(l, era) {
@@ -1908,7 +1989,38 @@ async function loadRank(l) {
   }
   if (sheetCtx?.list === l) { const o = $(".opts"); if (o) o.outerHTML = optsHtml(l); }
 }
-function openList(id) {
+// ---------- tarayıcı geçmişi: geri tuşu (fare 4/5 dahil) siteden çıkmak yerine bir önceki ekrana döner ----------
+// Detay ve Sayı Quizi ekranları geçmişe bir adım ekler; geri basılınca ana ekrana (kaldığın yere) dönülür.
+let homeY = 0;
+let afterBack = null;
+function pushScreen(state) {
+  if (screen === "home") homeY = scrollY;
+  if (history.state?.jqScreen) history.replaceState(state, "");
+  else history.pushState(state, "");
+}
+// Uygulama içindeki "geri" düğmeleri de tarayıcı geçmişiyle aynı yolu izler (çift geri basma olmasın).
+function backHome(after) {
+  if (history.state?.jqScreen && !mode) {
+    afterBack = after || null;
+    return history.back();
+  }
+  if (screen === "number") nq = null;
+  screen = "home";
+  lastSig = "";
+  render();
+  after?.();
+}
+function showHomeFromHistory() {
+  if (screen === "number") nq = null;
+  screen = "home";
+  lastSig = "";
+  render();
+  const after = afterBack;
+  afterBack = null;
+  if (after) after();
+  else requestAnimationFrame(() => scrollTo({ top: homeY }));
+}
+function openList(id, fromHistory = false) {
   const l = allLists().find((x) => String(x.id) === String(id));
   if (!l) return;
   if (l.anime && !l.items) loadAnime(l, l.era || "pop");
@@ -1919,6 +2031,7 @@ function openList(id) {
   const ctx = { list: l, count: last.count || 10, mode: last.mode || "choice", clip: rev ? 5 : last.clip || 3, rev, play: "solo", gmode: "normal" };
   // Lobide kurucu quiz eklerken pencere; ana sayfada tam detay sayfası
   if (mode && mode.role !== "solo" && isHost()) return openSheet("setup", ctx);
+  if (!fromHistory) pushScreen({ jqScreen: "detail", id: String(l.id) });
   sheetCtx = ctx;
   screen = "detail";
   render();
@@ -1971,6 +2084,7 @@ function startNumber(id) {
   if (mode) leaveRoom(true);
   nq = { cat, streak: 0, phase: "pick", recent: [], pair: null, pick: -1 };
   nq.pair = pickPair(cat);
+  if (screen !== "number") pushScreen({ jqScreen: "number" });
   screen = "number";
   render();
   scrollTo({ top: 0 });
@@ -2069,17 +2183,12 @@ async function doAction(a, el) {
     case "numHome":
       ui.genre = "Sayı";
       ui.cat = "";
-      screen = "home";
-      render();
-      return document.getElementById("catalog")?.scrollIntoView({ behavior: "smooth", block: "start" });
+      return backHome(() => document.getElementById("catalog")?.scrollIntoView({ behavior: "smooth", block: "start" }));
     case "numAgain":
       return startNumber(nq.cat.id);
     case "numExit":
-      nq = null;
-      screen = "home";
       ui.genre = "Sayı";
-      render();
-      return document.getElementById("catalog")?.scrollIntoView({ block: "start" });
+      return backHome(() => document.getElementById("catalog")?.scrollIntoView({ block: "start" }));
     case "toCatalog":
       return document.getElementById("catalog")?.scrollIntoView({ behavior: "smooth", block: "start" });
     case "toTrivia":
@@ -2194,6 +2303,7 @@ document.addEventListener("click", async (e) => {
       if (d.go === "home" && inGame() && !confirm(LEAVE_Q)) return;
       // Tek başına oynarken ana sayfaya dönmek oyunu bitirir (geri dönülecek bir lobi yok).
       if (d.go === "home" && (mode?.role === "solo" || hostAlone())) return leaveRoom();
+      if (d.go === "home" && !mode && screen !== "home") return backHome();
       screen = d.go === "room" && mode ? "room" : "home";
       lastSig = "";
       return render();

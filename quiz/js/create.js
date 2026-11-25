@@ -1,11 +1,11 @@
 // JinjaQuiz: quiz oluşturma sayfası (/quiz/create/). Sanatçı ve şarkı araması ayrı sekmelerde;
 // sanatçının popüler şarkıları ve tüm albümleri tek tek ya da topluca eklenebilir.
 import { searchArtists, searchTracks, artistInfo, artistTop, artistAlbums, albumTracks, ownTracks, isAlternate, customLists, saveCustom, removeCustom, cleanTracks, fold, cdn } from "./music.js?v=4";
-import { fetchCommunity, publishQuiz, removeQuiz, myPubkey, MIN_TRACKS, MAX_TRACKS } from "./community.js?v=4";
-import { TCATS, TART, EMOJIS, T_MIN, T_MAX, cleanItems, cleanCat, cleanEmoji, isTF, IMG } from "./trivia.js?v=2";
-import { cleanOps, RANK_PTS, OP_PTS } from "./engine.js?v=7";
+import { fetchCommunity, publishQuiz, removeQuiz, myPubkey, MIN_TRACKS, MAX_TRACKS } from "./community.js?v=5";
+import { TCATS, TART, EMOJIS, T_MIN, T_MAX, cleanItems, cleanCat, cleanEmoji, isTF, IMG } from "./trivia.js?v=3";
+import { cleanOps, RANK_PTS, OP_PTS } from "./engine.js?v=8";
 import { rankItems } from "./rank.js?v=3";
-import { OP_MIN } from "./community.js?v=4";
+import { OP_MIN } from "./community.js?v=5";
 
 const $ = (s, r = document) => r.querySelector(s);
 const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
@@ -544,13 +544,14 @@ async function saveTrivia() {
     st.saving = false; drawLists(); fail(e);
   }
 }
-function setKind(kind) {
+// push: tür seçiminden editöre geçiş geçmişe yazılır; tarayıcının geri tuşu tür seçimine döner.
+function setKind(kind, push = false) {
   if (kind === st.kind) return;
   if (hasContent() && !confirm("Quiz türünü değiştirirsen eklediklerin silinir. Devam edilsin mi?")) return;
   st.kind = kind; st.tracks = []; st.items = kind === "trivia" ? [blank()] : [];
   st.rank = null; st.ops = kind === "op" ? [blankOp(), blankOp(), blankOp(), blankOp()] : []; st.results = null; st.q = ""; st.busy = false;
   if (kind === "op") st.emoji = "📺"; else if (kind === "trivia") st.emoji = "🧠";
-  history.replaceState(null, "", kind ? `?tur=${kind === "song" ? "sarki" : kind === "rev" ? "tersten" : kind === "rank" ? "siralama" : kind === "op" ? "opening" : "trivia"}` : location.pathname);
+  history[push ? "pushState" : "replaceState"](null, "", kind ? `?tur=${kind === "song" ? "sarki" : kind === "rev" ? "tersten" : kind === "rank" ? "siralama" : kind === "op" ? "opening" : "trivia"}` : location.pathname);
   drawAll();
   scrollTo({ top: 0 });
   if (kind) (kind === "trivia" || kind === "op" ? $("#qName") : $("#crq"))?.focus();
@@ -563,7 +564,7 @@ document.addEventListener("click", async (e) => {
   if (!b || b.disabled) return;
   const d = b.dataset;
   try {
-    if (d.kind) return setKind(d.kind);
+    if (d.kind) return setKind(d.kind, !st.kind);
     if (d.rankartist !== undefined) return buildRank(st.results[Number(d.rankartist)]);
     if (d.opdel !== undefined) { const i = Number(d.opdel); const o = st.ops[i]; if ((o.url || o.anime || o.song) && !confirm(`${i + 1}. opening silinsin mi?`)) return; st.ops.splice(i, 1); if (!st.ops.length) st.ops.push(blankOp()); return drawLists(); }
     if (d.emoji) { st.emoji = cleanEmoji(d.emoji); return drawLists(); }
@@ -685,11 +686,22 @@ addEventListener("beforeunload", (e) => {
   if (hasContent() && !st.saving) { e.preventDefault(); e.returnValue = ""; }
 });
 
+const turOf = (params) => ({ trivia: "trivia", sarki: "song", song: "song", tersten: "rev", rev: "rev", siralama: "rank", rank: "rank", opening: "op", op: "op" })[params.get("type") || params.get("tur")];
+addEventListener("popstate", () => {
+  const params = new URLSearchParams(location.search);
+  if (params.get("edit") || params.get("duzenle")) return;
+  const k = turOf(params) || null;
+  if (k === st.kind) return;
+  setKind(k);
+  // Eklenenler silinmesin diye vazgeçildiyse adres yine bulunduğun türü göstersin.
+  if (st.kind !== k && st.kind) history.pushState(null, "", `?tur=${{ song: "sarki", rev: "tersten", rank: "siralama", op: "opening" }[st.kind] || "trivia"}`);
+});
+
 // ---- açılış: ?duzenle=<id> ----
 (async function boot() {
   const params = new URLSearchParams(location.search);
   const id = (params.get("edit") || params.get("duzenle")) || "";
-  const tur = { trivia: "trivia", sarki: "song", song: "song", tersten: "rev", rev: "rev", siralama: "rank", rank: "rank", opening: "op", op: "op" }[params.get("type") || params.get("tur")];
+  const tur = turOf(params);
   if (tur && !id) { st.kind = null; setKind(tur); return; }
   drawAll();
   if (!id) return;
