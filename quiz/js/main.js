@@ -9,7 +9,7 @@ import { RANK_QUIZZES, RANK_CATS, rankItems } from "./rank.js?v=3";
 import { TRIVIA, TCATS, TART, EMOJIS, cleanItems, IMG, ANI_IMG, FLAG, flagUrl, cleanEmo } from "./trivia.js?v=3";
 import { ANIME_QUIZZES, ERAS, animeItems, animeOps } from "./anime.js?v=3";
 import { NUMCATS, fmtNum, farEnough } from "./numdata.js";
-import { hostRoom, guestRoom, newCode, validCode } from "./net.js";
+import { hostRoom, guestRoom, newCode, validCode } from "./net.js?v=2";
 
 // ---------- yardımcılar ----------
 const $ = (s, r = document) => r.querySelector(s);

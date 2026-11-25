@@ -1,6 +1,9 @@
 // Deezer JSONP, isolated in a sandboxed iframe (see catalog.html). Only whitelisted API paths are requested.
 (function () {
   'use strict';
+  // Yalnızca sandbox'lı (opak kökenli) çerçevede çalışır. Sayfa doğrudan açılırsa ya da başka bir site onu
+  // sandbox'sız gömerse Deezer betikleri jinjagames.com kökeninde çalışmasın diye hiçbir şey yapmaz.
+  if (self.origin !== 'null' || window.parent === window) return;
   var seq = 0;
   var PATH = /^(search\/artist|search\/track|artist\/\d{1,12}(\/top|\/albums)?|album\/\d{1,14}\/tracks|track\/\d{1,14})$/;
   function reply(id, ok, payload) {

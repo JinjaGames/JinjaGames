@@ -49,6 +49,11 @@ export function hostRoom(code, { onHello, onAction, onLeave }) {
     if (m.t === "hello") {
       // Oyuncu kimliği sayfaya ve olay işleyicilerine girer: yalnızca güvenli karakterler.
       if (typeof m.pid !== "string" || !/^[a-z0-9]{4,16}$/.test(m.pid)) return;
+      // Bir oyuncunun kimliğini kopyalayıp onun yerine cevap vermek engellenir: kimlik başka bir bağlı eşe aitse reddet.
+      if ([...peers].some(([p, id]) => id === m.pid && p !== peerId)) {
+        send({ t: "denied", reason: "Bu oyuncu lobide zaten bağlı. Birkaç saniye sonra tekrar dene." }, { target: peerId });
+        return;
+      }
       // Önce eşi kaydet ki onHello'nun tetiklediği durum yayını yeni oyuncuya da ulaşsın.
       peers.set(peerId, m.pid);
       const err = onHello(m.pid, m.profile, peerId);
@@ -107,6 +112,8 @@ export function guestRoom(code, pid, profile, { onState, onDenied, onHostLost, o
   let lostTimer = null;
   const pending = new Map();
   let n = 0;
+  const helloTo = new Set(); // kendini kurucu olarak tanıtan ve "merhaba" dediğimiz eşler
+  const hostCands = new Set(); // kurucu bağlıyken kendini kurucu ilan edenler
 
   const sync = () => {
     if (hostPeer) send({ t: "sync", c: Date.now() }, { target: hostPeer });
@@ -115,10 +122,16 @@ export function guestRoom(code, pid, profile, { onState, onDenied, onHostLost, o
     const peerId = ctx?.peerId ?? ctx;
     if (!m || typeof m !== "object") return;
     if (m.t === "host") {
+      // Kurucu bilinirken başka biri kendini kurucu ilan edemez; kurucu ayrılırsa (sayfayı yenilediyse) bu adaylara dönülür.
+      if (hostPeer && hostPeer !== peerId) { hostCands.add(peerId); return; }
+      helloTo.add(peerId);
       send({ t: "hello", pid, profile }, { target: peerId });
       return;
     }
     if (m.t === "state") {
+      // Oyun durumu yalnızca kurucudan kabul edilir; kurucu yoksa (ilk bağlantı ya da yeniden bağlanma)
+      // yalnızca merhaba dediğimiz eşten. Lobideki başka bir oyuncu sahte ekran gönderemez.
+      if (hostPeer ? hostPeer !== peerId : !helloTo.has(peerId)) return;
       if (hostPeer !== peerId) {
         const wasLost = lostTimer !== null;
         hostPeer = peerId;
@@ -133,7 +146,8 @@ export function guestRoom(code, pid, profile, { onState, onDenied, onHostLost, o
       onState(m.s, offset);
       return;
     }
-    if (peerId !== hostPeer && m.t !== "denied") return;
+    // "Lobiden çıkarıldın" gibi mesajlar da yalnızca kurucudan (ya da henüz kurucu belli değilken merhaba dediğimiz eşten).
+    if (peerId !== hostPeer && !(m.t === "denied" && !hostPeer && helloTo.has(peerId))) return;
     if (m.t === "sync") {
       const now = Date.now();
       const rtt = now - m.c;
@@ -152,7 +166,11 @@ export function guestRoom(code, pid, profile, { onState, onDenied, onHostLost, o
     }
   });
   room.onPeerLeave = (peerId) => {
+    helloTo.delete(peerId);
+    hostCands.delete(peerId);
     if (peerId !== hostPeer) return;
+    for (const c of hostCands) { helloTo.add(c); send({ t: "hello", pid, profile }, { target: c }); }
+    hostCands.clear();
     hostPeer = null;
     onHostLost?.();
     // Kurucu sayfayı yenilediyse birkaç saniyede döner; dönmezse lobi kapanmış sayılır.
