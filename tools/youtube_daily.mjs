@@ -82,6 +82,7 @@ async function views(ids) {
 // yalnızca şarkı adlarını düzgün yazmak ve şaşırtmaca şıklar için kullanılır. Böylece Deezer'da üst
 // sıralarda olmayan bir YouTube hiti (ör. Wegh - Kennedy'yi Ben Vurdum) de listeye girer.
 const SEARCH_EVERY = 7; // gün
+const RANK_SEARCH_PER_DAY = 12; // YouTube günlük arama sayısını sınırlıyor; aramalar günlere yayılır
 async function rankArtists() {
   const src = await readFile(new URL("quiz/js/rank.js", ROOT), "utf8");
   const list = [...src.matchAll(/name: "([^"]+)", artistId: (\d+)/g)].map((m) => ({ id: m[2], name: m[1] }));
@@ -172,14 +173,18 @@ async function rank() {
   data.v = 2;
   data.artists ||= {};
   const keep = new Set();
-  outer: for (const a of await rankArtists()) {
+  let searched = 0;
+  // hiç aranmamış (yeni eklenen, ör. topluluk) sanatçılar önce, sonra en eski aramadan başlayarak
+  const artists = (await rankArtists()).sort((x, y) => String(data.artists[x.id]?.ytAt || "").localeCompare(String(data.artists[y.id]?.ytAt || "")));
+  outer: for (const a of artists) {
     keep.add(a.id);
     const cur = (data.artists[a.id] ||= { name: a.name, vids: {}, songs: [] });
     cur.name = a.name;
     try { const t = await deezerTop(a.id); if (t.length) cur.titles = t; } catch {}
     const old = cur.ytAt ? (Date.parse(today) - Date.parse(cur.ytAt)) / 864e5 : Infinity;
     // eski biçimde (ham başlıksız) saklananlar bir kez yeniden aranır
-    if (old >= SEARCH_EVERY || (cur.yt || []).some((x) => !x.raw)) {
+    if ((old >= SEARCH_EVERY || (cur.yt || []).some((x) => !x.raw)) && searched < RANK_SEARCH_PER_DAY) {
+      searched++;
       try { cur.yt = await topVideos(a.name); cur.ytAt = today; }
       catch (e) { if (e instanceof Quota) break outer; console.log(`${a.name}: ${e.message}`); }
     }
@@ -243,45 +248,105 @@ async function openingsOf(mal) {
   });
 }
 const ANI = `query($page:Int){Page(page:$page,perPage:50){media(type:ANIME,isAdult:false,sort:[POPULARITY_DESC],format_in:[TV,ONA]){idMal title{romaji english}}}}`;
-async function ops() {
-  const data = await load(OPS_FILE, { v: 1, items: [], tried: {} });
-  data.items ||= []; data.tried ||= {};
-  if (data.items.length >= OP_MAX) return data;
-  let list = [];
-  for (const page of [1, 2, 3, 4, 5, 6]) {
-    const r = await fetch("https://graphql.anilist.co", { method: "POST", headers: { "Content-Type": "application/json", Accept: "application/json" }, body: JSON.stringify({ query: ANI, variables: { page } }) });
-    if (!r.ok) break;
-    list.push(...((await r.json())?.data?.Page?.media || []));
-    await sleep(800);
-  }
-  let added = 0;
-  outer: for (const m of list) {
-    if (added >= OP_PER_DAY || data.items.length >= OP_MAX) break;
-    if (!m.idMal || data.tried[m.idMal]) continue;
-    const anime = (m.title.english || m.title.romaji || "").trim().slice(0, 80);
-    let list2;
-    try { list2 = await openingsOf(m.idMal); } catch (e) { console.log(`Opening adları alınamadı (${e.message}); openingler bugün atlandı.`); break; }
-    await sleep(500);
-    data.tried[m.idMal] = today;
-    // ilk iki opening
-    for (const raw of list2.slice(0, 2)) {
-      // "departure! -second version-", "We Are! ~10th Ver.~" gibi sürüm ekleri aynı şarkıdır
-      const song = strip(raw).replace(/\s*[-~〜]\s*[^-~〜]*\b(version|ver\.?|edition|arrange)\b[^-~〜]*[-~〜]?\s*$/i, "").replace(/\s+/g, " ").trim().slice(0, 80);
-      if (!song || !anime) continue;
-      // aynı şarkı başka bir sezonda da opening olabilir: bir kez yeter
-      if (data.items.some((x) => { const f = fold(x.song), k = fold(song); return f === k || (Math.min(f.length, k.length) >= 5 && (f.startsWith(k) || k.startsWith(f))); })) continue;
-      try {
-        const j = await yt("search", { part: "snippet", type: "video", videoEmbeddable: "true", maxResults: 5, q: `${anime} opening ${song}` }, 100);
-        const fs = fold(song);
-        const hit = (j.items || []).find((it) => fs && fold(it.snippet?.title).includes(fs));
-        if (hit?.id?.videoId && !data.items.some((x) => x.yt === hit.id.videoId)) { data.items.push({ yt: hit.id.videoId, s: 0, anime, song, mal: m.idMal }); added++; }
-      } catch (e) { if (e instanceof Quota) { console.log(`Opening araması durdu: ${e.message}`); break outer; } throw e; }
+// Opening videosu seçimi: yalnızca resmi kanallardaki (yapımcı, dağıtıcı, plak şirketi, sanatçının resmi kanalı) TEK opening
+// videoları; derlemeler ("All Openings"), hayran yüklemeleri, kapaklar ve Türkiye'de açılmayan videolar alınmaz.
+const OFFICIAL_CH = /crunchyroll|toho ?animation|aniplex|toei ?animation|\bmappa\b|kadokawa|ufotable|funimation|netflix|muse ?asia|ani-one|avex|sony ?music|pony ?canyon|king ?(records|amusement)|lantis|bandai ?namco|nbcuniversal|flying ?dog|warner ?bros|jump ?channel|production ?i\.?g|wit ?studio|cloverworks|kyoto ?animation|madhouse|sunrise|gundam|tv ?tokyo|noitamina|abema|hidive|viz ?media|discotek|sentai|official|アニプレックス|東宝|ポニーキャニオン|キングレコード|ランティス|フライングドッグ|エイベックス|バンダイナムコ|京都アニメーション|ジャンプ|ソニー|東映|公式/i;
+const OP_BAD = /\b(all|every|full) (openings?|ops?)\b|openings? \d+ ?[-–~] ?\d+|\bop ?\d+ ?[-–~] ?\d+|compilation|全op|歴代|reaction|cover|\bamv\b|piano|guitar|violin|drum|nightcore|slowed|sped ?up|8d|karaoke|instrumental|\blyrics?\b|lyric video|fan ?made|remix|live\b|ライブ|歌ってみた|弾いてみた|ending|エンディング|\bed\b|trailer|teaser|\bpv\b|予告/i;
+const OP_GOOD = /ノンクレジット|non-?credit|creditless|textless|clean opening|\bncop\b|opening|オープニング|\bop\b|op(テーマ|ムービー)/i;
+const ISO = (d) => { const m = String(d || "").match(/PT(?:(\d+)H)?(?:(\d+)M)?(?:(\d+)S)?/); return m ? (+m[1] || 0) * 3600 + (+m[2] || 0) * 60 + (+m[3] || 0) : 0; };
+/** Videoların kanal, süre, gömülebilirlik ve Türkiye'de açılabilirlik bilgisi (50 video 1 birim). */
+async function vinfo(ids) {
+  const out = new Map();
+  for (let i = 0; i < ids.length; i += 50) {
+    const j = await yt("videos", { part: "snippet,contentDetails,status,statistics", id: ids.slice(i, i + 50).join(","), maxResults: 50 }, 1);
+    for (const v of j.items || []) {
+      const rr = v.contentDetails?.regionRestriction;
+      const tr = !(rr?.blocked || []).includes("TR") && !(rr?.allowed && !rr.allowed.includes("TR"));
+      out.set(v.id, {
+        ch: v.snippet?.channelTitle || "", title: unent(v.snippet?.title), dur: ISO(v.contentDetails?.duration),
+        ok: v.status?.embeddable !== false && v.status?.privacyStatus !== "private" && tr && v.snippet?.liveBroadcastContent === "none",
+        v: Number(v.statistics?.viewCount) || 0,
+      });
     }
   }
-  // gömülemeyen ya da kaldırılan videoları ayıkla
+  return out;
+}
+// Video bu opening için uygun mu, ne kadar uygun? (0: uygun değil)
+function opScore(info, names, anime) {
+  if (!info?.ok || !OFFICIAL_CH.test(info.ch) || OP_BAD.test(info.title)) return 0;
+  if (info.dur < 45 || info.dur > 330) return 0; // TV boyu ~90 sn; tam şarkı klibi en çok ~5 dk
+  const t = info.title.toLocaleLowerCase();
+  const ft = fold(info.title);
+  const hasSong = names.some((n) => (fold(n).length >= 3 && ft.includes(fold(n))) || (n.length >= 2 && t.includes(n.toLocaleLowerCase())));
+  const hasAnime = fold(anime).length >= 3 && ft.includes(fold(anime).slice(0, 12));
+  if (!hasSong && !(hasAnime && OP_GOOD.test(info.title))) return 0;
+  let s = 1;
+  if (hasSong) s += 3;
+  if (OP_GOOD.test(info.title)) s += 4; // ayrı opening videosu (ör. "ノンクレジットOP", "Creditless Opening")
+  if (info.dur >= 80 && info.dur <= 100) s += 2; // TV boyu
+  s += Math.min(2, Math.log10(1 + info.v) / 4);
+  return s;
+}
+const OP_SEARCH_PER_DAY = 30;
+async function ops() {
+  const data = await load(OPS_FILE, { v: 2, items: [], tried: {} });
+  data.items ||= []; data.tried ||= {};
+  // eski (v1) kayıtlar yeni kurallarla bir kez denetlenir: uymayanlar silinir, o anime yeniden aranır
+  if (data.v !== 2) {
+    try {
+      const inf = await vinfo(data.items.map((x) => x.yt));
+      data.items = data.items.filter((x) => {
+        const i = inf.get(x.yt);
+        const keep = opScore(i, [x.song], x.anime) > 0;
+        if (!keep) { delete data.tried[x.mal]; console.log(`Opening çıkarıldı: ${x.anime} — ${x.song} (${i ? `${i.ch}, ${i.dur} sn` : "video yok"})`); }
+        else x.ch = i.ch;
+        return keep;
+      });
+      data.v = 2;
+    } catch (e) { if (!(e instanceof Quota)) throw e; return data; }
+  }
+  if (data.items.length < OP_MAX) {
+    let list = [];
+    for (const page of [1, 2, 3, 4, 5, 6]) {
+      const r = await fetch("https://graphql.anilist.co", { method: "POST", headers: { "Content-Type": "application/json", Accept: "application/json" }, body: JSON.stringify({ query: ANI, variables: { page } }) });
+      if (!r.ok) break;
+      list.push(...((await r.json())?.data?.Page?.media || []));
+      await sleep(800);
+    }
+    let added = 0, searches = 0;
+    outer: for (const m of list) {
+      if (added >= OP_PER_DAY || searches >= OP_SEARCH_PER_DAY || data.items.length >= OP_MAX) break;
+      if (!m.idMal || data.tried[m.idMal]) continue;
+      const anime = (m.title.english || m.title.romaji || "").trim().slice(0, 80);
+      let list2;
+      try { list2 = await openingsOf(m.idMal); } catch (e) { console.log(`Opening adları alınamadı (${e.message}); openingler bugün atlandı.`); break; }
+      await sleep(500);
+      data.tried[m.idMal] = today;
+      // ilk iki opening
+      for (const raw of list2.slice(0, 2)) {
+        // "departure! -second version-", "We Are! ~10th Ver.~" gibi sürüm ekleri aynı şarkıdır
+        const song = strip(raw).replace(/\s*[-~〜]\s*[^-~〜]*\b(version|ver\.?|edition|arrange)\b[^-~〜]*[-~〜]?\s*$/i, "").replace(/\s+/g, " ").trim().slice(0, 80);
+        if (!song || !anime) continue;
+        // aynı şarkı başka bir sezonda da opening olabilir: bir kez yeter
+        if (data.items.some((x) => { const f = fold(x.song), k = fold(song); return f === k || (Math.min(f.length, k.length) >= 5 && (f.startsWith(k) || k.startsWith(f))); })) continue;
+        // şarkının özgün (Japonca) adı da eşleşmede kullanılır: "Ao no Sumika (青のすみか)"
+        const names = [song, ...[...String(raw).matchAll(/\(([^()]+)\)/g)].map((x) => x[1].trim())].filter(Boolean);
+        try {
+          searches++;
+          const j = await yt("search", { part: "snippet", type: "video", videoEmbeddable: "true", regionCode: "TR", maxResults: 15, q: `${anime} opening ${song}` }, 100);
+          const ids = (j.items || []).map((it) => it.id?.videoId).filter((id) => id && !data.items.some((x) => x.yt === id));
+          const inf = await vinfo(ids);
+          const best = ids.map((id) => ({ id, s: opScore(inf.get(id), names, anime) })).filter((x) => x.s > 0).sort((a, b) => b.s - a.s)[0];
+          if (best) { data.items.push({ yt: best.id, s: 0, anime, song, mal: m.idMal, ch: inf.get(best.id).ch }); added++; }
+          else console.log(`Resmi opening videosu bulunamadı: ${anime} — ${song}`);
+        } catch (e) { if (e instanceof Quota) { console.log(`Opening araması durdu: ${e.message}`); break outer; } throw e; }
+      }
+    }
+  }
+  // kaldırılan, gömülemeyen ya da Türkiye'de açılmayan videoları ayıkla
   try {
-    const vs = await views(data.items.map((x) => x.yt));
-    data.items = data.items.filter((x) => vs.get(x.yt)?.embed);
+    const inf = await vinfo(data.items.map((x) => x.yt));
+    data.items = data.items.filter((x) => inf.get(x.yt)?.ok);
   } catch (e) { if (!(e instanceof Quota)) throw e; }
   return data;
 }

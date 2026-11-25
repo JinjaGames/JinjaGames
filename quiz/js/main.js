@@ -1314,7 +1314,7 @@ function opStage(v, q, reveal, cdHtml) {
     ${reveal ? "" : cdHtml}
     <span class="tqNo">${ic("tv")} Opening ${num(v.index) + 1}</span>
     <div class="opScreen" id="ytSlot"></div>
-    ${reveal ? `<div class="tqAns"><span class="tqAnsText"><small>Doğru cevap</small><b>${esc(q.reveal.title)}</b><small>${ic("music")} ${esc(q.reveal.song || "")}</small>${opVerdict(q.reveal.results[v.me])}</span></div>` : `<button class="btn soft sm opTap" data-do="ytplay">${ic("volume-2")}Ses gelmiyor mu? Dokun</button>`}
+    ${reveal ? `<div class="tqAns"><span class="tqAnsText"><small>Doğru cevap</small><b>${esc(q.reveal.title)}</b><small>${ic("music")} ${esc(q.reveal.song || "")}</small>${opVerdict(q.reveal.results[v.me])}</span></div>${ytToggleBtn()}` : q.mine ? `<p class="muted opPaused">${ic("pause")} Cevabın kilitlendi, şarkı durduruldu</p>` : `<button class="btn soft sm opTap" data-do="ytplay">${ic("volume-2")}Ses gelmiyor mu? Dokun</button>`}
   </div>`;
 }
 function opVerdict(r) {
@@ -1338,46 +1338,111 @@ function opAnswers(v, q, reveal) {
   return `<div class="opAns">${row(q.options, "oa", "Anime", "tv", reveal ? q.reveal.title : null, myA?.anime ?? p.a)}${row(q.options2, "os", "Şarkı", "music", reveal ? q.reveal.song : null, myA?.song ?? p.s)}</div>`;
 }
 // YouTube oynatıcı: yeniden çizimlerde kesilmesin diye #app dışında, sabit konumda durur ve soru alanının üstüne hizalanır.
-const yt = { host: null, frame: null, qid: "", ready: false, playing: false, want: false };
+const YT_ORIGIN = "https://www.youtube-nocookie.com";
+const yt = { host: null, frame: null, qid: "", ready: false, live: false, playing: false, want: false, state: -1, paused: false, failed: false, hs: 0, chk: 0 };
 function ytCmd(func, args = []) {
-  try { yt.frame?.contentWindow?.postMessage(JSON.stringify({ event: "command", func, args }), "https://www.youtube-nocookie.com"); } catch {}
+  try { yt.frame?.contentWindow?.postMessage(JSON.stringify({ event: "command", func, args }), YT_ORIGIN); } catch {}
+}
+function ytToggleBtn() {
+  const on = yt.state === 1 && !yt.paused;
+  return `<button class="btn soft sm opTap" data-do="yttoggle" id="ytTog">${on ? `${ic("pause")}Durdur` : `${ic("play")}Dinlemeye devam et`}</button>`;
+}
+// Oynatıcıyla el sıkışma: YouTube oynatıcısı hazır olduğunu bildirene kadar "dinliyorum" mesajı tekrarlanır;
+// komutlar ancak bundan sonra gönderilir (önceden gönderilenler yutuluyordu: ses gelmiyor, ses ayarı etki etmiyordu).
+addEventListener("message", (e) => {
+  if (e.origin !== YT_ORIGIN || !yt.frame || e.source !== yt.frame.contentWindow) return;
+  let d;
+  try { d = typeof e.data === "string" ? JSON.parse(e.data) : e.data; } catch { return; }
+  if (!d || typeof d !== "object") return;
+  if (!yt.live) {
+    // oynatıcı ilk kez cevap verdi: olayları dinlemeye kaydol, bekleyen oynatma isteğini (ses ayarıyla) yeniden gönder
+    yt.live = yt.ready = true;
+    clearInterval(yt.hs);
+    for (const ev of ["onStateChange", "onError"]) ytCmd("addEventListener", [ev]);
+    if (yt.want && !yt.paused) ytPlay();
+  }
+  const st = d.event === "onStateChange" ? d.info : d.event === "infoDelivery" ? d.info?.playerState : undefined;
+  if (typeof st === "number" && st !== yt.state) ytState(st);
+  if (d.event === "onError") ytFail();
+});
+function ytState(s) {
+  yt.state = s;
+  yt.host?.classList.toggle("blocked", false);
+  const b = $("#ytTog");
+  if (b) b.outerHTML = ytToggleBtn();
+}
+// Video bu ülkede/gömülü oynatıcıda açılmıyorsa: tek başına oynarken soru geçilir, lobide uyarı gösterilir.
+function ytFail() {
+  if (yt.failed) return;
+  yt.failed = true;
+  yt.host?.classList.add("failed", "covered");
+  const qid = yt.qid;
+  if (view?.solo && view.phase === "question" && view.question?.id === qid)
+    setTimeout(() => { if (view?.phase === "question" && view.question?.id === qid) { toast("Bu opening'in videosu açılamadı, sıradakine geçiliyor."); act({ type: "skip" }); } }, 1500);
 }
 function ytEnsure(q) {
   if (!yt.host) {
     yt.host = document.createElement("div");
     yt.host.className = "ytHost";
-    yt.host.innerHTML = `<div class="ytCover"><span class="eq"><i></i><i></i><i></i><i></i><i></i></span><b>Dinle</b><small>Görüntü kapalı</small></div>`;
+    yt.host.innerHTML = `<div class="ytCover"><span class="eq"><i></i><i></i><i></i><i></i><i></i></span><b class="ok">Dinle</b><small class="ok">Görüntü kapalı</small><b class="bad">Video açılamadı</b><small class="bad">Bu opening şu an oynatılamıyor</small></div>`;
     document.body.append(yt.host);
   }
   if (yt.qid === q.id) return;
   yt.frame?.remove();
-  Object.assign(yt, { qid: q.id, ready: false, playing: false, want: false });
+  clearInterval(yt.hs);
+  clearTimeout(yt.chk);
+  Object.assign(yt, { qid: q.id, ready: false, live: false, playing: false, want: false, state: -1, paused: false, failed: false, autoPaused: false });
+  yt.host.classList.remove("failed", "blocked");
   const f = document.createElement("iframe");
   f.title = "Anime opening";
   f.allow = "autoplay; encrypted-media";
   f.referrerPolicy = "strict-origin-when-cross-origin";
   f.src = `https://www.youtube-nocookie.com/embed/${q.yt}?enablejsapi=1&controls=0&disablekb=1&fs=0&iv_load_policy=3&modestbranding=1&playsinline=1&rel=0&cc_load_policy=0&start=${num(q.ys)}&origin=${encodeURIComponent(location.origin)}`;
   f.addEventListener("load", () => {
-    yt.ready = true;
-    try { f.contentWindow.postMessage(JSON.stringify({ event: "listening", id: 1, channel: "widget" }), "https://www.youtube-nocookie.com"); } catch {}
-    if (yt.want) ytPlay();
+    let n = 0;
+    const hello = () => { try { f.contentWindow.postMessage(JSON.stringify({ event: "listening", id: 1, channel: "widget" }), YT_ORIGIN); } catch {} };
+    hello();
+    clearInterval(yt.hs);
+    yt.hs = setInterval(() => {
+      if (yt.frame !== f || yt.live) return clearInterval(yt.hs);
+      hello();
+      // oynatıcı geç açılıyorsa komutları yine de dene; el sıkışma cevap gelene kadar sürer (gelince oynatma yeniden gönderilir)
+      if (++n === 16 && !yt.ready) { yt.ready = true; if (yt.want) ytPlay(); }
+      if (n > 240) clearInterval(yt.hs);
+    }, 250);
   });
   yt.frame = f;
   yt.host.prepend(f);
 }
+function ytVolume() {
+  const g = gainOf(volume());
+  // önce sesi aç, sonra seviyeyi ver: unMute eski seviyeyi geri yüklüyordu
+  if (g === 0) ytCmd("mute");
+  else { ytCmd("unMute"); ytCmd("setVolume", [Math.round(g * 100)]); }
+}
 function ytPlay() {
   yt.want = true;
+  yt.paused = false;
   if (!yt.ready) return;
-  ytCmd("setVolume", [Math.round(gainOf(volume()) * 100)]);
-  if (volume() <= 0.001) ytCmd("mute");
-  if (volume() > 0.001) ytCmd("unMute");
+  ytVolume();
   ytCmd("playVideo");
   yt.playing = true;
+  // tarayıcı sesli otomatik oynatmayı engellediyse "dokun" düğmesi öne çıkar
+  clearTimeout(yt.chk);
+  const qid = yt.qid;
+  yt.chk = setTimeout(() => { if (yt.qid === qid && yt.state !== 1 && !yt.failed && !yt.paused) yt.host?.classList.add("blocked"), $(".opTap")?.classList.add("pulse"); }, 2500);
+}
+function ytPause() {
+  yt.paused = true;
+  clearTimeout(yt.chk);
+  ytCmd("pauseVideo");
 }
 function ytStop() {
   if (!yt.host) return;
   yt.frame?.remove();
-  Object.assign(yt, { frame: null, qid: "", ready: false, playing: false, want: false });
+  clearInterval(yt.hs);
+  clearTimeout(yt.chk);
+  Object.assign(yt, { frame: null, qid: "", ready: false, live: false, playing: false, want: false, state: -1, paused: false, failed: false, autoPaused: false });
   yt.host.hidden = true;
 }
 function ytPaint() {
@@ -1389,9 +1454,15 @@ function ytPaint() {
   Object.assign(yt.host.style, { top: `${r.top}px`, left: `${r.left}px`, width: `${r.width}px`, height: `${r.height}px` });
   yt.host.hidden = false;
   const pre = view.phase === "question" && hostNow() < q.start;
-  yt.host.classList.toggle("covered", view.phase === "question" && (!q.video || pre));
+  yt.host.classList.toggle("covered", yt.failed || (view.phase === "question" && (!q.video || pre)));
   yt.host.classList.toggle("pre", pre);
+  // soru sırasında başlık ve "diğer videolar" şeridi hep örtülü (cevabı ele vermesin)
+  yt.host.classList.toggle("q", view.phase === "question");
   if (!pre && !yt.want) ytPlay();
+  // cevap kilitlenince şarkı durur; çözümde istenirse devam ettirilir
+  // (tek kişide cevap verince doğrudan çözüme geçilir: orada da bir kez durdurulur)
+  const answered = view.phase === "question" ? !!q.mine : view.phase === "reveal" && !!q.reveal?.results?.[view.me]?.answer;
+  if (answered && !yt.autoPaused) { yt.autoPaused = true; ytPause(); }
 }
 
 // ---------- puan sıralaması: her quizde ilk 10 + (ilk 10'da değilse) kendi satırın ----------
@@ -1831,6 +1902,7 @@ const kindName = (k) => ({ trivia: "Trivia", rank: "Sıralama quizi", op: "Anime
 function optsHtml(l) {
   if ((l.anime || l.opsrc || l.kind === "rank") && !l.items) return `<div class="opts"><p class="muted skNote">${l.kind === "rank" ? "En çok dinlenen şarkılar getiriliyor…" : "Sorular hazırlanıyor…"}</p>${skRows(3)}</div>`;
   if (l.kind === "rank") {
+    if (l.rkWait) return `<div class="opts"><p class="muted">${ic("timer")} ${esc(l.artist || "Bu sanatçı")} için YouTube'daki gerçek en çok izlenen şarkılar hazırlanıyor. Liste her gün güncellenir; en geç 1–2 gün içinde oynanabilir.</p></div>`;
     if (!l.items.length) return `<div class="opts"><p class="muted">Bu sanatçı için sıralama hazırlanamadı. Biraz sonra tekrar dene.</p></div>`;
     return `<div class="opts"><div class="rkRules">
       <span>${ic("check")}<b>+${RANK_PTS.exact}</b> doğru yerdeki her şarkı</span>
@@ -2072,12 +2144,14 @@ function openList(id, fromHistory = false) {
   if (!l) return;
   if (l.anime && !l.items) loadAnime(l, l.era || "pop");
   if (l.kind === "rank" && !l.items?.length) loadRank(l);
-  // Topluluk sıralama quizi: sanatçının YouTube izlenme verisi hazırsa oluşturulduğu günkü (Deezer) sıra yerine o kullanılır.
+  // Topluluk sıralama quizi: sıra her zaman sanatçının YouTube'daki gerçek izlenmelerinden gelir. Oluşturulduğu günkü
+  // (Deezer) sıra gerçek ilk 5'i göstermeyebildiği için kullanılmaz; YouTube verisi hazır değilse quiz "hazırlanıyor" olur.
   if (l.kind === "rank" && l.genre === "Topluluk" && l.artistId && !l.ytTried) {
     l.ytTried = true;
+    l.items = null;
     fromYouTube(l.artistId, l.artist || l.name, l.picture).then((y) => {
-      if (!y) return;
-      l.items = y;
+      l.items = y || [];
+      l.rkWait = !y;
       if (sheetCtx?.list === l) { const o = $(".opts"); if (o) o.outerHTML = optsHtml(l); }
     });
   }
@@ -2228,7 +2302,12 @@ async function doAction(a, el) {
       return rankRedraw();
     case "ytplay":
       yt.want = false;
+      $(".opTap")?.classList.remove("pulse");
       return ytPlay();
+    case "yttoggle":
+      if (yt.state === 1 && !yt.paused) ytPause();
+      else ytPlay();
+      return ytState(yt.state === 1 && yt.paused ? 2 : yt.state);
     case "detailGo":
       if (sheetCtx.list?.kind === "trivia") sheetCtx.survival = sheetCtx.gmode === "survival";
       return doAction(sheetCtx.play === "party" ? "hostGo" : "soloGo");
@@ -2536,7 +2615,7 @@ document.addEventListener("input", (e) => {
     store.set("jqVolume", v);
     // çalmakta olan sese de hemen uygula: tersten kesit, YouTube opening ve ses efektleri
     if (rgain) rgain.gain.value = g;
-    if (yt.frame) { ytCmd("setVolume", [Math.round(g * 100)]); ytCmd(g === 0 ? "mute" : "unMute"); }
+    if (yt.frame) ytVolume();
     setSfxVolume(g);
   }
 

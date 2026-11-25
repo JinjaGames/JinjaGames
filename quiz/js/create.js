@@ -196,6 +196,7 @@ function rankMain() {
     // Oluşturan da cevapları görmesin: yalnızca hazır olduğu ve kaç şık olduğu gösterilir.
     body = `<div class="crRankDone"><div class="crGroupHead"><b>${ic("check")} Quiz hazır</b><button class="btn soft sm" data-do="rankRefresh">${ic("rotate-ccw")}Şıkları yeniden karıştır</button></div>
       <p class="muted">${esc(R.artist.name)} için en çok dinlenen 5 şarkı ve 15 şaşırtmaca şık hazırlandı. Cevapları sen de görmüyorsun; yayınladıktan sonra sen de oynayabilirsin.</p>
+      <p class="muted">${ic("list-ordered")} Sıra, sanatçının YouTube'daki gerçek izlenmelerine göre kurulur. Bu sanatçı listemizde yeniyse quiz en geç 1–2 gün içinde oynanabilir hale gelir.</p>
       <ol class="crRankTop hidden">${it.top.map(() => `<li><span class="crLock">${ic("eye-off")} Gizli</span></li>`).join("")}</ol>
       <p class="crRankPoolInfo">${ic("list-music")} ${it.pool.length} şık</p></div>`;
   } else if (st.busy && !st.results) body = `<div class="crArtists skGrid" aria-busy="true" aria-label="Aranıyor">${skCards(8)}</div>`;

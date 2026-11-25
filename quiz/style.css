@@ -3015,7 +3015,7 @@ html { overflow-x: clip; }
 .ytHost { position: fixed; z-index: 5; overflow: hidden; border-radius: var(--r); background: #000; }
 .ytHost[hidden] { display: none; }
 .ytHost iframe { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; pointer-events: none; }
-.ytCover { position: absolute; inset: 0; display: none; place-content: center; justify-items: center; gap: 10px; background: radial-gradient(80% 80% at 50% 40%, #ff4f8b55, #1a0610 75%); color: #fff; }
+.ytCover { position: absolute; inset: 0; z-index: 2; display: none; place-content: center; justify-items: center; gap: 10px; background: radial-gradient(80% 80% at 50% 40%, #5c1a33, #1a0610 75%); color: #fff; }
 .ytHost.covered .ytCover { display: grid; }
 .ytHost.pre .ytCover .eq i { animation-play-state: paused; }
 .ytCover .eq { position: static; opacity: 1; height: 40px; gap: 5px; }
@@ -3250,3 +3250,16 @@ body.rkDragging, body.rkDragging * { cursor: grabbing !important; -webkit-user-s
   .rkLegend { gap: 6px; }
   .rkLegend span { padding: 4px 10px; font-size: 12px; }
 }
+
+/* Opening: örtü tamamen opak (video başlığı alttan okunmasın); görüntü açıkken de soru sırasında üst başlık ve alt "diğer videolar" şeridi örtülü */
+.ytHost.q::before, .ytHost.q::after { content: ""; position: absolute; left: 0; right: 0; z-index: 1; background: #000; pointer-events: none; }
+.ytHost.q::before { top: 0; height: 18%; min-height: 48px; }
+.ytHost.q::after { bottom: 0; height: 16%; min-height: 44px; }
+.ytCover .bad { display: none; }
+.ytHost.failed .ytCover .ok { display: none; }
+.ytHost.failed .ytCover .bad { display: block; }
+.ytHost.failed .ytCover .eq { display: none; }
+.opTap.pulse { border-color: var(--accent); color: var(--ink); box-shadow: 0 0 0 0 color-mix(in srgb, var(--accent) 60%, transparent); animation: opPulse 1.4s ease-out infinite; }
+@keyframes opPulse { to { box-shadow: 0 0 0 12px transparent; } }
+@media (prefers-reduced-motion: reduce) { .opTap.pulse { animation: none; } }
+.opPaused { display: inline-flex; align-items: center; gap: 6px; justify-self: center; margin: 0; font-size: 14px; }
