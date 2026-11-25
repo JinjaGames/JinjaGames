@@ -1,7 +1,8 @@
 // JinjaQuiz günlük YouTube verisi (GitHub Actions, YT_API_KEY sırrı ile):
 //  1) Sıralama quizleri: her sanatçının YouTube'da en çok izlenen müzik videoları (haftada bir arama, her gün izlenme) →
 //     quiz/data/rank-yt.json. Sıralama bu izlenmelere göre yapılır, çözümde "57M" gibi gösterilir.
-//  2) Anime opening quizi: popüler animelerin openingleri (şarkı adları MyAnimeList/Jikan'dan, video YouTube'dan)
+//  2) Anime opening quizi: popüler animelerin openingleri (liste AniList'ten, şarkı adları MyAnimeList'ten —
+//     Jikan API'si, o kapalıysa MyAnimeList'in anime sayfası —, video YouTube'dan)
 //     → quiz/data/anime-ops.json. Havuz her gün biraz büyür.
 // YouTube günlük kotası 10.000 birim: arama 100, izlenme sorgusu 1 birim. Video eşleşmeleri saklandığı için
 // ilk günlerden sonra her gün yalnızca izlenmeler tazelenir (birkaç birim) ve kalan kota yeni şarkılara/openinglere gider.
@@ -194,6 +195,34 @@ async function rank() {
 }
 
 // ---------- 2) anime opening ----------
+const UA = "Mozilla/5.0 (compatible; JinjaQuiz/1.0; +https://jinjagames.com)";
+let jikanDown = false;
+/** Animenin opening şarkı adları (sırayla). Önce Jikan; erişilemezse MyAnimeList'in kendi anime sayfası (günde ~25 sayfa, yavaş). */
+async function openingsOf(mal) {
+  if (!jikanDown) {
+    try {
+      const th = await json(`https://api.jikan.moe/v4/anime/${mal}/themes`, 2);
+      // 1: "Guren no Yumiya" by Linked Horizon (eps 1-13)
+      return (th?.data?.openings || []).map((raw) => String(raw).match(/"(.+?)"/)?.[1] || "");
+    } catch {
+      jikanDown = true;
+      console.log("Jikan'a ulaşılamadı; MyAnimeList sayfası kullanılıyor.");
+    }
+  }
+  await sleep(2500);
+  const r = await fetch(`https://myanimelist.net/anime/${mal}`, { headers: { "User-Agent": UA, Accept: "text/html" } });
+  if (!r.ok) throw Error(`MyAnimeList ${r.status}`);
+  const h = await r.text();
+  const a = h.search(/js-theme-songs\s+op(?:n)?ening/);
+  if (a < 0) return [];
+  const b = h.indexOf("js-theme-songs ending", a);
+  const part = h.slice(a, b > a ? b : a + 30000);
+  // her satır: [1:] "Şarkı (原題)" <span class="theme-song-artist"> by Sanatçı ... (şarkı adı bağlantılı ya da düz yazı olabilir)
+  return part.split(/<span class="theme-song-artist"/).slice(0, -1).map((c) => {
+    const t = unent(c.slice(c.lastIndexOf("<td")).replace(/<[^>]*>/g, " ")).replace(/\s+/g, " ").trim();
+    return t.match(/"([^"]+)"$/)?.[1] || "";
+  });
+}
 const ANI = `query($page:Int){Page(page:$page,perPage:50){media(type:ANIME,isAdult:false,sort:[POPULARITY_DESC],format_in:[TV,ONA]){idMal title{romaji english}}}}`;
 async function ops() {
   const data = await load(OPS_FILE, { v: 1, items: [], tried: {} });
@@ -211,20 +240,21 @@ async function ops() {
     if (added >= OP_PER_DAY || data.items.length >= OP_MAX) break;
     if (!m.idMal || data.tried[m.idMal]) continue;
     const anime = (m.title.english || m.title.romaji || "").trim().slice(0, 80);
-    let th;
-    try { th = await json(`https://api.jikan.moe/v4/anime/${m.idMal}/themes`); } catch { console.log("Jikan'a ulaşılamadı; openingler bugün atlandı."); break; }
+    let list2;
+    try { list2 = await openingsOf(m.idMal); } catch (e) { console.log(`Opening adları alınamadı (${e.message}); openingler bugün atlandı.`); break; }
     await sleep(500);
     data.tried[m.idMal] = today;
-    // ilk iki opening: 1: "Guren no Yumiya" by Linked Horizon (eps 1-13)
-    for (const raw of (th?.data?.openings || []).slice(0, 2)) {
-      const mm = String(raw).match(/"(.+?)"/);
-      const song = mm ? strip(mm[1]).replace(/\s+/g, " ").slice(0, 80) : "";
+    // ilk iki opening
+    for (const raw of list2.slice(0, 2)) {
+      const song = strip(raw).replace(/\s+/g, " ").slice(0, 80);
       if (!song || !anime) continue;
+      // aynı şarkı başka bir sezonda da opening olabilir: bir kez yeter
+      if (data.items.some((x) => fold(x.song) === fold(song))) continue;
       try {
         const j = await yt("search", { part: "snippet", type: "video", videoEmbeddable: "true", maxResults: 5, q: `${anime} opening ${song}` }, 100);
         const fs = fold(song);
         const hit = (j.items || []).find((it) => fs && fold(it.snippet?.title).includes(fs));
-        if (hit?.id?.videoId) { data.items.push({ yt: hit.id.videoId, s: 0, anime, song, mal: m.idMal }); added++; }
+        if (hit?.id?.videoId && !data.items.some((x) => x.yt === hit.id.videoId)) { data.items.push({ yt: hit.id.videoId, s: 0, anime, song, mal: m.idMal }); added++; }
       } catch (e) { if (e instanceof Quota) return data; throw e; }
     }
   }
