@@ -3165,3 +3165,42 @@ body.rkDragging, body.rkDragging * { cursor: grabbing !important; -webkit-user-s
 @media (max-width: 520px) { .lb { padding: 14px; border-radius: 20px; } .lbList li { gap: 8px; padding: 6px 10px 6px 6px; } .lbHead h3 { font-size: 20px; } }
 /* telefonda alt bilgi bağlantılarına rahat dokunulsun (en az ~40px yükseklik) */
 @media (pointer: coarse) { footer a { display: inline-block; padding: 11px 2px; border-bottom: 0; text-decoration: underline; text-decoration-color: #ffffff2a; text-underline-offset: 4px; } }
+
+/* --- oyun modu: Puanlı / Serbest --- */
+[data-g="ranked"] .optCount, [data-g="ranked"] #tracksBox { display: none; }
+.rankedNote { display: none; align-items: flex-start; gap: 10px; padding: 12px 14px; border-radius: 14px; background: color-mix(in srgb, var(--gold) 10%, var(--s2)); color: #ffd77a; font-size: 14px; line-height: 1.4; }
+.rankedNote .ic { flex: none; margin-top: 2px; }
+.rankedNote b { color: #fff3cf; }
+[data-g="ranked"] .rankedNote { display: flex; }
+.dtChoice.modes.three { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+@media (max-width: 760px) { .dtChoice.modes.three { grid-template-columns: 1fr; } }
+#sheetBody .dtChoice { margin-bottom: 4px; }
+
+/* --- sıralama quizi sonucu: senin sıran ↔ doğru sıra --- */
+.rkLegend { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; }
+.rkLegend span { display: inline-flex; align-items: center; gap: 6px; padding: 6px 12px; border-radius: 999px; background: var(--s2); font-size: 13px; font-weight: 600; }
+.rkLegend .ok { color: #3ddc97; } .rkLegend .near { color: var(--gold); } .rkLegend .miss { color: var(--bad); }
+.rkList li.rkCmp { display: grid; grid-template-columns: 34px minmax(0, 1fr) auto minmax(0, 1fr); align-items: center; gap: 10px; padding: 10px 12px; border-radius: var(--r); border: 1px solid var(--line); background: var(--s2); opacity: 0; animation: rkIn 0.35s var(--ease) forwards; animation-delay: calc(var(--i) * 0.12s); }
+.rkCmp > div { display: grid; gap: 2px; min-width: 0; text-align: left; justify-items: start; }
+.rkCmp small { font-size: 11px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); }
+.rkCmp span { font-weight: 700; overflow-wrap: anywhere; }
+.rkCmp em { display: inline-flex; align-items: center; gap: 4px; font-style: normal; font-size: 12.5px; color: var(--muted); }
+.rkTrue { padding-left: 12px; border-left: 1px dashed var(--line); }
+.rkMark { display: grid; justify-items: center; gap: 2px; width: 46px; font: 800 20px var(--display); font-style: normal; }
+.rkMark small { font: 700 12px var(--body); letter-spacing: 0; text-transform: none; color: inherit; }
+.rkCmp.ok { border-color: #3ddc97; background: linear-gradient(90deg, #3ddc9726, var(--s2) 60%); }
+.rkCmp.ok .rkN { background: #3ddc97; color: #04200f; }
+.rkCmp.ok .rkMark, .rkCmp.ok .rkMine em { color: #3ddc97; }
+.rkCmp.near { border-color: var(--gold); }
+.rkCmp.near .rkN { background: var(--gold); color: #2a1c00; }
+.rkCmp.near .rkMark, .rkCmp.near .rkMine em { color: var(--gold); }
+.rkCmp.miss { border-color: #ff4d5e88; }
+.rkCmp.miss .rkMark, .rkCmp.miss .rkMine em { color: var(--bad); }
+.rkCmp.miss .rkMine span { color: var(--muted); text-decoration: line-through; text-decoration-color: #ff4d5e99; }
+@media (max-width: 560px) {
+  .rkList li.rkCmp { grid-template-columns: 34px minmax(0, 1fr) auto; grid-template-areas: "n mine mark" "n true true"; }
+  .rkCmp .rkN { grid-area: n; align-self: start; }
+  .rkMine { grid-area: mine; } .rkMark { grid-area: mark; }
+  .rkTrue { grid-area: true; padding: 6px 0 0; border-left: 0; border-top: 1px dashed var(--line); }
+}
+@media (prefers-reduced-motion: reduce) { .rkCmp { animation: none; opacity: 1; } }

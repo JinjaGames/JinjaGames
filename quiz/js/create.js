@@ -3,7 +3,7 @@
 import { searchArtists, searchTracks, artistInfo, artistTop, artistAlbums, albumTracks, ownTracks, isAlternate, customLists, saveCustom, removeCustom, cleanTracks, fold, cdn } from "./music.js?v=4";
 import { fetchCommunity, publishQuiz, removeQuiz, myPubkey, MIN_TRACKS, MAX_TRACKS } from "./community.js?v=5";
 import { TCATS, TART, EMOJIS, T_MIN, T_MAX, cleanItems, cleanCat, cleanEmoji, isTF, IMG } from "./trivia.js?v=3";
-import { cleanOps, RANK_PTS, OP_PTS } from "./engine.js?v=8";
+import { cleanOps, RANK_PTS, OP_PTS } from "./engine.js?v=9";
 import { rankItems } from "./rank.js?v=3";
 import { OP_MIN } from "./community.js?v=5";
 

@@ -162,7 +162,8 @@ export class Game {
   }
 
   // ---- kuyruk ----
-  addSet({ list, tracks, ids, count, mode, clip, kind, items, survival, reverse, video, lid }) {
+  // ranked: Puanlı mod. Soru sayısı sabit (10 ya da quizde daha azı varsa hepsi), şarkı seçimi yok; yalnızca bu oyunlar sıralamaya girer.
+  addSet({ list, tracks, ids, count, mode, clip, kind, items, survival, reverse, video, lid, ranked }) {
     lid = lbKeyOf(lid);
     if (this.queue.length >= 12) throw Error("Kuyrukta en fazla 12 quiz olabilir.");
     if (kind === "rank" || kind === "op") {
@@ -183,6 +184,7 @@ export class Game {
         clip: 0,
         video: !!video,
         lid,
+        ranked: !!ranked,
       });
       return;
     }
@@ -206,10 +208,11 @@ export class Game {
         mode: "choice",
         clip: 0,
         lid,
+        ranked: !!ranked && !surv,
       });
       return;
     }
-    const pool = ids?.length ? tracks.filter((t) => ids.includes(t.id)) : tracks;
+    const pool = ids?.length && !ranked ? tracks.filter((t) => ids.includes(t.id)) : tracks;
     if (!pool.length) throw Error("En az bir şarkı seç.");
     const n = Math.max(1, Math.min(pool.length, Number(count) || 10, 50));
     this.queue.push({
@@ -224,6 +227,7 @@ export class Game {
       reverse: !!reverse,
       clip: reverse ? ([3, 5, 10].includes(clip) ? clip : 5) : [1, 3, 5].includes(clip) ? clip : 3,
       lid,
+      ranked: !!ranked,
     });
   }
 
@@ -253,7 +257,7 @@ export class Game {
         count: set.questions.length,
         top: [...this.players].sort((a, b) => b.round - a.round).map((p) => ({ pid: p.pid, name: p.name, pts: p.round })),
         emoji: set.emoji || "",
-        set: { kind: set.kind, emoji: set.emoji, name: set.name, art: set.art, picture: set.picture, tracks: set.tracks, pool: set.questions.length, mode: set.mode, clip: set.clip, reverse: !!set.reverse, video: !!set.video, lid: set.lid || "" },
+        set: { kind: set.kind, emoji: set.emoji, name: set.name, art: set.art, picture: set.picture, tracks: set.tracks, pool: set.questions.length, mode: set.mode, clip: set.clip, reverse: !!set.reverse, video: !!set.video, lid: set.lid || "", ranked: !!set.ranked },
       });
       if (this.history.length > 10) this.history.shift();
       this.rankAt = this.phase === "ranking" && !this.solo ? Date.now() + NEXT_QUIZ : null;
@@ -544,6 +548,7 @@ export class Game {
           reverse: !!h.set.reverse,
           video: !!h.set.video,
           lid: h.set.lid || "",
+          ranked: !!h.set.ranked,
         });
         break;
       }
@@ -601,6 +606,8 @@ export class Game {
         reverse: !!s.reverse,
         video: !!s.video,
         lid: s.lid || "",
+        ranked: !!s.ranked,
+        pool: s.tracks?.length || 0,
       })),
       set: this.set,
       index: this.index,
