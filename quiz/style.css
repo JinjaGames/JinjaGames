@@ -41,6 +41,7 @@ body {
   display: flex;
   flex-direction: column;
   overflow-x: hidden;
+  overflow-x: clip; /* hidden gövdeyi kaydırma kabı yapar ve sticky öğeleri bozar; clip yapmaz */
 }
 h1,
 h2,
@@ -3024,7 +3025,7 @@ html { overflow-x: clip; }
 .opAns { display: grid; gap: 14px; }
 .opRow h3 { display: flex; align-items: center; gap: 8px; margin: 0 0 8px; font: 800 18px var(--display); text-transform: uppercase; color: var(--muted); }
 .opRow h3 .ic { color: #ff4f8b; }
-.game:has(.countdown.on) .opAns, .game:has(.countdown.on) .rkDock { visibility: hidden; }
+.game:has(.countdown.on) .opAns, .game:has(.countdown.on) + .dock .rkDock { visibility: hidden; }
 
 /* ===== Quiz oluştur: önce tür seçimi ===== */
 .crChoose { max-width: 980px; margin: 8px auto 40px; display: grid; gap: 10px; }
@@ -3204,3 +3205,48 @@ body.rkDragging, body.rkDragging * { cursor: grabbing !important; -webkit-user-s
   .rkTrue { grid-area: true; padding: 6px 0 0; border-left: 0; border-top: 1px dashed var(--line); }
 }
 @media (prefers-reduced-motion: reduce) { .rkCmp { animation: none; opacity: 1; } }
+
+/* ---------- Sıralama oyun ekranı: derli toplu, tek bakışta oynanır ---------- */
+.rk { container-type: inline-size; gap: 12px; margin: 10px 0 12px; padding: clamp(12px, 2.6vw, 22px); }
+.rkHead { gap: 12px; }
+.rk .rkPic { width: 48px; box-shadow: 0 0 0 2px var(--s1), 0 0 0 4px #3ddc97aa; }
+.rk.done .rkPic { width: 56px; }
+.rkHead h2 { margin: 0 0 2px; font: 800 clamp(20px, 3.4vw, 26px) / 1.1 var(--display); text-transform: none; }
+.rkHead p { font-size: 14px; }
+.rkPlay { display: grid; gap: 12px; }
+.rkPlay .rkList { gap: 6px; align-content: start; }
+.rkPlay .rkSlot { min-height: 44px; padding: 6px 10px; gap: 10px; }
+.rkPlay .rkN { width: 28px; height: 28px; border-radius: 8px; font-size: 17px; }
+.rkPlay .rkSlot:not(.full):not(.next) { background: transparent; border-color: color-mix(in srgb, var(--line) 70%, transparent); }
+.rkPlay .rkSlot:not(.full):not(.next) .rkN { background: transparent; color: var(--muted); border: 1px dashed var(--line); }
+.rkPlay .rkSlot:not(.full) .rkT { font-size: 14px; font-weight: 600; }
+.rkPlay .rkSlot.next { animation: none; }
+.rkPlay .rkPool { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px; align-content: start; }
+.rkPlay .rkOpt { justify-content: flex-start; min-height: 44px; padding: 7px 10px; border-radius: 10px; font-size: 13.5px; line-height: 1.2; text-align: left; overflow-wrap: anywhere; }
+.rkPlay .rkOpt:hover { transform: none; }
+.rkPlay .rkOpt b { flex: none; }
+.rkPlay .rkOpt.used { opacity: 0.45; }
+@container (min-width: 620px) {
+  .rkPlay { grid-template-columns: minmax(0, 5fr) minmax(0, 7fr); gap: 14px; align-items: start; }
+  .rkPlay .rkList { position: sticky; top: 12px; }
+}
+.rkDock .btn.primary:disabled { opacity: 1; background: var(--s2); color: var(--muted); border-color: var(--line); }
+.dock .rkDock { flex: 1; flex-wrap: nowrap; }
+@media (max-width: 760px) {
+  .rkDock .btn.ghost span { display: none; }
+  .rkDock .btn.ghost { flex: none; padding-inline: 14px; }
+}
+
+/* Sıralama sonucu, telefonda: her sıra tek satır (Senin | Doğru); rozet rengi doğru/yakın/yanlışı gösterir */
+@media (max-width: 560px) {
+  .rkList li.rkCmp { grid-template-columns: 28px minmax(0, 1fr) minmax(0, 1fr); grid-template-areas: "n mine true"; gap: 8px; padding: 8px 10px; }
+  .rkCmp .rkMark { display: none; }
+  .rkCmp .rkN { width: 28px; height: 28px; font-size: 16px; align-self: center; }
+  .rkCmp.miss .rkN { background: #ff4d5e2e; color: var(--bad); }
+  .rkTrue { grid-area: true; padding: 0 0 0 8px; border-top: 0; border-left: 1px dashed var(--line); }
+  .rkCmp span { font-size: 14px; line-height: 1.25; }
+  .rkCmp em { font-size: 11.5px; }
+  .rkCmp small { font-size: 10px; }
+  .rkLegend { gap: 6px; }
+  .rkLegend span { padding: 4px 10px; font-size: 12px; }
+}

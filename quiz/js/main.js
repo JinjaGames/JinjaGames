@@ -1083,7 +1083,9 @@ function gameHtml(v) {
   }
 
   let answers = "";
-  if (q.kind === "rank") answers = rankAnswers(v, q, reveal);
+  // Sıralama butonları (Temizle / Kilitle) ekranın altındaki sabit çubukta durur: telefonda kaydırmadan basılır.
+  let rkDock = "";
+  if (q.kind === "rank") { const a = rankAnswers(v, q, reveal); if (!reveal && !q.mine) rkDock = a; else answers = a; }
   else if (q.kind === "op") answers = opAnswers(v, q, reveal);
   else if (q.mode === "choice") {
     answers = `<div class="answers ${v.solo ? "" : "multi"}">${q.options
@@ -1138,7 +1140,7 @@ function gameHtml(v) {
     : `<p class="waiting">${mine ? `${ic("check")} Cevabın kilitlendi · ` : ""}<span id="ansCount">${v.solo ? "" : ansCountText(v)}</span></p>`;
   return `${mode.lost ? `<div class="banner">${spinner()} Kurucunun bağlantısı koptu, bekleniyor…</div>` : ""}
     <section class="game ${reveal ? "isReveal" : ""}">${head}${stage}${answers}${foot}${intro}</section>
-    <div class="dock split">${dock}</div>`;
+    <div class="dock split">${rkDock || dock}</div>`;
 }
 
 // ---------- Sıralama sorusu ----------
@@ -1177,7 +1179,7 @@ function rankStage(v, q, reveal, cdHtml) {
   const pic = q.picture ? `<img class="rkPic" src="${esc(q.picture)}" alt="" referrerpolicy="no-referrer">` : `<span class="rkPic noart">${ic("mic-vocal")}</span>`;
   return `<div class="rk ${reveal ? "done" : ""}">
     ${reveal ? "" : cdHtml}
-    <div class="rkHead">${pic}<div><span class="tqNo">${ic("list-ordered")} Sıralama</span><h2>${esc(q.artist || "")}</h2><p>${esc(q.text || "")}</p></div></div>
+    <div class="rkHead">${pic}<div><h2>${esc(q.artist || "")}</h2><p>${esc(q.text || "")}</p></div></div>
     <div id="rkBody">${rankBody(v, q, reveal)}</div>
   </div>`;
 }
@@ -1219,18 +1221,19 @@ function rankBody(v, q, reveal) {
     const t = picks[i];
     return t
       ? `<li><button class="rkSlot full" data-rs="${i}" data-slot="${i}" ${mineA ? "disabled" : ""} aria-label="${i + 1}. sıradan çıkar"><b class="rkN">${i + 1}</b><span class="rkT">${esc(t)}</span>${mineA ? "" : `<i class="rkGrip" aria-hidden="true">⋮⋮</i><i class="rkX">${ic("x")}</i>`}</button></li>`
-      : `<li><div class="rkSlot ${i === next ? "next" : ""}" data-slot="${i}"><b class="rkN">${i + 1}</b><span class="rkT">${i === next ? "Sıradaki şarkıyı seç ya da buraya sürükle" : "Boş"}</span></div></li>`;
+      : `<li><div class="rkSlot ${i === next ? "next" : ""}" data-slot="${i}"><b class="rkN">${i + 1}</b><span class="rkT">${i === next ? "Aşağıdan bir şarkı seç" : ""}</span></div></li>`;
   }).join("");
   const pool = mineA ? "" : `<div class="rkPool">${(q.options || []).map((o, i) => {
     const at = picks.indexOf(o);
     return `<button class="rkOpt ${at >= 0 ? "used" : ""}" data-rk="${i}" ${at >= 0 ? `aria-pressed="true"` : ""}>${at >= 0 ? `<b>${at + 1}</b>` : ""}${esc(o)}</button>`;
   }).join("")}</div>`;
-  return `<ol class="rkList">${slots}</ol>${pool}`;
+  // Sıralar solda (telefonda üstte), şıklar sağda düzenli bir ızgarada; seçilen şık yerinde soluk kalır, numarasıyla.
+  return `<div class="rkPlay"><ol class="rkList">${slots}</ol>${pool}</div>`;
 }
 function rankAnswers(v, q, reveal) {
   if (reveal || q.mine) return q.mine && !reveal ? `<div class="locked">${ic("check")} Sıralaman kilitlendi</div>` : "";
-  const full = rkFilled(q) >= (num(q.slots) || 5);
-  return `<div class="rkDock"><button class="btn ghost" data-do="rkclear" ${rkFilled(q) ? "" : "disabled"}>${ic("rotate-ccw")}Temizle</button><button class="btn primary lg" data-do="rkgo" id="rkGo" ${full ? "" : "disabled"}>${ic("check")}Sıralamayı kilitle</button></div>`;
+  const n = num(q.slots) || 5, f = rkFilled(q), full = f >= n;
+  return `<div class="rkDock"><button class="btn ghost" data-do="rkclear" ${f ? "" : "disabled"} aria-label="Temizle">${ic("rotate-ccw")}<span>Temizle</span></button><button class="btn primary lg" data-do="rkgo" id="rkGo" ${full ? "" : "disabled"}>${ic("check")}${full ? "Sıralamayı kilitle" : `${f}/${n} seçildi`}</button></div>`;
 }
 function rankRedraw() {
   const q = view?.question;
