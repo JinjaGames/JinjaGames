@@ -265,10 +265,11 @@ async function ops() {
     data.tried[m.idMal] = today;
     // ilk iki opening
     for (const raw of list2.slice(0, 2)) {
-      const song = strip(raw).replace(/\s+/g, " ").slice(0, 80);
+      // "departure! -second version-", "We Are! ~10th Ver.~" gibi sürüm ekleri aynı şarkıdır
+      const song = strip(raw).replace(/\s*[-~〜]\s*[^-~〜]*(version|ver\.?|edition|arrange)[^-~〜]*[-~〜]?\s*$/i, "").replace(/\s+/g, " ").trim().slice(0, 80);
       if (!song || !anime) continue;
       // aynı şarkı başka bir sezonda da opening olabilir: bir kez yeter
-      if (data.items.some((x) => fold(x.song) === fold(song))) continue;
+      if (data.items.some((x) => { const f = fold(x.song), k = fold(song); return f === k || (Math.min(f.length, k.length) >= 5 && (f.startsWith(k) || k.startsWith(f))); })) continue;
       try {
         const j = await yt("search", { part: "snippet", type: "video", videoEmbeddable: "true", maxResults: 5, q: `${anime} opening ${song}` }, 100);
         const fs = fold(song);
