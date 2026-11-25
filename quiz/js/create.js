@@ -1,11 +1,11 @@
 // JinjaQuiz: quiz oluşturma sayfası (/quiz/create/). Sanatçı ve şarkı araması ayrı sekmelerde;
 // sanatçının popüler şarkıları ve tüm albümleri tek tek ya da topluca eklenebilir.
 import { searchArtists, searchTracks, artistInfo, artistTop, artistAlbums, albumTracks, ownTracks, isAlternate, customLists, saveCustom, removeCustom, cleanTracks, fold, cdn } from "./music.js?v=5";
-import { fetchCommunity, publishQuiz, removeQuiz, myPubkey, MIN_TRACKS, MAX_TRACKS } from "./community.js?v=6";
+import { fetchCommunity, publishQuiz, removeQuiz, myPubkey, MIN_TRACKS, MAX_TRACKS } from "./community.js?v=7";
 import { TCATS, TART, EMOJIS, T_MIN, T_MAX, cleanItems, cleanCat, cleanEmoji, isTF, IMG } from "./trivia.js?v=3";
 import { cleanOps, RANK_PTS, OP_PTS } from "./engine.js?v=9";
-import { rankItems } from "./rank.js?v=3";
-import { OP_MIN } from "./community.js?v=6";
+import { rankItems } from "./rank.js?v=4";
+import { OP_MIN } from "./community.js?v=7";
 
 const $ = (s, r = document) => r.querySelector(s);
 const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
@@ -46,6 +46,7 @@ const KINDS = [
   ["song", "music", "Şarkı quizi", "Sanatçı ya da şarkı ara, listeni kur. Oyuncular kesiti dinleyip şarkıyı bilir."],
   ["rev", "rewind", "Tersten Şarkı", "Şarkı quizi gibi listeni kur; oyunda kesitler tersten çalar."],
   ["trivia", "circle-help", "Trivia", "Kendi sorularını ve şıklarını yaz, istersen görsel ekle."],
+  ["rank", "list-ordered", "Sıralama", "Bir sanatçı seç; en çok dinlenen 5 şarkısı ve 20 şık otomatik hazırlanır."],
   ["op", "tv", "Anime Opening", "YouTube bağlantısını yapıştır, animenin ve şarkının adını yaz."],
 ];
 const kindTitle = (k) => (KINDS.find((x) => x[0] === k) || [])[2] || "Quiz";
@@ -700,7 +701,7 @@ addEventListener("popstate", () => {
 (async function boot() {
   const params = new URLSearchParams(location.search);
   const id = (params.get("edit") || params.get("duzenle")) || "";
-  const tur = turOf(params) === "rank" ? null : turOf(params); // sıralama quizi artık oluşturulamıyor
+  const tur = turOf(params);
   if (tur && !id) { st.kind = null; setKind(tur); return; }
   drawAll();
   if (!id) return;

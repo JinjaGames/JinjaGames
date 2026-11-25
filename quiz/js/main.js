@@ -1,11 +1,11 @@
 import { PRESETS, MIXES, loadTracks, searchArtists, customLists, saveCustom, removeCustom, fold, cdn, realPic, loadPresetPictures } from "./music.js?v=5";
 import { sfx, sfxEnabled, setSfx, setSfxVolume } from "./sfx.js?v=4";
 import { randomName } from "./names.js";
-import { fetchCommunity, removeQuiz, hideQuiz, unhideQuiz, hiddenList } from "./community.js?v=6";
+import { fetchCommunity, removeQuiz, hideQuiz, unhideQuiz, hiddenList } from "./community.js?v=7";
 import { Game, MAX_PLAYERS, RANK_PTS, OP_PTS } from "./engine.js?v=9";
-import { lbKey, loadBoard, peekBoard, submitScore, myBest, isMine, LB_TOP, LB_QUESTIONS } from "./board.js?v=1";
+import { lbKey, loadBoard, peekBoard, submitScore, myBest, isMine, LB_TOP, LB_QUESTIONS } from "./board.js?v=2";
 import { maskName } from "./badwords.js?v=1";
-import { RANK_QUIZZES, RANK_CATS, rankItems } from "./rank.js?v=3";
+import { RANK_QUIZZES, RANK_CATS, rankItems, fromYouTube } from "./rank.js?v=4";
 import { TRIVIA, TCATS, TART, EMOJIS, cleanItems, IMG, ANI_IMG, FLAG, flagUrl, cleanEmo } from "./trivia.js?v=3";
 import { ANIME_QUIZZES, ERAS, animeItems, animeOps } from "./anime.js?v=3";
 import { NUMCATS, fmtNum, farEnough } from "./numdata.js";
@@ -1797,7 +1797,7 @@ async function loadCommunity() {
   const jp = justPublished();
   if (jp && !ui.community) ui.community = [jp];
   try {
-    const list = (await fetchCommunity()).filter((q) => q.kind !== "rank");
+    const list = await fetchCommunity();
     ui.community = jp && !list.some((x) => x.id === jp.id) ? [jp, ...list] : list;
     ui.communityErr = false;
   } catch {
@@ -2069,6 +2069,15 @@ function openList(id, fromHistory = false) {
   if (!l) return;
   if (l.anime && !l.items) loadAnime(l, l.era || "pop");
   if (l.kind === "rank" && !l.items?.length) loadRank(l);
+  // Topluluk sıralama quizi: sanatçının YouTube izlenme verisi hazırsa oluşturulduğu günkü (Deezer) sıra yerine o kullanılır.
+  if (l.kind === "rank" && l.genre === "Topluluk" && l.artistId && !l.ytTried) {
+    l.ytTried = true;
+    fromYouTube(l.artistId, l.artist || l.name, l.picture).then((y) => {
+      if (!y) return;
+      l.items = y;
+      if (sheetCtx?.list === l) { const o = $(".opts"); if (o) o.outerHTML = optsHtml(l); }
+    });
+  }
   if (l.opsrc && !l.items?.length) animeOps().then((items) => { l.items = items; if (sheetCtx?.list === l) { sheetCtx.count = Math.min(10, items.length || 10); const o = $(".opts"); if (o) o.outerHTML = optsHtml(l); } });
   const last = store.get("jqSetup", {});
   const rev = (l.mix && ui.genre === "Tersten") || l.rev ? 1 : 0;

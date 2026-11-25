@@ -64,10 +64,7 @@ function parse(e) {
   if (!c || c.v !== 1 || c.deleted) return null;
   const id = "nq-" + e.pubkey.slice(0, 16) + "-" + d.slice(10);
   if (c.kind !== "trivia" && e.created_at < SONG_CUTOFF) return null;
-  // Sıralama quizleri yalnızca sitenin hazır listesinden oynanır (YouTube izlenmeleriyle doğrulanmış sıra);
-  // topluluğun oluşturduğu sıralama quizleri gösterilmez.
-  if (c.kind === "rank") return null;
-  if (c.kind === "op") {
+  if (c.kind === "rank" || c.kind === "op") {
     const items = c.kind === "rank" ? cleanRank(c.items).slice(0, 1) : cleanOps(c.items);
     const name = str(c.name, 60);
     if (!name || items.length < (c.kind === "rank" ? 1 : OP_MIN)) return null;

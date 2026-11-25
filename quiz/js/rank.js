@@ -72,7 +72,8 @@ const shuffle = (a) => { a = [...a]; for (let i = a.length - 1; i > 0; i--) { co
 let ytData = null;
 const ytLoad = () => (ytData ??= fetch(new URL("../data/rank-yt.json", import.meta.url), { cache: "no-cache" })
   .then((r) => (r.ok ? r.json() : null)).catch(() => null));
-async function fromYouTube(artistId, name, picture) {
+/** Sanatçının YouTube verisi hazırsa ona göre sıralama sorusu, değilse null. */
+export async function fromYouTube(artistId, name, picture) {
   const a = (await ytLoad())?.artists?.[String(artistId)];
   if (!a?.ready || !Array.isArray(a.songs)) return null;
   const songs = a.songs.filter((x) => x && typeof x.t === "string");

@@ -35,7 +35,17 @@ async function yt(path, params, cost) {
   const u = new URL(`https://www.googleapis.com/youtube/v3/${path}`);
   for (const [k, v] of Object.entries(params)) u.searchParams.set(k, String(v));
   u.searchParams.set("key", KEY);
-  const r = await fetch(u);
+  let r;
+  for (let i = 0; i < 3; i++) {
+    r = await fetch(u);
+    if (r.status !== 429) break;
+    // istek hızı sınırı: biraz bekleyip tekrar dene
+    if (i === 2) {
+      const j = await r.json().catch(() => ({}));
+      throw new Quota(`YouTube 429: ${j?.error?.message || j?.error?.errors?.[0]?.reason || ""}`);
+    }
+    await sleep(15000 * (i + 1));
+  }
   if (r.status === 403) {
     const j = await r.json().catch(() => ({}));
     if (/quota/i.test(JSON.stringify(j))) throw new Quota("kota");
@@ -75,6 +85,13 @@ const SEARCH_EVERY = 7; // gün
 async function rankArtists() {
   const src = await readFile(new URL("quiz/js/rank.js", ROOT), "utf8");
   const list = [...src.matchAll(/name: "([^"]+)", artistId: (\d+)/g)].map((m) => ({ id: m[2], name: m[1] }));
+  // topluluğun oluşturduğu sıralama quizlerinin sanatçıları da (en çok 30; haftada bir arama, sanatçı başına 100 birim)
+  const comm = await load(new URL("quiz/data/community.json", ROOT), { events: [] });
+  let extra = 0;
+  for (const e of comm.events || []) {
+    if (extra >= 30) break;
+    try { const c = JSON.parse(e.content); if (c.kind === "rank" && !c.deleted && c.artistId && c.artist) { list.push({ id: String(c.artistId), name: String(c.artist).slice(0, 80) }); extra++; } } catch {}
+  }
   const seen = new Set();
   return list.filter((a) => /^\d+$/.test(a.id) && !seen.has(a.id) && seen.add(a.id));
 }
@@ -236,7 +253,7 @@ async function ops() {
     await sleep(800);
   }
   let added = 0;
-  for (const m of list) {
+  outer: for (const m of list) {
     if (added >= OP_PER_DAY || data.items.length >= OP_MAX) break;
     if (!m.idMal || data.tried[m.idMal]) continue;
     const anime = (m.title.english || m.title.romaji || "").trim().slice(0, 80);
@@ -255,7 +272,7 @@ async function ops() {
         const fs = fold(song);
         const hit = (j.items || []).find((it) => fs && fold(it.snippet?.title).includes(fs));
         if (hit?.id?.videoId && !data.items.some((x) => x.yt === hit.id.videoId)) { data.items.push({ yt: hit.id.videoId, s: 0, anime, song, mal: m.idMal }); added++; }
-      } catch (e) { if (e instanceof Quota) return data; throw e; }
+      } catch (e) { if (e instanceof Quota) { console.log(`Opening araması durdu: ${e.message}`); break outer; } throw e; }
     }
   }
   // gömülemeyen ya da kaldırılan videoları ayıkla
