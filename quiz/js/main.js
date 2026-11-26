@@ -157,8 +157,41 @@ function waitAudio(ev, ms) {
     audio.addEventListener("error", bad, { once: true });
   });
 }
+// iOS Safari: <audio> ancak kullanıcı dokunuşuyla bir kez çalındıktan sonra, sonradan (otomatik) başlatılabilir.
+// Bu yüzden ilk dokunuşta aynı eleman sessiz bir kayıtla "kilidi açılır"; sonraki tüm şarkılar bu elemanla çalınır.
+const IOS = /iP(hone|ad|od)/.test(navigator.userAgent) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+const SILENT = (() => {
+  const n = 800, b = new Uint8Array(44 + n), v = new DataView(b.buffer);
+  const w = (o, t) => [...t].forEach((c, i) => (b[o + i] = c.charCodeAt(0)));
+  w(0, "RIFF"); v.setUint32(4, 36 + n, true); w(8, "WAVEfmt "); v.setUint32(16, 16, true); v.setUint16(20, 1, true);
+  v.setUint16(22, 1, true); v.setUint32(24, 8000, true); v.setUint32(28, 8000, true); v.setUint16(32, 1, true);
+  v.setUint16(34, 8, true); w(36, "data"); v.setUint32(40, n, true); b.fill(128, 44);
+  let bin = ""; for (const x of b) bin += String.fromCharCode(x);
+  return "data:audio/wav;base64," + btoa(bin);
+})();
+let audioUnlocked = false;
+function unlockAudio() {
+  if (audioUnlocked) return;
+  // Zaten bir şarkı yükleniyor/çalıyorsa o kendi dokunuşuyla zaten çalışır; elemanı bozma.
+  if (player.playing || player.loading) return;
+  try { rctx ??= new (window.AudioContext || window.webkitAudioContext)(); rctx.resume?.().catch(() => {}); } catch {}
+  const keep = audio.muted;
+  audio.muted = true;
+  audio.src = SILENT;
+  player.url = null; // gerçek şarkı sonra yeniden yüklensin
+  const p = audio.play();
+  const done = () => { audio.pause(); audio.muted = keep; };
+  if (p?.then) p.then(() => { audioUnlocked = true; done(); }, () => { audio.muted = keep; });
+  else { audioUnlocked = true; done(); }
+}
+for (const ev of ["touchend", "pointerup", "click", "keydown"]) addEventListener(ev, unlockAudio, { capture: true, passive: true });
 async function startAt(offset) {
-  if (audio.readyState < 1) await waitAudio("loadedmetadata", 7000);
+  // iOS, dokunuşsuz <audio> için hiç veri indirmez (loadedmetadata gelmez): sessiz başlatıp yüklemeyi tetikle.
+  if (audio.readyState < 1 && IOS) {
+    audio.muted = true;
+    audio.play().catch(() => {});
+  }
+  if (audio.readyState < 1) await waitAudio("loadedmetadata", 9000);
   if (Math.abs(audio.currentTime - offset) > 0.05) {
     const seeked = waitAudio("seeked", 5000);
     audio.currentTime = offset;
@@ -1691,6 +1724,7 @@ function paint() {
       const arc = $("#cdArc");
       if (arc && pre) arc.style.strokeDashoffset = 100 - (((q.start - now) % 1000) / 1000) * 100;
     }
+    if (pre && q.url && !q.reverse && !q.mine && !player.playing && !player.loading) prime(q.url);
     const used = playsUsed(q.id);
     const disc = $("#disc");
     if (disc) {

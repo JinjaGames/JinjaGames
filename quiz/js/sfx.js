@@ -22,7 +22,13 @@ function ac() {
   return ctx;
 }
 // ilk kullanıcı etkileşiminde sesi aç (mobil tarayıcılar bunu ister)
-for (const ev of ["pointerdown", "keydown"]) addEventListener(ev, () => ac(), { once: true, passive: true });
+// iOS yalnızca touchend/click'i kullanıcı etkileşimi sayar (pointerdown/touchstart saymaz); ses açılana dek dinle.
+const UNLOCK = ["pointerdown", "touchend", "click", "keydown"];
+function unlockSfx() {
+  const c = ac();
+  if (c && c.state === "running") for (const e of UNLOCK) removeEventListener(e, unlockSfx);
+}
+for (const ev of UNLOCK) addEventListener(ev, unlockSfx, { passive: true });
 
 function tone(freq, t0, dur, { type = "sine", vol = 1, to = null, attack = 0.005 } = {}) {
   const o = ctx.createOscillator(), g = ctx.createGain();
