@@ -1,5 +1,5 @@
 import { PRESETS, MIXES, loadTracks, searchArtists, customLists, saveCustom, removeCustom, fold, cdn, realPic, loadPresetPictures } from "./music.js?v=5";
-import { sfx, sfxEnabled, setSfx, setSfxVolume } from "./sfx.js?v=4";
+import { sfx, sfxEnabled, setSfx, setSfxVolume } from "./sfx.js?v=5";
 import { randomName } from "./names.js";
 import { fetchCommunity, removeQuiz, hideQuiz, unhideQuiz, hiddenList } from "./community.js?v=7";
 import { Game, MAX_PLAYERS, RANK_PTS, OP_PTS } from "./engine.js?v=9";
@@ -226,12 +226,12 @@ let rctx = null, rsrc = null, rgain = null;
 const rcache = new Map();
 async function reversedClip(url, offset, clip) {
   rctx ??= new (window.AudioContext || window.webkitAudioContext)();
-  if (rctx.state === "suspended") await rctx.resume();
   const key = `${url}|${offset}|${clip}`;
   if (!rcache.has(key)) {
     rcache.set(key, (async () => {
       const buf = await (await fetch(url)).arrayBuffer();
-      const full = await rctx.decodeAudioData(buf);
+      // Eski iOS sürümleri yalnızca callback'li decodeAudioData'yı destekler.
+      const full = await new Promise((res, rej) => { const r = rctx.decodeAudioData(buf, res, rej); r?.then?.(res, rej); });
       const sr = full.sampleRate, a = Math.floor(offset * sr), len = Math.min(full.length - a, Math.floor(clip * sr));
       const out = rctx.createBuffer(full.numberOfChannels, len, sr);
       for (let ch = 0; ch < full.numberOfChannels; ch++) {
@@ -249,7 +249,13 @@ async function listenReversed(q, auto) {
   player.needTap = false;
   paint();
   try {
-    const buf = await reversedClip(cdn(q.url), q.offset, q.clip);
+    rctx ??= new (window.AudioContext || window.webkitAudioContext)();
+    // iOS'ta dokunuşsuz resume() hiç bitmeyen bir söz verir; bu yüzden beklemeden, zaman aşımıyla çağır.
+    // (Dokunuşla çağrılmışsa senkron kısımda başlatıldığı için izin alınır.)
+    const resumed = rctx.state === "running" ? null : Promise.race([rctx.resume().catch(() => {}), new Promise((r) => setTimeout(r, 600))]);
+    const bufP = reversedClip(cdn(q.url), q.offset, q.clip);
+    const buf = await Promise.race([bufP, new Promise((_, rej) => setTimeout(() => rej(Error("timeout")), 15000))]);
+    if (resumed) await resumed;
     if (view?.question?.id !== q.id) { player.loading = false; return; }
     if (rctx.state !== "running") throw Object.assign(Error("tap"), { name: "NotAllowedError" });
     const g = (rgain = rctx.createGain());
@@ -1724,7 +1730,10 @@ function paint() {
       const arc = $("#cdArc");
       if (arc && pre) arc.style.strokeDashoffset = 100 - (((q.start - now) % 1000) / 1000) * 100;
     }
-    if (pre && q.url && !q.reverse && !q.mine && !player.playing && !player.loading) prime(q.url);
+    if (pre && q.url && !q.mine && !player.playing && !player.loading) {
+      if (q.reverse) { try { reversedClip(cdn(q.url), q.offset, q.clip).catch(() => {}); } catch {} }
+      else prime(q.url);
+    }
     const used = playsUsed(q.id);
     const disc = $("#disc");
     if (disc) {
