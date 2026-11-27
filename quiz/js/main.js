@@ -687,7 +687,7 @@ function trackPlays(v) {
 }
 const playNum = (n) => (n >= 1e6 ? `${(n / 1e6).toLocaleString("tr", { maximumFractionDigits: 1 })} Mn` : n >= 1e4 ? `${Math.round(n / 1e3).toLocaleString("tr")} B` : n >= 1e3 ? `${(n / 1e3).toLocaleString("tr", { maximumFractionDigits: 1 })} B` : String(n));
 const playsTag = (l, cls = "plays") => { if (!playsLoaded() || String(l.id).startsWith("my") || String(l.id).startsWith("dz")) return ""; const n = plays(l.id); return `<span class="${cls}${n ? "" : " zero"}" title="${n ? `${num(n).toLocaleString("tr")} kez oynandı` : "Henüz oynanmadı"}">${ic("play")}${playNum(n)}</span>`; };
-onPlays(() => { if (screen === "home" && !mode && !sheet.open) renderHome(); else if (screen === "detail") { const s = $("#dtPlays"); if (s && sheetCtx?.list) s.outerHTML = dtPlaysHtml(sheetCtx.list); } });
+onPlays(() => { if (screen === "home" && !mode && !sheet.open) bgRender(); else if (screen === "detail") { const s = $("#dtPlays"); if (s && sheetCtx?.list) s.outerHTML = dtPlaysHtml(sheetCtx.list); } });
 const dtPlaysHtml = (l) => { const n = plays(l.id); return `<span id="dtPlays"${playsLoaded() ? "" : " hidden"}>${ic("play")}${n ? `${num(n).toLocaleString("tr")} kez oynandı` : "Henüz oynanmadı"}</span>`; };
 
 // Kurucu lobide tek başına mı? (Bağlı başka oyuncu yok.)
@@ -875,7 +875,7 @@ function dailyHtml() {
         : `<button class="btn primary lg" data-do="dailyGo">${ic("play")}Hemen oyna</button><button class="btn ghost" data-do="dailyBoard">${ic("trophy")}Sıralama</button>`}</div>
     </div>
     <div class="dlySide">
-      <div class="dlyStats"><div class="dlyStat"><b>${playsLoaded() ? num(players(d.id)).toLocaleString("tr") : "–"}</b><small>bugün oynayan</small></div><div class="dlyStat"><b>${streak}</b><small>günlük seri</small></div><div class="dlyStat"><b id="dlyLeft">${fmtLeft()}</b><small>yeni quize kalan</small></div></div>
+      <div class="dlyStats"><div class="dlyStat"><b>${playsLoaded() ? num(players(d.id)).toLocaleString("tr") : "–"}</b><small>bugün oynayan</small></div><div class="dlyStat"><b>${streak}</b><small>günlük seri</small></div><div class="dlyStat"><b id="dlyLeft"></b><small>yeni quize kalan</small></div></div>
       <div class="dlyCats">${d.cats.map((c) => `<span style="--h:${TART[c]?.[0] ?? 0}">${esc(c)}</span>`).join("")}</div>
     </div>
   </section>`;
@@ -927,6 +927,18 @@ function cover(l, cls = "", big = false) {
 }
 // Ana ekran arka planda (topluluk quizleri, görseller yüklenince) yeniden çizilebilir:
 // yazılmakta olan lobi kodunu, imleci ve odağı koru.
+// Arka planda gelen veriler (topluluk quizleri, oynanma sayıları, sanatçı resimleri) ana sayfayı tek seferde
+// ve animasyonsuz günceller; görünen bir şey değişmediyse hiç yeniden çizilmez. (Yoksa sayfa açıldıktan 1-2 sn
+// sonra kartlar "yeniden yükleniyor" gibi baştan beliriyordu.)
+let homeHtml = "";
+let calmNext = false;
+let bgT = 0;
+function bgRender() {
+  clearTimeout(bgT);
+  bgT = setTimeout(() => {
+    if (screen === "home" && !mode && !sheet.open) { calmNext = true; renderHome(); }
+  }, 300);
+}
 function renderHome() {
   const keep = ["joinCode", "search"].map((id) => { const el = document.getElementById(id); return el && { id, v: el.value, f: document.activeElement === el, a: el.selectionStart, b: el.selectionEnd }; }).filter(Boolean);
   drawHome();
@@ -951,7 +963,7 @@ function drawHome() {
   const hero = heroPool();
   const pics = hero.map((p) => p.picture);
   const inviteCode = esc((new URLSearchParams(location.search).get("room") || new URLSearchParams(location.search).get("oda")) || "");
-  app.innerHTML = `
+  const html = `
   <section class="hm-hero">
     <div class="hm-bg" aria-hidden="true"><i class="b1"></i><i class="b2"></i><i class="b3"></i>
       <span class="hm-eq">${Array.from({ length: 48 }, (_, k) => `<i style="--k:${k}"></i>`).join("")}</span></div>
@@ -1024,6 +1036,14 @@ function drawHome() {
   </section>
 
   <footer><a href="/">JinjaGames</a> · <a href="/apps/">Diğer web uygulamaları</a> · <a href="/privacy/">Gizlilik</a></footer>`;
+  const calm = calmNext;
+  calmNext = false;
+  if (html === homeHtml && app.firstElementChild?.classList.contains("hm-hero")) return; // değişen bir şey yok
+  app.classList.toggle("calm", calm);
+  app.innerHTML = html;
+  homeHtml = html;
+  const left = document.getElementById("dlyLeft");
+  if (left) left.textContent = fmtLeft();
   keepVisible('.subChips [aria-pressed="true"]');
   keepVisible('.catNav [aria-selected="true"]');
   initVinyl();
@@ -2447,7 +2467,7 @@ async function loadCommunity() {
     ui.community = [];
     ui.communityErr = true;
   }
-  if (screen === "home" && !mode && !sheet.open) renderHome();
+  if (screen === "home" && !mode && !sheet.open) bgRender();
   drawPick();
 }
 
@@ -3455,7 +3475,7 @@ function boot() {
   loadPlays();
   refreshLobbies();
   loadPresetPictures().then((changed) => {
-    if (changed && screen === "home" && !mode) renderHome();
+    if (changed && screen === "home" && !mode) bgRender();
   });
   const saved = store.get("jqSession", null, sessionStorage);
   const invite = ((new URLSearchParams(location.search).get("room") || new URLSearchParams(location.search).get("oda")) || "").toUpperCase();
