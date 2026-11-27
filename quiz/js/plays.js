@@ -2,7 +2,7 @@
 // d = "jqplays:<quiz>"); içinde o quizi bu tarayıcıda kaç kez bitirdiği yazar. Aynı kişi 4 kez oynadıysa 4 sayılır.
 // Bir quizin toplamı = herkesin kendi sayısının toplamı. Röleler eski kayıtları silebileceği için
 // tools/archive_community.mjs sayıları quiz/data/plays.json içine biriktirir; site ikisini birleştirir.
-import { sign, valid, relayCall, sendToRelays, RELAYS, myPubkey, blocked } from "./community.js?v=9";
+import { sign, valid, relayCall, sendToRelays, RELAYS, myPubkey, blocked } from "./community.js?v=10";
 
 const KIND = 30078;
 const TAG = "jinjaquiz-plays";

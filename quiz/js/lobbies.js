@@ -4,7 +4,7 @@
 // Her lobi kendi rastgele anahtarıyla imzalanır: duyuru kurucunun topluluk quizleriyle ilişkilendirilemez.
 // Özel lobiler hiç duyurulmaz. Sohbet ve oyun verisi duyuruya girmez.
 import { schnorr, sha256, bytesToHex } from "../vendor/nostr-sign.js";
-import { relayCall, sendToRelays, RELAYS, valid } from "./community.js?v=9";
+import { relayCall, sendToRelays, RELAYS, valid } from "./community.js?v=10";
 
 const KIND = 30078;
 const TAG = "jinjaquiz-lobby";
@@ -36,7 +36,7 @@ export function announceLobby(code, info) {
   if (!CODE.test(code)) return Promise.resolve(false);
   const now = Math.floor(Date.now() / 1000);
   const content = JSON.stringify({
-    v: 1, code, open: !!info.open, phase: info.phase === "lobby" ? "lobby" : "game",
+    v: 1, code, open: !!info.open, lock: !!info.lock, phase: info.phase === "lobby" ? "lobby" : "game",
     host: { n: str(info.host?.name, 20) || "Oyuncu", a: AVATARS.includes(info.host?.avatar) ? info.host.avatar : "headphones", k: COLORS.includes(info.host?.color) ? info.host.color : "coral" },
     players: Math.max(0, Math.min(99, info.players | 0)), max: Math.max(1, Math.min(99, info.max | 0)),
     quizzes: (Array.isArray(info.quizzes) ? info.quizzes : []).map((x) => str(x, 40)).filter(Boolean).slice(0, 3),
@@ -52,7 +52,7 @@ function parse(e) {
   try { c = JSON.parse(e.content); } catch { return null; }
   if (!c || c.v !== 1 || !CODE.test(c.code) || d !== "jqlobby:" + c.code) return null;
   return {
-    code: c.code, at: e.created_at, open: c.open === true, phase: c.phase === "lobby" ? "lobby" : "game",
+    code: c.code, at: e.created_at, open: c.open === true, lock: c.lock === true, phase: c.phase === "lobby" ? "lobby" : "game",
     host: { name: str(c.host?.n, 20) || "Oyuncu", avatar: AVATARS.includes(c.host?.a) ? c.host.a : "headphones", color: COLORS.includes(c.host?.k) ? c.host.k : "coral" },
     players: Math.max(0, Math.min(99, Number(c.players) | 0)), max: Math.max(1, Math.min(99, Number(c.max) | 0)),
     quizzes: (Array.isArray(c.quizzes) ? c.quizzes : []).map((x) => str(x, 40)).filter(Boolean).slice(0, 3),

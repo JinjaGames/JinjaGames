@@ -77,10 +77,11 @@ export function hostRoom(code, { onHello, onAction, onLeave, onBack, claim, onCh
       // Oyuncu kimliği sayfaya ve olay işleyicilerine girer: yalnızca güvenli karakterler.
       if (typeof m.pid !== "string" || !/^[a-z0-9]{4,16}$/.test(m.pid)) return;
       const key = typeof m.key === "string" && /^[a-z0-9]{16,32}$/.test(m.key) ? m.key : "";
+      const pw = typeof m.pw === "string" ? m.pw.slice(0, 40) : "";
       // Bir oyuncunun kimliğini kopyalayıp onun yerine cevap vermek engellenir: aynı kimlik ancak aynı cihaz anahtarıyla
       // devralınabilir. Aynı cihazdan gelen yeni bağlantı eskisinin (kopmuş ya da arka planda kalmış) yerine geçer.
-      const c = claim ? claim(m.pid, key) : {};
-      if (c.err) return send({ t: "denied", reason: c.err }, { target: peerId });
+      const c = claim ? claim(m.pid, key, pw) : {};
+      if (c.err) return send({ t: "denied", reason: c.err, ...(c.pw ? { pw: 1 } : {}) }, { target: peerId });
       for (const [p, id] of [...peers]) if (p !== peerId && (id === m.pid || (c.old && id === c.old))) drop(p, "Bu cihazdan yeniden bağlandın; eski bağlantı kapatıldı.");
       // Önce eşi kaydet ki onHello'nun tetiklediği durum yayını yeni oyuncuya da ulaşsın.
       peers.set(peerId, m.pid);
@@ -152,7 +153,7 @@ export function hostRoom(code, { onHello, onAction, onLeave, onBack, claim, onCh
 }
 
 // Oyuncu: kurucuyu bulur, saatini eşitler, komut gönderir.
-export function guestRoom(code, pid, profile, { onState, onDenied, onHostLost, onHostBack, onChat }) {
+export function guestRoom(code, pid, profile, pw, { onState, onDenied, onHostLost, onHostBack, onChat }) {
   const { room, send, onMessage } = open(code);
   let hostPeer = null;
   let offset = 0;
@@ -173,7 +174,7 @@ export function guestRoom(code, pid, profile, { onState, onDenied, onHostLost, o
       // Kurucu bilinirken başka biri kendini kurucu ilan edemez; kurucu ayrılırsa (sayfayı yenilediyse) bu adaylara dönülür.
       if (hostPeer && hostPeer !== peerId) { hostCands.add(peerId); return; }
       helloTo.add(peerId);
-      send({ t: "hello", pid, profile, key: deviceKey }, { target: peerId });
+      send({ t: "hello", pid, profile, key: deviceKey, pw }, { target: peerId });
       return;
     }
     if (m.t === "state") {
@@ -206,7 +207,7 @@ export function guestRoom(code, pid, profile, { onState, onDenied, onHostLost, o
     } else if (m.t === "chat") {
       onChat?.(m.m);
     } else if (m.t === "denied") {
-      onDenied(m.reason);
+      onDenied(m.reason, !!m.pw);
     } else if (m.t === "bye") {
       clearTimeout(lostTimer);
       onDenied("Kurucu lobiyi kapattı.");
@@ -219,7 +220,7 @@ export function guestRoom(code, pid, profile, { onState, onDenied, onHostLost, o
     helloTo.delete(peerId);
     hostCands.delete(peerId);
     if (peerId !== hostPeer) return;
-    for (const c of hostCands) { helloTo.add(c); send({ t: "hello", pid, profile, key: deviceKey }, { target: c }); }
+    for (const c of hostCands) { helloTo.add(c); send({ t: "hello", pid, profile, key: deviceKey, pw }, { target: c }); }
     hostCands.clear();
     hostPeer = null;
     onHostLost?.();

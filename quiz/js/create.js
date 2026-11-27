@@ -1,11 +1,12 @@
 // JinjaQuiz: quiz oluşturma sayfası (/quiz/create/). Sanatçı ve şarkı araması ayrı sekmelerde;
 // sanatçının popüler şarkıları ve tüm albümleri tek tek ya da topluca eklenebilir.
 import { searchArtists, searchTracks, artistInfo, artistTop, artistAlbums, albumTracks, ownTracks, isAlternate, customLists, saveCustom, removeCustom, cleanTracks, fold, cdn } from "./music.js?v=5";
-import { fetchCommunity, loadFull, publishQuiz, removeQuiz, myPubkey, MIN_TRACKS, MAX_TRACKS } from "./community.js?v=9";
+import { fetchCommunity, loadFull, publishQuiz, removeQuiz, myPubkey, MIN_TRACKS, MAX_TRACKS } from "./community.js?v=10";
 import { TCATS, TART, EMOJIS, T_MIN, T_MAX, cleanItems, cleanCat, cleanEmoji, isTF, IMG } from "./trivia.js?v=4";
-import { cleanOps, RANK_PTS, OP_PTS } from "./engine.js?v=10";
+import { cleanOps, RANK_PTS, OP_PTS } from "./engine.js?v=11";
+import { initI18n } from "./i18n.js?v=1";
 import { rankItems } from "./rank.js?v=4";
-import { OP_MIN } from "./community.js?v=9";
+import { OP_MIN } from "./community.js?v=10";
 
 const $ = (s, r = document) => r.querySelector(s);
 const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
@@ -17,6 +18,7 @@ const skCards = (n = 4) => Array.from({ length: n }, (_, i) => `<div class="skCa
 
 const num = (v) => (Number.isFinite(Number(v)) ? Number(v) : 0);
 const app = $("#app");
+initI18n();
 let toastT;
 function toast(msg, kind = "") {
   const t = $("#toast");

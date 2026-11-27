@@ -660,6 +660,7 @@ export class Game {
         reverse: !!s.reverse,
         video: !!s.video,
         lid: s.lid || "",
+        qid: s.qid || "",
         ranked: !!s.ranked,
         pool: s.tracks?.length || 0,
       })),

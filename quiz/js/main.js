@@ -1,17 +1,19 @@
 import { PRESETS, MIXES, loadTracks, searchArtists, customLists, saveCustom, removeCustom, fold, cdn, realPic, loadPresetPictures } from "./music.js?v=5";
 import { sfx, sfxEnabled, setSfx, setSfxVolume } from "./sfx.js?v=5";
 import { randomName } from "./names.js";
-import { fetchCommunity, loadFull, removeQuiz, hideQuiz, unhideQuiz, hiddenList } from "./community.js?v=9";
-import { Game, MAX_PLAYERS, RANK_PTS, OP_PTS } from "./engine.js?v=10";
-import { lbKey, loadBoard, peekBoard, submitScore, myBest, isMine, LB_TOP, LB_QUESTIONS } from "./board.js?v=4";
+import { fetchCommunity, loadFull, removeQuiz, hideQuiz, unhideQuiz, hiddenList } from "./community.js?v=10";
+import { Game, MAX_PLAYERS, RANK_PTS, OP_PTS } from "./engine.js?v=11";
+import { lbKey, loadBoard, peekBoard, submitScore, myBest, isMine, LB_TOP, LB_QUESTIONS } from "./board.js?v=5";
 import { maskName, isBadName } from "./badwords.js?v=1";
 import { RANK_QUIZZES, RANK_CATS, rankItems, fromYouTube } from "./rank.js?v=4";
 import { TRIVIA, TCATS, TART, EMOJIS, cleanItems, IMG, ANI_IMG, FLAG, flagUrl, cleanEmo } from "./trivia.js?v=4";
 import { ANIME_QUIZZES, ERAS, animeItems, animeOps } from "./anime.js?v=3";
 import { NUMCATS, fmtNum, farEnough } from "./numdata.js";
-import { hostRoom, guestRoom, newCode, validCode } from "./net.js?v=3";
-import { announceLobby, listLobbies } from "./lobbies.js?v=2";
-import { countPlay, loadPlays, plays, onPlays, playsLoaded } from "./plays.js?v=2";
+import { hostRoom, guestRoom, newCode, validCode } from "./net.js?v=4";
+import { announceLobby, listLobbies } from "./lobbies.js?v=4";
+import { countPlay, loadPlays, plays, onPlays, playsLoaded } from "./plays.js?v=3";
+import { dailyQuiz, dailyDate, dailyLeft, dailyLabel, dailyResult, saveDaily, dailyStreak } from "./daily.js?v=1";
+import { initI18n, LANG, setLang } from "./i18n.js?v=1";
 
 // ---------- yardımcılar ----------
 const $ = (s, r = document) => r.querySelector(s);
@@ -89,6 +91,7 @@ function cleanView(x, k = "", depth = 0) {
 const app = $("#app");
 const sheet = $("#sheet");
 const sheetBody = $("#sheetBody");
+initI18n();
 
 let profile = store.get("jqProfile", null);
 const pid = store.get("jqPid", null, sessionStorage) || uid();
@@ -125,10 +128,10 @@ function topbar() {
     <button class="brand" data-go="home" aria-label="JinjaQuiz ana sayfa"><span class="mark"><svg class="logo" viewBox="0 0 48 48" aria-hidden="true"><defs><linearGradient id="jqG" x1="8" y1="6" x2="40" y2="42" gradientUnits="userSpaceOnUse"><stop stop-color="#ff3b2f"/><stop offset=".6" stop-color="#e3171f"/><stop offset="1" stop-color="#ff6a3d"/></linearGradient></defs><path d="M36.4 9.6A19.5 19.5 0 1 0 43.3 30" fill="none" stroke="url(#jqG)" stroke-width="3.6" stroke-linecap="round"/><path d="M12.2 13.1A16 16 0 0 0 20 39.5" fill="none" stroke="#ff3b2f" stroke-width="1.1" stroke-linecap="round" opacity=".45"/><g class="eq" stroke="#ff8a5c" stroke-width="2.4" stroke-linecap="round"><path d="M40.2 12.6v3.4"/><path d="M43.6 15.2v5.2"/><path d="M46.6 18.6v2.6"/></g><path d="M19.4 10L38 7.4l-3.3 6-6.7.6-1.8 14.6c-.7 5.6-4.6 8.4-9.2 8-3.9-.4-5.9-3.2-5.4-6.9l5.8-.6c-.1 2 .8 2.9 2.1 2.8 1.3-.1 2-1.2 2.2-3.2l1.7-14-5.4.6z" fill="url(#jqG)" stroke="#1a0606" stroke-width=".8" stroke-linejoin="round"/><path d="M25.2 14.6l-1.6 13.2M21.2 11l11.6-1.6" stroke="#fff" stroke-width="1.5" stroke-linecap="round" opacity=".92"/><g transform="rotate(14 32.5 32)"><path d="M32.5 22.5l2.3 7.2 7.2 2.3-7.2 2.3-2.3 7.2-2.3-7.2-7.2-2.3 7.2-2.3z" fill="#18161b" stroke="#f6f1ef" stroke-width="1.2" stroke-linejoin="round"/><path d="M32.5 22.5l2.3 7.2-2.3 2.3zM42 32l-7.2 2.3-2.3-2.3zM32.5 41.5l-2.3-7.2 2.3-2.3zM23 32l7.2-2.3 2.3 2.3z" fill="#3a3640"/></g><circle cx="32.5" cy="32" r="2.1" fill="#f6f1ef"/><circle cx="32.5" cy="32" r=".9" fill="#18161b"/></svg></span><b lang="en">JINJA</b><span lang="en">QUIZ</span></button>
     <div class="barEnd">
       ${inRoom ? `<button class="pill live" data-go="room">${ic("users")}<span>Lobiye dön</span></button>` : ""}
-      ${mode && mode.role !== "solo" ? `<button class="icon chatBtn${chat.open ? " on" : ""}" data-chattoggle title="Lobi sohbeti" aria-label="Lobi sohbeti${chat.unread ? ` (${chat.unread} yeni mesaj)` : ""}" aria-expanded="${chat.open}">${ic("message-circle")}${chat.unread ? `<small>${chat.unread}</small>` : ""}</button>` : ""}
       ${screen === "room" && mode ? `<label class="vol" title="Ses düzeyi">${ic("volume-2")}<input type="range" id="vol" min="0" max="100" step="1" value="${Math.round(volume() * 100)}" aria-label="Ses düzeyi"></label>` : ""}
       ${screen !== "room" && hiddenList().length ? `<button class="icon hidBtn" data-sheet="hidden" title="Gizlenen quizler (${hiddenList().length})" aria-label="Gizlenen quizler">${ic("eye-off")}<small>${hiddenList().length}</small></button>` : ""}
-      <button class="meBtn" data-sheet="profile" aria-label="Profili düzenle">${avatar(profile || {})}<span>${esc(profile?.name || "Profil")}</span></button>
+      <button class="langBtn" data-lang="${LANG === "en" ? "tr" : "en"}" title="${LANG === "en" ? "Türkçe" : "English"}" aria-label="${LANG === "en" ? "Türkçe arayüz" : "English interface"}" data-noi18n>${LANG === "en" ? "TR" : "EN"}</button>
+      <button class="meBtn" data-sheet="profile" aria-label="Profili düzenle">${avatar(profile || {})}<span data-noi18n>${esc(profile?.name || "Profil")}</span></button>
     </div>`;
   // Yalnızca değiştiğinde yeniden çiz: ses sürgüsü sürüklenirken ya da düğmeye basılırken kaybolmasın.
   if (html !== barHtml) {
@@ -373,7 +376,7 @@ function unseal(str) {
 function persist() {
   if (!mode || mode.role === "solo") return;
   try {
-    store.set("jqSession", { role: mode.role, code: mode.code, game: mode.role === "host" ? seal(mode.game) : null, pub: !!mode.pub }, sessionStorage);
+    store.set("jqSession", { role: mode.role, code: mode.code, game: mode.role === "host" ? seal(mode.game) : null, vis: mode.vis || "private", pw: mode.pw || "" }, sessionStorage);
   } catch {}
 }
 function onGame(game) {
@@ -387,7 +390,7 @@ function onGame(game) {
   lobbyAnnounce();
   render();
 }
-function startHost({ solo = false, restore = null, pub = false } = {}) {
+function startHost({ solo = false, restore = null, vis = "private", pw = "" } = {}) {
   if (!profile) return openSheet("profile", { then: () => startHost({ solo }) });
   const code = restore?.code || newCode();
   const game = restore
@@ -395,7 +398,7 @@ function startHost({ solo = false, restore = null, pub = false } = {}) {
     : new Game({ code, solo, host: { pid, profile }, onChange: onGame });
   if (!restore) game.used = store.get("jqSeen", {});
   if (chat.code !== code) chatReset(solo ? "" : code);
-  mode = { role: solo ? "solo" : "host", game, code, pub: !solo && !!pub };
+  mode = { role: solo ? "solo" : "host", game, code, vis: solo ? "private" : ["public", "locked"].includes(vis) ? vis : "private", pw: String(pw || "").slice(0, 20) };
   if (!solo) attachHost();
   screen = "room";
   onGame(game);
@@ -408,12 +411,15 @@ function attachHost() {
   mode.net = hostRoom(code, {
       // Aynı cihazdan yeniden gelen oyuncu (sekme kapanıp link yeniden açıldı, telefon uygulamayı kapattı)
       // eski kaydını devralır: lobide ikinci bir kopyası oluşmaz, puanı korunur.
-      claim(p, key) {
+      claim(p, key, pw) {
         if (p === game.hostId) return { err: "Bu kimlikle katılamazsın." };
         const ex = game.players.find((x) => x.pid === p);
         if (ex) return ex.key && ex.key !== key ? { err: "Bu oyuncu lobide zaten bağlı. Birkaç saniye sonra tekrar dene." } : {};
         const same = game.byKey(key);
-        return same ? { old: same.pid } : {};
+        if (same) return { old: same.pid };
+        // şifreli lobi: lobide olmayan herkes şifreyi bilmeli (aynı cihazdan geri dönen hariç)
+        if (mode.vis === "locked" && mode.pw && pw !== mode.pw) return { err: "Bu lobi şifreli.", pw: true };
+        return {};
       },
       onHello(p, prof, key, old) {
         try {
@@ -459,15 +465,16 @@ document.addEventListener("visibilitychange", () => {
     }
   } catch {}
 });
-function startGuest(code, { fromList = false } = {}) {
-  if (!profile) return openSheet("profile", { then: () => startGuest(code, { fromList }) });
+function startGuest(code, { fromList = false, pw = "" } = {}) {
+  if (!profile) return openSheet("profile", { then: () => startGuest(code, { fromList, pw }) });
+  pwAsk = null;
   const same = mode?.role === "guest" && mode.code === code;
   leaveRoom(true, same);
   if (chat.code !== code) chatReset(code);
-  mode = { role: "guest", code, connecting: true, since: Date.now(), fromList };
+  mode = { role: "guest", code, connecting: true, since: Date.now(), fromList, pw: String(pw || "").slice(0, 20) };
   view = null;
   screen = "room";
-  mode.net = guestRoom(code, pid, profile, {
+  mode.net = guestRoom(code, pid, profile, mode.pw, {
     onState(s) {
       if (mode?.role !== "guest") return;
       if (!s || typeof s !== "object") return;
@@ -486,9 +493,11 @@ function startGuest(code, { fromList = false } = {}) {
       persist();
       render();
     },
-    onDenied(reason) {
+    onDenied(reason, needPw) {
       if (mode?.role !== "guest") return;
+      const hadPw = mode.pw;
       leaveRoom(true);
+      if (needPw) return askPw(code, hadPw ? "Şifre yanlış, tekrar dene." : "");
       toast(reason, "bad");
     },
     onHostLost() {
@@ -513,12 +522,12 @@ function startGuest(code, { fromList = false } = {}) {
 // durur. Sonradan katılan eskileri görmez; lobiden çıkınca ya da lobi kapanınca hepsi silinir. Quizler ve oyunlar
 // arasında sürer. Ad, kurucudaki oyuncu kaydından yazılır (başkası adına mesaj atılamaz).
 const CHAT_MAX = 10;
-const chat = { code: "", list: [], open: false, unread: 0, rate: new Map() };
+const chat = { code: "", list: [], exp: false, rate: new Map() };
 const chatClean = (t) => String(t ?? "").replace(/[\u0000-\u001f\u007f​-‏‪-‮⁦-⁩]/g, " ").replace(/\s+/g, " ").trim().slice(0, 200);
 const chatMask = (t) => t.replace(/\S+/g, (w) => (isBadName(w) ? "*".repeat(Math.min(8, Math.max(3, [...w].length))) : w));
 function chatReset(code = "") {
-  Object.assign(chat, { code, list: [], unread: 0 });
-  if (!code) chat.open = false;
+  Object.assign(chat, { code, list: [] });
+  if (!code) chat.exp = false;
   chat.rate.clear();
   chatDraw();
 }
@@ -536,11 +545,7 @@ function chatAdd(m) {
   };
   if (chat.list.some((x) => x.id === msg.id)) return;
   chat.list = [...chat.list, msg].slice(-CHAT_MAX);
-  if (msg.pid !== pid && (!chat.open || document.hidden)) {
-    chat.unread = Math.min(99, chat.unread + 1);
-    chatPeek(msg);
-    sfx("pick");
-  }
+  if (msg.pid !== pid) sfx("pick");
   chatDraw();
 }
 // Kurucu: mesajı doğrular, hızını sınırlar (10 sn'de en çok 5), herkese yollar.
@@ -568,66 +573,50 @@ function chatSend(text) {
   }
   try { mode.net.chat(t); return true; } catch (e) { fail(e); return false; }
 }
-const chatEl = document.createElement("div");
-chatEl.id = "chat";
+// Sohbet kutusu sayfaya sabittir (gartic.io gibi): bilgisayarda sağda, telefonda en altta.
+// Telefonda kapalıyken son iki mesaj ve yazma kutusu görünür; mesajlara dokununca son 10 mesaja açılır.
+const chatEl = document.createElement("section");
+chatEl.id = "chatBox";
+chatEl.className = "chatBox";
 chatEl.hidden = true;
-chatEl.innerHTML = `<section class="chatPanel" id="chatPanel" aria-label="Lobi sohbeti" hidden>
-    <header class="chatHead"><span class="chatTitle">${ic("message-circle")}<b>Lobi sohbeti</b></span><small>Geçici · son 10 mesaj · kaydedilmez</small><button class="icon sm" data-chatclose aria-label="Sohbeti kapat">${ic("x")}</button></header>
-    <ol class="chatList" id="chatList" aria-live="polite"></ol>
-    <form class="chatForm" id="chatForm" autocomplete="off"><input id="chatIn" maxlength="200" placeholder="Mesaj yaz…" enterkeyhint="send" aria-label="Mesaj yaz"><button class="btn primary" type="submit" aria-label="Gönder">${ic("send")}</button></form>
-  </section>
-  <button class="chatPeek" id="chatPeek" data-chattoggle hidden></button>`;
+chatEl.setAttribute("aria-label", "Lobi sohbeti");
+chatEl.innerHTML = `<header class="chatHead"><span class="chatTitle">${ic("message-circle")}<b>Sohbet</b></span><small>Geçici · son 10 mesaj · kaydedilmez</small><button type="button" class="icon sm chatExp" aria-label="Sohbeti genişlet ya da daralt">${ic("chevron-down")}</button></header>
+  <ol class="chatList" id="chatList" aria-live="polite"></ol>
+  <form class="chatForm" id="chatForm" autocomplete="off"><input id="chatIn" maxlength="200" placeholder="Mesaj yaz…" enterkeyhint="send" aria-label="Mesaj yaz"><button class="btn primary" type="submit" aria-label="Gönder">${ic("send")}</button></form>`;
 document.body.append(chatEl);
-let peekT = 0;
-function chatPeek(m) {
-  const el = $("#chatPeek");
-  if (!el || chatEl.hidden) return;
-  el.innerHTML = `${avatar(m, "xs")}<span><b>${esc(m.name)}</b> ${esc(m.text)}</span>`;
-  el.hidden = false;
-  el.classList.remove("show");
-  void el.offsetWidth;
-  el.classList.add("show");
-  clearTimeout(peekT);
-  peekT = setTimeout(() => (el.hidden = true), 4000);
-}
-// Sohbet yalnızca bir lobideyken (kurucu ya da oyuncu) görünür; tek başına oyunda yok.
+const chatMobile = () => matchMedia("(max-width: 1099px)").matches;
+chatEl.addEventListener("click", (e) => {
+  if (e.target.closest(".chatExp")) { chat.exp = !chat.exp; return chatDraw(); }
+  if (e.target.closest(".chatList") && chatMobile() && !chat.exp) { chat.exp = true; chatDraw(); }
+});
+// telefonda sohbet çubuğunun yüksekliği kadar alttan boşluk (alt düğmeler çubuğun üstünde kalsın)
+new ResizeObserver(() => document.documentElement.style.setProperty("--chatH", `${chatEl.hidden ? 0 : chatEl.offsetHeight}px`)).observe(chatEl);
+// Sohbet yalnızca bir lobideyken (kurucu ya da oyuncu) lobi ve oyun ekranında görünür; tek başına oyunda yok.
 function chatVis() {
-  const on = !!mode && mode.role !== "solo";
+  const on = !!mode && mode.role !== "solo" && screen === "room";
+  document.body.classList.toggle("hasChat", on);
   if (chatEl.hidden === !on) return;
   chatEl.hidden = !on;
-  if (!on) { chat.open = false; $("#chatPeek").hidden = true; }
+  if (!on) document.documentElement.style.setProperty("--chatH", "0px");
   chatDraw();
 }
 function chatDraw() {
-  const on = !!mode && mode.role !== "solo";
-  const open = on && chat.open;
-  $("#chatPanel").hidden = !open;
-  document.body.classList.toggle("chatOpen", open);
-  if (open && !document.hidden) chat.unread = 0;
+  chatEl.classList.toggle("exp", !!chat.exp);
   const list = $("#chatList");
   list.innerHTML = chat.list.length
-    ? chat.list.map((m) => `<li class="${m.pid === pid ? "me" : ""}">${avatar(m, "xs")}<span class="chatMsg"><b>${esc(m.name)}</b><span>${esc(m.text)}</span></span></li>`).join("")
-    : `<li class="chatEmpty">${ic("message-circle")}<span>Henüz mesaj yok. Selam ver!<small>Yalnızca son 10 mesaj görünür; sonradan katılan eskileri görmez, lobi kapanınca hepsi silinir.</small></span></li>`;
+    ? chat.list.map((m) => `<li class="${m.pid === pid ? "me" : ""}" data-noi18n>${avatar(m, "xs")}<span class="chatMsg"><b>${esc(m.name)}</b> <span>${esc(m.text)}</span></span></li>`).join("")
+    : `<li class="chatEmpty">Henüz mesaj yok. Selam ver! 👋</li>`;
   list.scrollTop = list.scrollHeight;
-  topbar();
 }
-function chatToggle(open = !chat.open) {
-  chat.open = open;
-  if (open) $("#chatPeek").hidden = true;
-  chatDraw();
-  // telefonda klavye kendiliğinden açılmasın; bilgisayarda yazmaya hazır olsun
-  if (open && matchMedia("(hover: hover) and (pointer: fine)").matches) $("#chatIn")?.focus();
-}
-document.addEventListener("visibilitychange", () => { if (!document.hidden && chat.open) chatDraw(); });
 
 // ---------- açık lobiler: kurucu, lobisi herkese açıksa ve oyun başlamadıysa ana sayfada duyurur ----------
 const lobby = { said: false, body: "", at: 0, t: 0 };
 function lobbyInfo() {
   const g = mode?.game;
   if (mode?.role !== "host" || !g) return null;
-  const open = !!mode.pub && g.phase === "lobby";
+  const open = (mode.vis === "public" || mode.vis === "locked") && g.phase === "lobby";
   return {
-    open, phase: g.phase === "lobby" ? "lobby" : "game",
+    open, lock: mode.vis === "locked", phase: g.phase === "lobby" ? "lobby" : "game",
     host: profile || {}, players: g.players.filter((p) => p.online).length, max: MAX_PLAYERS,
     quizzes: g.queue.slice(0, 3).map((s) => s.name), more: Math.max(0, g.queue.length - 3),
   };
@@ -660,18 +649,21 @@ function trackPlays(v) {
     // lobiye yeni girildi (ya da sayfa yenilendi): önceden bitmiş quizler sayılmaz
     playSeen.code = v.code;
     playSeen.ids = new Set(v.history.map((h) => h.id));
+    trackDaily(v);
     return;
   }
+  trackDaily(v);
   for (const h of v.history) {
     if (playSeen.ids.has(h.id)) continue;
     playSeen.ids.add(h.id);
     if (h.qid && h.top?.some((t) => t.pid === v.me)) countPlay(h.qid);
+    if (h.qid?.startsWith("daily-") && h.top?.some((t) => t.pid === v.me)) finishDaily(h, v);
   }
 }
 const playNum = (n) => (n >= 1e6 ? `${(n / 1e6).toLocaleString("tr", { maximumFractionDigits: 1 })} Mn` : n >= 1e4 ? `${Math.round(n / 1e3).toLocaleString("tr")} B` : n >= 1e3 ? `${(n / 1e3).toLocaleString("tr", { maximumFractionDigits: 1 })} B` : String(n));
-const playsTag = (l, cls = "plays") => { const n = plays(l.id); return n ? `<span class="${cls}" title="${num(n).toLocaleString("tr")} kez oynandı">${ic("play")}${playNum(n)}</span>` : ""; };
+const playsTag = (l, cls = "plays") => { if (!playsLoaded() || String(l.id).startsWith("my") || String(l.id).startsWith("dz")) return ""; const n = plays(l.id); return `<span class="${cls}${n ? "" : " zero"}" title="${n ? `${num(n).toLocaleString("tr")} kez oynandı` : "Henüz oynanmadı"}">${ic("play")}${playNum(n)}</span>`; };
 onPlays(() => { if (screen === "home" && !mode && !sheet.open) renderHome(); else if (screen === "detail") { const s = $("#dtPlays"); if (s && sheetCtx?.list) s.outerHTML = dtPlaysHtml(sheetCtx.list); } });
-const dtPlaysHtml = (l) => { const n = plays(l.id); return `<span id="dtPlays"${n ? "" : " hidden"}>${ic("play")}${num(n).toLocaleString("tr")} kez oynandı</span>`; };
+const dtPlaysHtml = (l) => { const n = plays(l.id); return `<span id="dtPlays"${playsLoaded() ? "" : " hidden"}>${ic("play")}${n ? `${num(n).toLocaleString("tr")} kez oynandı` : "Henüz oynanmadı"}</span>`; };
 
 // Kurucu lobide tek başına mı? (Bağlı başka oyuncu yok.)
 function hostAlone() {
@@ -707,7 +699,26 @@ function inviteLink() {
   u.search = "";
   u.hash = "";
   u.searchParams.set("room", mode.code);
+  if (mode.vis === "locked" && mode.pw) u.searchParams.set("s", mode.pw);
   return u.href;
+}
+// ---------- şifreli lobiye katılma: şifre sayfası ----------
+let pwAsk = null;
+function askPw(code, err = "") {
+  pwAsk = { code, err };
+  screen = "pw";
+  render();
+  setTimeout(() => $("#pwIn")?.focus(), 50);
+}
+function renderPw() {
+  app.innerHTML = `<section class="center pwPage">
+    <div class="pulse">${ic("lock")}</div>
+    <h1>Şifreli lobi</h1>
+    <p class="muted">Kod <b class="mono">${esc(pwAsk.code)}</b> · Katılmak için kurucunun verdiği şifreyi yaz.</p>
+    <form class="pwForm" id="pwForm" autocomplete="off"><input id="pwIn" maxlength="20" placeholder="Şifre" aria-label="Lobi şifresi" autocomplete="off"><button class="btn primary" type="submit">${ic("log-in")}Katıl</button></form>
+    ${pwAsk.err ? `<p class="pwErr">${esc(pwAsk.err)}</p>` : ""}
+    <button class="btn ghost" data-do="pwCancel">Vazgeç</button>
+  </section>`;
 }
 async function copy(text, msg) {
   try {
@@ -741,6 +752,7 @@ function sfxTrack() {
 function render() {
   topbar();
   chatVis();
+  if (screen === "pw" && pwAsk && !mode) return renderPw();
   if (screen === "room" && mode) { const out = renderRoom(); sfxTrack(); return out; }
   if (screen === "detail" && sheetCtx?.list) return renderDetail();
   if (screen === "number") return renderNumber();
@@ -774,9 +786,9 @@ function lobbiesHtml() {
     : ls.length
     ? `<div class="lbyRow">${ls.map((l) => `<button class="lbyCard" data-joinlobby="${esc(l.code)}" aria-label="${esc(l.host.name)} lobisine katıl">
         ${avatar(l.host)}
-        <span class="lbyInfo"><b>${esc(l.host.name)}</b><small>${l.quizzes.length ? `${ic("list-music")}${esc(l.quizzes.join(" · "))}${l.more ? ` +${l.more}` : ""}` : "Quiz seçiliyor"}</small></span>
-        <span class="lbyCount">${ic("users")}${num(l.players)}/${num(l.max)}</span>
-        <span class="lbyGo">Katıl ${ic("chevron-right")}</span>
+        <span class="lbyInfo"><b data-noi18n>${esc(l.host.name)}</b><small>${l.quizzes.length ? `${ic("list-music")}${esc(l.quizzes.join(" · "))}${l.more ? ` +${l.more}` : ""}` : "Quiz seçiliyor"}</small></span>
+        <span class="lbyCount">${l.lock ? `<i class="lbyLock" title="Şifreli">${ic("lock")}</i>` : ""}${ic("users")}${num(l.players)}/${num(l.max)}</span>
+        <span class="lbyGo">${l.lock ? "Şifreyle katıl" : "Katıl"} ${ic("chevron-right")}</span>
       </button>`).join("")}</div>`
     : `<p class="lbyEmpty">${ic("globe")}<span>Şu an katılınabilecek açık lobi yok. <button class="linkBtn" data-do="create">Lobi kur</button>, “Herkese açık” yap; burada herkes görsün.</span></p>`;
   return `<section class="hm-lobbies" id="lobbies" aria-label="Açık lobiler">
@@ -796,8 +808,61 @@ function topPlayedRail() {
   const top = allLists().filter((l) => l.genre !== "Senin" && plays(l.id) > 0).sort((a, b) => plays(b.id) - plays(a.id)).slice(0, 16);
   return top.length >= 3 ? rail("En çok oynananlar", "flame", top.map((l, k) => qcard(l, k)).join(""), "") : "";
 }
+// Ana sayfadaki kapaklar: sitenin kendi quizlerinden (topluluk hariç) her açılışta farklı bir karışım
+const HERO_SEED = Math.random().toString(36).slice(2);
+function heroPool() {
+  const h = (x) => { let n = 0; for (const c of HERO_SEED + x) n = (n * 31 + c.charCodeAt(0)) >>> 0; return n; };
+  return [...PRESETS, ...RANK_QUIZZES, ...MIXES].filter((p) => realPic(p.picture)).sort((a, b) => h(a.id) - h(b.id));
+}
+// ---------- günün quizi ----------
+let DAILY = null;
+const daily = () => { const d = dailyDate(); if (DAILY?.daily !== d) DAILY = dailyQuiz(TRIVIA, d); return DAILY; };
+const fmtLeft = () => { const s = Math.floor(dailyLeft() / 1000); return [Math.floor(s / 3600), Math.floor((s % 3600) / 60), s % 60].map((x) => String(x).padStart(2, "0")).join(":"); };
+setInterval(() => { const el = document.getElementById("dlyLeft"); if (el) el.textContent = fmtLeft(); if (screen === "home" && !mode && DAILY && DAILY.daily !== dailyDate() && !sheet.open) renderHome(); }, 1000);
+function dailyHtml() {
+  const d = daily();
+  const res = dailyResult(d.daily);
+  const streak = dailyStreak();
+  const marks = (res?.marks || []).map((m) => (m ? "🟩" : "🟥")).join("");
+  return `<section class="hm-daily${res ? " done" : ""}" id="daily">
+    <div class="dlyMain">
+      <span class="kicker">${ic("sparkles")} Günün quizi · ${esc(dailyLabel(d.daily))}</span>
+      <h2>${res ? "Bugünün quizini çözdün!" : "Bugün herkes aynı 10 soruyu çözüyor"}</h2>
+      ${res ? `<p class="dlyRes"><b>${num(res.hits)}/${d.items.length}</b> doğru · <b>${num(res.pts)}</b> puan${marks ? ` <span class="dlyMarks">${marks}</span>` : ""}</p>` : `<p class="muted">Her gün yeni 10 soru, her biri farklı bir kategoriden. İlk oyunun günün sıralamasına yazılır.</p>`}
+      <div class="dlyBtns">${res
+        ? `<button class="btn primary" data-do="dailyShare">${ic("copy")}Sonucu paylaş</button><button class="btn soft" data-do="dailyBoard">${ic("trophy")}Günün sıralaması</button>`
+        : `<button class="btn primary lg" data-do="dailyGo">${ic("play")}Hemen oyna</button><button class="btn ghost" data-do="dailyBoard">${ic("trophy")}Sıralama</button>`}</div>
+    </div>
+    <div class="dlySide">
+      <div class="dlyStats"><div class="dlyStat"><b>${streak}</b><small>günlük seri</small></div><div class="dlyStat"><b id="dlyLeft">${fmtLeft()}</b><small>yeni quize kalan</small></div></div>
+      <div class="dlyCats">${d.cats.map((c) => `<span style="--h:${TART[c]?.[0] ?? 0}">${esc(c)}</span>`).join("")}</div>
+    </div>
+  </section>`;
+}
+// Oyun içinde: günün quizindeki her sorunun doğru/yanlışı (paylaşım için), bitince sonuç kaydedilir.
+const dailyRun = { qid: "", marks: [] };
+function trackDaily(v) {
+  const set = v?.queue?.[v.set];
+  if (!set?.qid?.startsWith("daily-")) return;
+  if (dailyRun.qid !== set.qid + v.code) { dailyRun.qid = set.qid + v.code; dailyRun.marks = []; }
+  if (v.phase === "reveal" && v.question?.reveal) dailyRun.marks[num(v.index)] = !!v.question.reveal.results?.[v.me]?.correct;
+}
+function finishDaily(h, v) {
+  const date = `${h.qid.slice(6, 10)}-${h.qid.slice(10, 12)}-${h.qid.slice(12, 14)}`;
+  if (dailyResult(date)) return;
+  const me = h.top?.find((t) => t.pid === v.me);
+  const marks = Array.from({ length: num(h.count) }, (_, i) => !!dailyRun.marks[i]);
+  saveDaily(date, { pts: num(me?.pts), hits: marks.filter(Boolean).length, marks });
+  toast("Günün quizi kaydedildi. Yarın yeni sorular!");
+}
+function dailyShareText() {
+  const d = daily();
+  const r = dailyResult(d.daily);
+  if (!r) return "";
+  return `JinjaQuiz · Günün Quizi (${dailyLabel(d.daily)})\n${(r.marks || []).map((m) => (m ? "🟩" : "🟥")).join("")}\n${r.hits}/${d.items.length} doğru · ${r.pts} puan · ${dailyStreak()} günlük seri\nhttps://jinjagames.com/quiz/`;
+}
 function allLists() {
-  return [...PRESETS, ...MIXES, ...RANK_QUIZZES, ...ANIME_QUIZZES, ...TRIVIA, ...(ui.community || []), ...customLists().map((l) => ({ ...l, genre: "Senin" }))];
+  return [daily(), ...PRESETS, ...MIXES, ...RANK_QUIZZES, ...ANIME_QUIZZES, ...TRIVIA, ...(ui.community || []), ...customLists().map((l) => ({ ...l, genre: "Senin" }))];
 }
 const hue = (name) => {
   let h = 0;
@@ -842,7 +907,8 @@ function drawHome() {
   const commTrivia = (ui.community || []).filter((l) => l.kind === "trivia");
   const comm = ui.community || [];
   const tab = TABS.find((t) => t[0] === ui.genre) || TABS[0];
-  const pics = PRESETS.map((p) => realPic(p.picture)).filter(Boolean);
+  const hero = heroPool();
+  const pics = hero.map((p) => p.picture);
   const inviteCode = esc((new URLSearchParams(location.search).get("room") || new URLSearchParams(location.search).get("oda")) || "");
   app.innerHTML = `
   <section class="hm-hero">
@@ -869,10 +935,12 @@ function drawHome() {
       <div class="hm-arm" aria-hidden="true"><i></i></div>
       <div class="hm-timer" aria-hidden="true">${ic("timer")}<b>3</b></div>
       <div class="hm-notes" aria-hidden="true">${["music", "music-2", "music", "audio-lines"].map((n, k) => `<i style="--k:${k}">${ic(n)}</i>`).join("")}</div>
-      ${PRESETS.filter((p) => realPic(p.picture)).slice(1, 4).map((p, k) => `<button class="hm-cov c${k}" data-list="${esc(p.id)}" title="${esc(p.name)}" aria-label="${esc(p.name)} quizini aç"><img src="${esc(p.picture)}" alt=""></button>`).join("")}
+      ${hero.slice(1, 4).map((p, k) => `<button class="hm-cov c${k}" data-list="${esc(p.id)}" title="${esc(p.name)}" aria-label="${esc(p.name)} quizini aç"><img src="${esc(p.picture)}" alt=""></button>`).join("")}
       <span class="hm-hint">${ic("rotate-ccw")}Plağı çevir · ortasına dokun, rastgele quiz</span>
     </div>
   </section>
+
+  ${dailyHtml()}
 
   ${lobbiesHtml()}
 
@@ -895,9 +963,9 @@ function drawHome() {
         <button class="btn soft" type="submit" title="Deezer'da sanatçı ara">Sanatçı bul</button>
       </form>
     </div>
-    <nav class="hm-tabs" role="tablist" aria-label="Quiz türleri">
+    <nav class="catNav" role="tablist" aria-label="Quiz türleri">
       ${TABS.filter((t) => t[0] !== "Senin" || mine.length)
-        .map(([name, icon]) => `<button role="tab" aria-selected="${ui.genre === name}" data-tab="${esc(name)}">${ic(icon)}<span>${esc(name)}</span>${tabCount(name, mine) ? `<small>${tabCount(name, mine)}</small>` : ""}</button>`)
+        .map(([name, icon, , desc, hueV]) => `<button role="tab" class="catTab" style="--c:${hueV}" aria-selected="${ui.genre === name}" data-tab="${esc(name)}"><span class="catIc">${ic(icon)}</span><span class="catTxt"><b>${esc(name === "Keşfet" ? "Hepsi" : name)}</b><small>${esc(desc)}</small></span>${tabCount(name, mine) ? `<em class="catN">${tabCount(name, mine)}</em>` : ""}</button>`)
         .join("")}
     </nav>
     ${SUBS[ui.genre] ? `<div class="seg chips subChips">${["", ...SUBS[ui.genre]].map((c) => `<button data-sub="${esc(c)}" aria-pressed="${ui.cat === c}">${esc(c || "Hepsi")}</button>`).join("")}</div>` : ""}
@@ -930,7 +998,7 @@ function drawHome() {
   </section>
   <footer><a href="/">JinjaGames</a> · <a href="/apps/">Diğer web uygulamaları</a> · <a href="/privacy/">Gizlilik</a></footer>`;
   keepVisible('.subChips [aria-pressed="true"]');
-  keepVisible('.hm-tabs [aria-selected="true"]');
+  keepVisible('.catNav [aria-selected="true"]');
   initVinyl();
 }
 
@@ -1016,16 +1084,17 @@ function keepVisible(sel, root = app) {
   bar.scrollLeft += r.left - br.left - (br.width - r.width) / 2;
 }
 // Katalog sekmeleri: [ad, simge, başlık]
+// [ad, simge, başlık, kısa açıklama, renk]
 const TABS = [
-  ["Keşfet", "compass", "Ne oynamak istersin?"],
-  ["Müzik", "music", "Ne dinlemek istersin?"],
-  ["Sıralama", "list-ordered", "En çok dinlenenleri doğru sırala"],
-  ["Tersten", "rewind", "Tersten dinle, şarkıyı bil"],
-  ["Anime", "tv", "Anime'yi ne kadar biliyorsun?"],
-  ["Trivia", "circle-help", "Ne kadar biliyorsun?"],
-  ["Sayı", "hash", "Hangisi daha büyük?"],
-  ["Topluluk", "users", "Topluluğun quizleri"],
-  ["Senin", "bookmark", "Senin quizlerin"],
+  ["Keşfet", "compass", "Ne oynamak istersin?", "Her türden seçmeler", "#ff5b3a"],
+  ["Müzik", "music", "Ne dinlemek istersin?", "Kesitten şarkıyı bil", "#ff8a3d"],
+  ["Sıralama", "list-ordered", "En çok dinlenenleri doğru sırala", "İlk 5'i doğru diz", "#ffc23d"],
+  ["Tersten", "rewind", "Tersten dinle, şarkıyı bil", "Şarkı tersten çalar", "#c46bff"],
+  ["Anime", "tv", "Anime'yi ne kadar biliyorsun?", "Karakter, kapak, opening", "#ff4f8b"],
+  ["Trivia", "circle-help", "Ne kadar biliyorsun?", "Bilgi yarışması", "#3dc7ff"],
+  ["Sayı", "hash", "Hangisi daha büyük?", "Hangisi büyük, seriyi bozma", "#2fd3a6"],
+  ["Topluluk", "users", "Topluluğun quizleri", "Oyuncuların yaptıkları", "#8aa4ff"],
+  ["Senin", "bookmark", "Senin quizlerin", "Kaydettiklerin", "#b8b3c4"],
 ];
 const SUBS = { Müzik: ["Rap", "Pop", "Rock"], Sıralama: RANK_CATS, Tersten: ["Pop", "Rap", "Rock"], Trivia: TCATS, Topluluk: ["Müzik", "Trivia"] };
 function inTab(l, g = ui.genre, c = ui.cat) {
@@ -1150,7 +1219,7 @@ function renderRoom() {
     return;
   }
   const v = view;
-  const sig = JSON.stringify({ ...v, now: 0, lost: mode.lost, pub: mode.pub });
+  const sig = JSON.stringify({ ...v, now: 0, lost: mode.lost, vis: mode.vis, sel: lobSel && sheetCtx?.list?.id, pick });
   if (sig === lastSig) return paint();
   // Soru sürerken başkası cevaplayınca yalnızca küçük parçaları güncelle; düğmeleri baştan çizme
   // (aksi halde o an basılan şık kaybolabiliyor).
@@ -1170,7 +1239,13 @@ function renderRoom() {
   // Oyun ekranı yeniden çizilirken sayfa kaymasın (soru → sonuç geçişi).
   const keepY = GAME.has(v.phase) && GAME.has(app.dataset.phase || "") ? scrollY : null;
   app.dataset.phase = v.phase;
-  if (v.phase === "lobby") app.innerHTML = lobbyHtml(v);
+  if (v.phase === "lobby") {
+    const restore = keepInputs(["pickQ", "lobPw"]);
+    app.innerHTML = lobbyHtml(v);
+    restore();
+    if (lobSel && sheetCtx?.kind === "inline" && sheetCtx.tracks && $("#trackList")) drawTracks();
+    keepVisible('.pickTabs [aria-selected="true"]');
+  }
   else if (["preparing", "question", "reveal"].includes(v.phase)) app.innerHTML = gameHtml(v);
   else app.innerHTML = rankingHtml(v);
   app.dataset.q = v.question?.id || "";
@@ -1200,69 +1275,43 @@ const ansCountText = (v) => (v.solo ? "" : `${num(v.question?.answered?.length)}
 
 function vchip(p, q, reveal, me) {
   const r = reveal ? q.reveal?.results?.[p.pid] : null;
-  return `<span class="vchip ${p.pid === me ? "me" : ""}">${avatar(p, "xs")}<b>${esc(p.name)}</b>${r ? `<em class="${r.correct ? "good" : ""}">+${num(r.points)}</em>` : ""}</span>`;
+  return `<span class="vchip ${p.pid === me ? "me" : ""}">${avatar(p, "xs")}<b data-noi18n>${esc(p.name)}</b>${r ? `<em class="${r.correct ? "good" : ""}">+${num(r.points)}</em>` : ""}</span>`;
 }
 
 function lobbyHtml(v) {
   const host = isHost();
   const solo = v.solo;
+  const vis = mode.vis || "private";
+  const VIS = {
+    private: [ic("lock"), "Özel", "Yalnızca bağlantıyı ya da kodu bilenler katılabilir."],
+    public: [ic("globe"), "Herkese açık", "Ana sayfadaki “Açık lobiler” listesinde görünür; oyun başlayınca listeden düşer."],
+    locked: [ic("lock"), "Şifreli", "Listede kilitli görünür; yalnızca şifreyi girenler katılabilir. Davet bağlantısı şifreyi de içerir."],
+  };
   return `
   ${mode.lost ? `<div class="banner">${spinner()} Kurucunun bağlantısı koptu, geri dönmesi bekleniyor…</div>` : ""}
-  <section class="lobby">
-    <div class="lobbyMain">
-      <div class="roomHead">
-        <div>
-          <span class="kicker">${solo ? "Solo oyun" : "Lobi"}</span>
-          <h1>${solo ? "Hazır mısın?" : host ? "Arkadaşlarını çağır" : "Kurucu hazırlanıyor"}</h1>
-        </div>
-        <button class="btn ghost sm" data-do="leaveask">${ic("door-open")}Ayrıl</button>
+  <section class="lobby${solo ? " solo" : ""}">
+    <div class="roomHead">
+      <div>
+        <span class="kicker">${solo ? "Solo oyun" : "Lobi"}</span>
+        <h1>${solo ? "Hazır mısın?" : host ? "Arkadaşlarını çağır" : "Kurucu hazırlanıyor"}</h1>
       </div>
-      ${
-        solo
-          ? ""
-          : `<div class="invite">
-        <div class="codeBox"><small>Lobi kodu</small><b class="mono">${esc(v.code)}</b></div>
-        <div class="inviteBtns">
-          <button class="btn primary" data-do="link">${ic("copy")}Davet bağlantısı</button>
-          <button class="btn soft" data-do="code">Kodu kopyala</button>
-        </div>
-        ${host ? `<div class="pubRow"><div class="seg" role="radiogroup" aria-label="Lobi görünürlüğü"><button data-pub="0" aria-pressed="${!mode.pub}">${ic("lock")}Özel</button><button data-pub="1" aria-pressed="${!!mode.pub}">${ic("globe")}Herkese açık</button></div>
-          <small class="muted">${mode.pub ? "Ana sayfadaki “Açık lobiler” listesinde görünüyor; oyun başlayınca listeden düşer." : "Yalnızca bağlantıyı ya da kodu bilenler katılabilir."}</small></div>` : ""}
-      </div>`
-      }
-      <div class="block">
-        <div class="blockHead"><h2>Quiz sırası</h2>${host ? `<button class="btn soft sm" data-sheet="picker">${ic("plus")}Quiz ekle</button>` : ""}</div>
-        ${
-          v.queue.length
-            ? `<ol class="queue">${v.queue
-                .map(
-                  (s, i) => `<li>
-              ${cover(s, "qImg")}
-              <span class="qInfo"><b>${esc(s.name)}</b><small>${num(s.count)} soru · ${s.kind === "rank" || s.kind === "op" ? kindName(s.kind) : s.kind === "trivia" ? "Trivia" : `${s.reverse ? "Tersten · " : ""}${s.mode === "text" ? "Yazarak" : "Şıklı"} · ${lvl(s.clip, s.reverse)} (${num(s.clip)} sn)`}</small></span>
-              ${
-                host
-                  ? `<span class="qBtns">
-                <button class="icon" data-move="${esc(s.id)}" data-dir="-1" ${i ? "" : "disabled"} aria-label="Yukarı">${ic("chevron-down", "up")}</button>
-                <button class="icon" data-move="${esc(s.id)}" data-dir="1" ${i < v.queue.length - 1 ? "" : "disabled"} aria-label="Aşağı">${ic("chevron-down")}</button>
-                <button class="icon" data-remove="${esc(s.id)}" aria-label="Kaldır">${ic("trash-2")}</button>
-              </span>`
-                  : ""
-              }
-            </li>`,
-                )
-                .join("")}</ol>`
-            : `<button class="emptyQueue" ${host ? 'data-sheet="picker"' : "disabled"}>${ic("list-plus")}<span>${host ? "İlk quizi ekle" : "Kurucu henüz quiz eklemedi"}</span></button>`
-        }
-      </div>
-      ${historyHtml(v, host)}
-      <div class="block settings">
-        <div class="setRow"><span>Cevap süresi</span>
-          <div class="seg" ${host ? "" : "aria-disabled=true"}>${[10, 15, 20, 30, 45]
-            .map((n) => `<button data-secs="${n}" aria-pressed="${v.seconds === n}" ${host ? "" : "disabled"}>${n} sn</button>`)
-            .join("")}</div>
-        </div>
-      </div>
+      <button class="btn ghost sm" data-do="leaveask">${ic("door-open")}Ayrıl</button>
     </div>
+    ${
+      solo
+        ? ""
+        : `<div class="invite">
+      <div class="codeBox"><small>Lobi kodu</small><b class="mono">${esc(v.code)}</b></div>
+      <div class="inviteBtns">
+        <button class="btn primary" data-do="link">${ic("copy")}Davet bağlantısı</button>
+        <button class="btn soft" data-do="code">Kodu kopyala</button>
+      </div>
+      ${host ? `<div class="pubRow">
+        <div class="seg visSeg" role="radiogroup" aria-label="Lobi görünürlüğü">${Object.entries(VIS).map(([k, [icon, t]]) => `<button data-vis="${k}" aria-pressed="${vis === k}">${icon}${t}</button>`).join("")}</div>
+        ${vis === "locked" ? `<form class="pwRow" id="pwSet" autocomplete="off">${ic("lock")}<input id="lobPw" maxlength="20" value="${esc(mode.pw || "")}" placeholder="Lobi şifresi" aria-label="Lobi şifresi"><button class="btn soft sm" type="submit">Kaydet</button></form>` : ""}
+        <small class="muted">${VIS[vis][2]}</small></div>` : vis === "locked" ? "" : ""}
+    </div>`
+    }
     ${
       solo
         ? ""
@@ -1271,7 +1320,7 @@ function lobbyHtml(v) {
       ${v.history?.length ? `<p class="standHead">${ic("trophy")} Genel sıralama · ${v.history.length} quiz</p>` : ""}
       <ul class="${v.history?.length ? "standings" : ""}">${(v.history?.length ? [...v.players].sort((a, b) => num(b.score) - num(a.score)) : v.players)
         .map(
-          (p, i) => `<li class="${p.online ? "" : "off"} ${p.pid === v.me ? "me" : ""}" style="--i:${i}">${v.history?.length ? `<span class="rank r${i + 1}">${i + 1}</span>` : ""}${avatar(p)}<b>${esc(p.name)}${p.pid === v.me ? " <small>(sen)</small>" : ""}</b>
+          (p, i) => `<li class="${p.online ? "" : "off"} ${p.pid === v.me ? "me" : ""}" style="--i:${i}">${v.history?.length ? `<span class="rank r${i + 1}">${i + 1}</span>` : ""}${avatar(p)}<b><bdi data-noi18n>${esc(p.name)}</bdi>${p.pid === v.me ? " <small>(sen)</small>" : ""}</b>
           ${v.history?.length ? `<span class="pscore" data-count="${num(p.score)}">${num(p.score)}</span>` : ""}
           ${p.pid === v.host ? `<span class="crown" title="Kurucu">${ic("crown")}</span>` : host ? `<button class="icon sm" data-kick="${esc(p.pid)}" aria-label="${esc(p.name)} lobiden çıkar">${ic("x")}</button>` : ""}</li>`,
         )
@@ -1279,6 +1328,39 @@ function lobbyHtml(v) {
       ${v.players.length < 2 ? `<p class="hint">Bağlantıyı gönder; açan herkes buraya düşer.</p>` : ""}
     </aside>`
     }
+    <div class="block queueBlock">
+      <div class="blockHead"><h2>Quiz sırası${v.queue.length ? ` <small class="count">${v.queue.length}</small>` : ""}</h2></div>
+      ${
+        v.queue.length
+          ? `<ol class="queue">${v.queue
+              .map(
+                (s, i) => `<li>
+            ${cover(s, "qImg")}
+            <span class="qInfo"><b>${esc(s.name)}</b><small>${num(s.count)} soru · ${s.kind === "rank" || s.kind === "op" ? kindName(s.kind) : s.kind === "trivia" ? "Trivia" : `${s.reverse ? "Tersten · " : ""}${s.mode === "text" ? "Yazarak" : "Şıklı"} · ${lvl(s.clip, s.reverse)} (${num(s.clip)} sn)`}</small></span>
+            ${
+              host
+                ? `<span class="qBtns">
+              <button class="icon" data-move="${esc(s.id)}" data-dir="-1" ${i ? "" : "disabled"} aria-label="Yukarı">${ic("chevron-down", "up")}</button>
+              <button class="icon" data-move="${esc(s.id)}" data-dir="1" ${i < v.queue.length - 1 ? "" : "disabled"} aria-label="Aşağı">${ic("chevron-down")}</button>
+              <button class="icon" data-remove="${esc(s.id)}" aria-label="Kaldır">${ic("trash-2")}</button>
+            </span>`
+                : ""
+            }
+          </li>`,
+              )
+              .join("")}</ol>`
+          : `<p class="emptyQueue">${ic("list-plus")}<span>${host ? "Aşağıdan bir quiz seç; sıraya eklenir." : "Kurucu henüz quiz eklemedi"}</span></p>`
+      }
+    </div>
+    ${host ? lobPickHtml() : ""}
+    ${historyHtml(v, host)}
+    <div class="block settings">
+      <div class="setRow"><span>Cevap süresi</span>
+        <div class="seg" ${host ? "" : "aria-disabled=true"}>${[10, 15, 20, 30, 45]
+          .map((n) => `<button data-secs="${n}" aria-pressed="${v.seconds === n}" ${host ? "" : "disabled"}>${n} sn</button>`)
+          .join("")}</div>
+      </div>
+    </div>
   </section>
   <div class="dock">
     ${
@@ -1287,6 +1369,61 @@ function lobbyHtml(v) {
         : `<p class="waiting">${spinner()} Kurucunun oyunu başlatması bekleniyor</p>`
     }
   </div>`;
+}
+
+// ---------- lobide quiz seçme: ayrı pencere yok, lobinin içinde ----------
+// Türler sekmeli; bir quize dokununca ayarları (soru sayısı, cevap türü…) seçim kutusunun hemen üstünde açılır.
+let lobSel = false;
+const inLobbyPick = () => screen === "room" && !!mode && mode.role !== "solo" && isHost() && view?.phase === "lobby";
+function lobPickHtml() {
+  const tabs = pickTabs();
+  if (!tabs.some((t) => t[0] === pick.tab)) Object.assign(pick, { tab: "Müzik", cat: "" });
+  const subs = SUBS[pick.tab];
+  const music = pick.tab === "Müzik";
+  return `<div class="block lobPick" id="lobPick">
+    <div class="blockHead"><h2>Quiz ekle</h2></div>
+    ${lobSelHtml()}
+    <nav class="pickTabs" role="tablist" aria-label="Quiz türleri">${pickTabsHtml(tabs)}</nav>
+    ${subs ? `<div class="seg chips subChips">${["", ...subs].map((c) => `<button data-psub="${esc(c)}" aria-pressed="${pick.cat === c}">${esc(c || "Hepsi")}</button>`).join("")}</div>` : ""}
+    <form class="search" id="pickSearch" role="search" autocomplete="off">${ic("search")}<input id="pickQ" type="search" value="${esc(pick.q)}" placeholder="${music ? "Quiz ara ya da sanatçı bul…" : `${esc(pick.tab)} quizlerinde ara…`}" aria-label="Quiz ara">${music ? `<button class="btn soft" type="submit" title="Deezer'da sanatçı ara">Sanatçı bul</button>` : ""}</form>
+    <div id="pickResults">${music ? resultsHtml() : ""}</div>
+    <div id="pickBody">${pickBodyHtml()}</div>
+  </div>`;
+}
+function lobSelHtml() {
+  const l = sheetCtx?.kind === "inline" && lobSel ? sheetCtx.list : null;
+  if (!l) return "";
+  const ik = ITEM_KINDS.includes(l.kind);
+  const n = ik ? num(l.items?.length) : num(sheetCtx.tracks?.length);
+  return `<div class="lobSel" id="lobSel" data-g="${esc(sheetCtx.gmode || "normal")}">
+    <div class="lobSelHead">${cover(l, "sImg")}<div><small class="kicker">${l.kind === "trivia" ? `Trivia · ${esc(l.cat || "")}` : ik ? kindName(l.kind) : esc(l.genre || "Şarkı quizi")}</small><b>${esc(l.name)}</b><small class="muted" id="trackCount">${ik ? (l.kind === "rank" ? "20 şık · 5 sıra" : `${n} ${l.kind === "op" ? "opening" : "soru"}`) : n ? `${n} şarkı` : `${spinner()} Şarkılar yükleniyor…`}</small></div><button class="icon sm" data-do="lobSelClose" aria-label="Vazgeç">${ic("x")}</button></div>
+    ${modeChoice(l, true)}
+    ${optsHtml(l)}
+    <div class="lobSelFoot"><button class="btn ghost" data-do="lobSelClose">Vazgeç</button><button class="btn primary" data-do="enqueue" ${!ik && !n ? "disabled data-needtracks=1" : ""}>${ic("list-plus")}Sıraya ekle</button></div>
+  </div>`;
+}
+// Quiz ayarlarını göster: lobideyken sayfanın içinde, değilse (kurucu ana sayfadan eklerken) pencerede.
+function showSetup(ctx) {
+  if (!inLobbyPick()) return openSheet("setup", ctx);
+  sheetCtx = { ...ctx, kind: "inline" };
+  lobSel = true;
+  lastSig = "";
+  render();
+  $("#lobSel")?.scrollIntoView({ behavior: "smooth", block: "start" });
+  const l = ctx.list;
+  if (!ITEM_KINDS.includes(l.kind)) fillTracks(l, () => lobSel && sheetCtx?.list === l);
+}
+// Lobi yeniden çizilirken yazılmakta olan metin ve odak kaybolmasın
+function keepInputs(ids) {
+  const keep = ids.map((id) => { const el = document.getElementById(id); return el && { id, v: el.value, f: document.activeElement === el, a: el.selectionStart, b: el.selectionEnd }; }).filter(Boolean);
+  return () => {
+    for (const k of keep) {
+      const el = document.getElementById(k.id);
+      if (!el) continue;
+      el.value = k.v;
+      if (k.f) { el.focus({ preventScroll: true }); try { el.setSelectionRange(k.a, k.b); } catch {} }
+    }
+  };
 }
 
 function historyHtml(v, host) {
@@ -1299,7 +1436,7 @@ function historyHtml(v, host) {
       .map((h) => {
         const w = h.top?.[0];
         const wp = w && pm.get(w.pid);
-        return `<li>${cover(h, "qImg")}<span class="qInfo"><b>${esc(h.name)}</b><small>${num(h.count)} soru${w ? ` · ${ic("crown")} ${esc(wp?.name || w.name)} <em>${num(w.pts)}</em>` : ""}</small></span>
+        return `<li>${cover(h, "qImg")}<span class="qInfo"><b>${esc(h.name)}</b><small>${num(h.count)} soru${w ? ` · ${ic("crown")} <bdi data-noi18n>${esc(wp?.name || w.name)}</bdi> <em>${num(w.pts)}</em>` : ""}</small></span>
           ${host ? `<button class="btn soft sm" data-requeue="${esc(h.id)}">${ic("list-plus")}Tekrar ekle</button>` : ""}</li>`;
       })
       .join("")}</ol>
@@ -1409,7 +1546,7 @@ function gameHtml(v) {
     answers = `<div class="typed">${v.players
       .map((p) => {
         const r = q.reveal.results[p.pid];
-        return r ? `<span class="${r.correct ? "right" : "wrong"}">${avatar(p, "xs")}<b>${esc(p.name)}</b><span class="said">${esc(r.answer)}</span><em>+${num(r.points)}</em></span>` : "";
+        return r ? `<span class="${r.correct ? "right" : "wrong"}">${avatar(p, "xs")}<b data-noi18n>${esc(p.name)}</b><span class="said">${esc(r.answer)}</span><em>+${num(r.points)}</em></span>` : "";
       })
       .join("")}</div>`;
   }
@@ -1423,7 +1560,7 @@ function gameHtml(v) {
     const top = Math.max(1, ...v.players.map((p) => num(p.round)));
     foot = `<div class="block board"><div class="blockHead"><h2>Quiz sıralaması</h2><small class="muted">Bu soru · Toplam</small></div>${rows
       .map(
-        ({ p, r }, i) => `<div class="row ${p.pid === v.me ? "me" : ""}" style="--i:${i}">${avatar(p, "sm")}<span class="rowName"><b>${esc(p.name)}</b>
+        ({ p, r }, i) => `<div class="row ${p.pid === v.me ? "me" : ""}" style="--i:${i}">${avatar(p, "sm")}<span class="rowName"><b data-noi18n>${esc(p.name)}</b>
         <span class="meter"><span style="width:${top ? Math.max(2, (num(p.round) / top) * 100) : 0}%"></span>${num(r?.points) > 0 ? `<span class="gain" style="left:${((num(p.round) - num(r.points)) / top) * 100}%;width:${(num(r.points) / top) * 100}%"></span>` : ""}</span></span>
         <span class="pts ${num(r?.points) > 0 ? "good" : ""}">${num(r?.points) > 0 ? "+" + num(r.points) : r ? "0" : "—"}${num(r?.points) > 0 ? `<small>${(num(r.ms) / 1000).toFixed(1)} sn</small>` : ""}</span><b class="tot" data-count="${num(p.round)}">${num(p.round)}</b></div>`,
       )
@@ -1774,7 +1911,7 @@ function boardRows(rows, key) {
   const mine = meAt >= LB_TOP ? rows[meAt] : meAt < 0 && best > 0 ? { s: best, n: profile?.name || "Sen", a: profile?.avatar, k: profile?.color, me: 1 } : null;
   if (!rows.length && !mine) return `<p class="lbEmpty">${ic("trophy")}<span>Henüz kimse yok. Puanlı modda bir oyun bitir, ilk sen ol!</span></p>`;
   const row = (r, i) =>
-    `<li class="${r.me || isMine(r) ? "me" : ""}${i >= 0 && i < 3 ? ` t${i + 1}` : ""}"><span class="lbN">${i >= 0 ? i + 1 : "–"}</span>${avatar({ avatar: r.a, color: r.k }, "xs")}<b>${esc(maskName(r.n))}</b>${r.me || isMine(r) ? `<em>Sen</em>` : ""}<span class="lbS">${num(r.s)}</span></li>`;
+    `<li class="${r.me || isMine(r) ? "me" : ""}${i >= 0 && i < 3 ? ` t${i + 1}` : ""}"><span class="lbN">${i >= 0 ? i + 1 : "–"}</span>${avatar({ avatar: r.a, color: r.k }, "xs")}<b data-noi18n>${esc(maskName(r.n))}</b>${r.me || isMine(r) ? `<em>Sen</em>` : ""}<span class="lbS">${num(r.s)}</span></li>`;
   return `<ol class="lbList">${rows.slice(0, LB_TOP).map(row).join("")}${mine ? `<li class="lbGap" aria-hidden="true"><i></i><i></i><i></i></li>${row(mine, -1)}` : ""}</ol>`;
 }
 // note: güvenli HTML olmalı (yalnızca sayılar ve sabit metin)
@@ -1871,15 +2008,15 @@ function rankingHtml(v) {
     <div class="podium">${podium
       .map((p, i) =>
         p
-          ? `<div class="pod p${[2, 1, 3][i]} ${p.pid === v.me ? "me" : ""}">${[2, 1, 3][i] === 1 ? `<span class="crownTop">${ic("crown")}</span>` : ""}${avatar(p, "lg")}<b>${esc(p.name)}</b><span data-count="${num(p.round)}">${num(p.round)}</span><div class="step">${[2, 1, 3][i]}</div></div>`
+          ? `<div class="pod p${[2, 1, 3][i]} ${p.pid === v.me ? "me" : ""}">${[2, 1, 3][i] === 1 ? `<span class="crownTop">${ic("crown")}</span>` : ""}${avatar(p, "lg")}<b data-noi18n>${esc(p.name)}</b><span data-count="${num(p.round)}">${num(p.round)}</span><div class="step">${[2, 1, 3][i]}</div></div>`
           : `<div class="pod empty"></div>`,
       )
       .join("")}</div>
-    ${ps.length > 3 ? `<ol class="list">${ps.slice(3).map((p, i) => `<li class="${p.pid === v.me ? "me" : ""}" style="--i:${i}">${i + 4}. ${avatar(p, "sm")}<b>${esc(p.name)}</b><span>${num(p.round)}</span></li>`).join("")}</ol>` : ""}
+    ${ps.length > 3 ? `<ol class="list">${ps.slice(3).map((p, i) => `<li class="${p.pid === v.me ? "me" : ""}" style="--i:${i}">${i + 4}. ${avatar(p, "sm")}<b data-noi18n>${esc(p.name)}</b><span>${num(p.round)}</span></li>`).join("")}</ol>` : ""}
     ${
       showTotal
         ? `<div class="totals"><h2>${ic("trophy")} Genel sıralama <small>${num(v.history.length)} quiz</small></h2><ol class="list">${total
-            .map((p, i) => `<li class="${p.pid === v.me ? "me" : ""}" style="--i:${i}"><span class="rank r${i + 1}">${i + 1}</span>${avatar(p, "sm")}<b>${esc(p.name)}</b><span data-count="${num(p.score)}">${num(p.score)}</span></li>`)
+            .map((p, i) => `<li class="${p.pid === v.me ? "me" : ""}" style="--i:${i}"><span class="rank r${i + 1}">${i + 1}</span>${avatar(p, "sm")}<b data-noi18n>${esc(p.name)}</b><span data-count="${num(p.score)}">${num(p.score)}</span></li>`)
             .join("")}</ol></div>`
         : ""
     }
@@ -2226,7 +2363,7 @@ function pickBodyHtml() {
   return `<div class="pickGrid">${make}${lists.map((l) => `<button class="pickItem" data-list="${esc(l.id)}"><span class="pArt">${cover(l, "pImg")}${playsTag(l, "plays pPlays")}</span><b>${esc(l.name)}</b><small>${cardSub(l)}</small></button>`).join("")}</div>${note}`;
 }
 function drawPick() {
-  const b = sheet.open && sheetCtx?.kind === "picker" && $("#pickBody");
+  const b = $("#pickBody");
   if (!b) return;
   b.innerHTML = pickBodyHtml();
   const t = $(".pickTabs");
@@ -2359,7 +2496,7 @@ function lbNeed(l) {
 }
 function modeChoice(l, inSheet = false) {
   const trivia = l.kind === "trivia";
-  const ranked = !!lbOf(l);
+  const ranked = !!lbOf(l) && !(l.daily && dailyResult(l.daily));
   if (!ranked && !(trivia && !inSheet)) return "";
   const g = sheetCtx.gmode;
   const best = bests()[l.id] || {};
@@ -2539,11 +2676,11 @@ function openListNow(id, fromHistory = false, revHint = false) {
   if (l.opsrc && !l.items?.length) animeOps().then((items) => { l.items = items; if (sheetCtx?.list === l) { sheetCtx.count = Math.min(10, items.length || 10); const o = $(".opts"); if (o) o.outerHTML = optsHtml(l); } });
   const last = store.get("jqSetup", {});
   // Tersten mi normal mi: quizin kendisinden ya da açıldığı kategoriden (Tersten sekmesi / rafı) gelir; ayrıca sorulmaz.
-  const tab = sheet.open && sheetCtx?.kind === "picker" ? pick.tab : ui.genre;
+  const tab = inLobbyPick() || (sheet.open && sheetCtx?.kind === "picker") ? pick.tab : ui.genre;
   const rev = l.rev || (l.mix && (revHint || tab === "Tersten")) ? 1 : 0;
-  const ctx = { list: l, count: last.count || 10, mode: last.mode || "choice", clip: rev ? 5 : last.clip || 3, rev, play: "solo", gmode: lbOf(l) ? "ranked" : "normal" };
+  const ctx = { list: l, count: last.count || 10, mode: last.mode || "choice", clip: rev ? 5 : last.clip || 3, rev, play: "solo", gmode: lbOf(l) && !(l.daily && dailyResult(l.daily)) ? "ranked" : "normal" };
   // Lobide kurucu quiz eklerken pencere; ana sayfada tam detay sayfası
-  if (mode && mode.role !== "solo" && isHost()) return openSheet("setup", ctx);
+  if (mode && mode.role !== "solo" && isHost()) return showSetup(ctx);
   if (!fromHistory) pushScreen({ jqScreen: "detail", id: String(l.id), rev });
   sheetCtx = ctx;
   screen = "detail";
@@ -2739,6 +2876,27 @@ async function doAction(a, el) {
       return act({ type: "lobby" });
     case "pickCreate":
       return pickCreate();
+    case "lobSelClose":
+      lobSel = false;
+      lastSig = "";
+      return render();
+    case "pwCancel":
+      pwAsk = null;
+      screen = "home";
+      return render();
+    case "dailyGo": {
+      // tek dokunuşla başla: bugünkü ilk oyun puanlı (sıralamaya girer), sonrakiler serbest
+      const l = daily();
+      sheetCtx = { list: l, count: l.items.length, mode: "choice", clip: 3, rev: 0, play: "solo", gmode: dailyResult(l.daily) ? "normal" : "ranked" };
+      return doAction("soloGo");
+    }
+    case "dailyBoard":
+      return openList(daily().id);
+    case "dailyShare": {
+      const text = dailyShareText();
+      if (navigator.share) { try { await navigator.share({ text }); return; } catch (e) { if (e?.name === "AbortError") return; } }
+      return copy(text, "Sonucun kopyalandı; istediğin yere yapıştır.");
+    }
     case "lobRefresh":
       return refreshLobbies(true);
     case "editQuiz":
@@ -2776,7 +2934,12 @@ async function doAction(a, el) {
       const payload = setupPayload();
       if (payload.kind !== "trivia") store.set("jqSetup", { count: payload.count, mode: payload.mode, clip: payload.clip });
       closeSheet();
-      if (a === "enqueue") return act(payload);
+      if (a === "enqueue") {
+        lobSel = false;
+        lastSig = "";
+        toast(`“${sheetCtx.list?.name || "Quiz"}” sıraya eklendi.`);
+        return act(payload);
+      }
       if (mode) leaveRoom(true);
       const game = startHost({ solo: a === "soloGo" });
       if (!game) return; // önce profil
@@ -2813,7 +2976,7 @@ function pickHit(i) {
   ui.results = null;
   if (screen === "home" && !sheet.open) renderHome();
   const last = store.get("jqSetup", {});
-  openSheet("setup", { list, count: last.count || 10, mode: last.mode || "choice", clip: last.clip || 3 });
+  showSetup({ list, count: last.count || 10, mode: last.mode || "choice", clip: last.clip || 3, gmode: "normal" });
 }
 
 // Şıklar ve plak normal "click" ile işlenir: basıp parmağını / fareyi şıkkın dışına kaydırıp
@@ -2835,16 +2998,26 @@ document.addEventListener("click", async (e) => {
     }
     if (d.sheet) return openSheet(d.sheet);
     if (d.do) return await doAction(d.do, b);
-    if ("chattoggle" in d) return chatToggle();
-    if ("chatclose" in d) return chatToggle(false);
-    if (d.joinlobby) return validCode(d.joinlobby) && startGuest(d.joinlobby, { fromList: true });
-    if (d.pub !== undefined && mode?.role === "host") {
-      mode.pub = d.pub === "1";
+    if (d.joinlobby) {
+      if (!validCode(d.joinlobby)) return;
+      // şifreli lobide önce şifre sorulur
+      if (ui.lobbies?.find((x) => x.code === d.joinlobby)?.lock) return askPw(d.joinlobby);
+      return startGuest(d.joinlobby, { fromList: true });
+    }
+    if (d.vis && mode?.role === "host") {
+      mode.vis = ["public", "locked"].includes(d.vis) ? d.vis : "private";
+      if (mode.vis === "locked" && !mode.pw) mode.pw = String(Math.floor(1000 + Math.random() * 9000));
       persist();
       lastSig = "";
-      if (mode.pub) toast("Lobin artık ana sayfadaki “Açık lobiler”de görünüyor.");
+      if (mode.vis === "public") toast("Lobin artık ana sayfadaki “Açık lobiler”de görünüyor.");
+      if (mode.vis === "locked") toast(`Lobin listede kilitli görünüyor. Şifre: ${mode.pw} (değiştirebilirsin)`);
       lobbyAnnounce(true);
       return render();
+    }
+    if (d.lang) {
+      if (inGame()) return toast(LANG === "en" ? "You can switch the language after this game." : "Dili bu oyun bitince değiştirebilirsin.");
+      setLang(d.lang);
+      return location.reload();
     }
     if (d.sort !== undefined) {
       ui.sort = d.sort;
@@ -2858,6 +3031,7 @@ document.addEventListener("click", async (e) => {
       Object.assign(pick, { tab: d.ptab, cat: "", q: "" });
       ui.results = null;
       if (d.ptab === "Topluluk" && (ui.communityErr || ui.community?.length === 0)) (ui.community = null), loadCommunity();
+      if ($("#lobPick")) { lastSig = ""; return render(); }
       pickerSheet();
       return sheetBody.scrollTo({ top: 0 });
     }
@@ -2985,7 +3159,7 @@ document.addEventListener("click", async (e) => {
       sheetCtx[k] = Number.isNaN(Number(d.v)) ? d.v : Number(d.v);
       $$("button", b.parentElement).forEach((x) => x.setAttribute("aria-pressed", x === b));
       const dt = $(".dt");
-      if (k === "gmode") { if (dt) dt.dataset.g = d.v; sheetBody.dataset.g = d.v; }
+      if (k === "gmode") { if (dt) dt.dataset.g = d.v; sheetBody.dataset.g = d.v; const ls = $("#lobSel"); if (ls) ls.dataset.g = d.v; }
       if (dt && k === "play") dt.dataset.play = d.v;
       if (k === "rev") { const cs = $("#clipSeg"); if (cs) cs.outerHTML = clipSeg(); }
       if (k === "video") sheetCtx.video = d.v === "1";
@@ -3073,6 +3247,21 @@ document.addEventListener("submit", (e) => {
   if (f.id === "searchForm") return runSearch($("#search").value, "home");
   if (f.id === "pickSearch") return runSearch($("#pickQ").value, "picker");
 
+  if (f.id === "pwForm") {
+    const v = $("#pwIn").value.trim();
+    if (!v) return $("#pwIn").focus();
+    return startGuest(pwAsk.code, { pw: v });
+  }
+  if (f.id === "pwSet" && mode?.role === "host") {
+    const v = $("#lobPw").value.trim().slice(0, 20);
+    if (!v) return toast("Şifre boş olamaz.", "bad");
+    mode.pw = v;
+    persist();
+    lastSig = "";
+    toast("Şifre kaydedildi. Yeni katılanlar bu şifreyi girmeli.");
+    lobbyAnnounce(true);
+    return render();
+  }
   if (f.id === "chatForm") {
     const inp = $("#chatIn");
     if (chatSend(inp.value)) inp.value = "";
@@ -3085,7 +3274,6 @@ document.addEventListener("submit", (e) => {
   }
 });
 document.addEventListener("keydown", (e) => {
-  if (e.key === "Escape" && chat.open && !sheet.open) return chatToggle(false);
   if (screen !== "room" || sheet.open || !view?.question || view.phase !== "question") return;
   if (e.target.matches("input, textarea")) return;
   const n = Number(e.key);
@@ -3123,7 +3311,7 @@ function boot() {
   const invite = ((new URLSearchParams(location.search).get("room") || new URLSearchParams(location.search).get("oda")) || "").toUpperCase();
   if (saved?.role === "host" && saved.game) {
     try {
-      startHost({ restore: typeof saved.game === "string" ? unseal(saved.game) : saved.game, pub: !!saved.pub });
+      startHost({ restore: typeof saved.game === "string" ? unseal(saved.game) : saved.game, vis: saved.vis || (saved.pub ? "public" : "private"), pw: saved.pw || "" });
       // oluşturma sayfası aynı sekmede açıldıysa: kaydedilen quiz lobiye dönünce açılır
       const back = store.get("jqLobbyBack", null, sessionStorage);
       store.del("jqLobbyBack", sessionStorage);
@@ -3133,11 +3321,14 @@ function boot() {
       store.del("jqSession", sessionStorage);
     }
   }
-  if (saved?.role === "guest" && validCode(saved.code) && profile) return startGuest(saved.code);
+  if (saved?.role === "guest" && validCode(saved.code) && profile) return startGuest(saved.code, { pw: saved.pw || "" });
   render();
   if (validCode(invite)) {
-    if (profile) startGuest(invite);
-    else openSheet("profile", { then: () => startGuest(invite) });
+    // şifreli lobinin davet bağlantısı şifreyi de taşır (s=); adres çubuğunda kalmasın
+    const ipw = (new URLSearchParams(location.search).get("s") || "").slice(0, 20);
+    if (ipw) history.replaceState(null, "", `${location.pathname}?room=${invite}`);
+    if (profile) startGuest(invite, { pw: ipw });
+    else openSheet("profile", { then: () => startGuest(invite, { pw: ipw }) });
   } else if (!profile) openSheet("profile");
 }
 boot();

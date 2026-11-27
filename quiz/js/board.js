@@ -3,7 +3,7 @@
 // Herkese açık röleler eski kayıtları silebilir; tools/archive_community.mjs bu kayıtları da
 // quiz/data/scores.json içine biriktirir. Site ikisini birleştirir, her oyuncunun en iyi puanını sayar.
 // Sıralamaya yalnızca 10 soruluk oyunlar girer; puan, süre ayarından bağımsız hesaplanır (engine.js, lbPoints).
-import { sign, valid, relayCall, sendToRelays, RELAYS, myPubkey, blocked } from "./community.js?v=9";
+import { sign, valid, relayCall, sendToRelays, RELAYS, myPubkey, blocked } from "./community.js?v=10";
 
 export const LB_QUESTIONS = 10;
 export const LB_TOP = 20;
