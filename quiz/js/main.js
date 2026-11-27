@@ -13,7 +13,7 @@ import { hostRoom, guestRoom, newCode, validCode } from "./net.js?v=5";
 import { announceLobby, listLobbies } from "./lobbies.js?v=4";
 import { countPlay, loadPlays, plays, players, onPlays, playsLoaded } from "./plays.js?v=6";
 import { dailyQuiz, dailyDate, dailyLeft, dailyLabel, dailyResult, saveDaily, dailyStreak } from "./daily.js?v=1";
-import { initI18n, LANG, applyLang } from "./i18n.js?v=4";
+import { initI18n, LANG, applyLang } from "./i18n.js?v=5";
 
 // ---------- yardımcılar ----------
 const $ = (s, r = document) => r.querySelector(s);
@@ -2268,6 +2268,7 @@ function openSheet(kind, ctx = {}) {
   if (kind === "profile") profileSheet();
   if (kind === "picker") pickerSheet();
   if (kind === "setup") setupSheet();
+  if (kind === "rmConfirm") rmSheet();
   if (kind === "hidden") {
     const list = hiddenList();
     sheetBody.innerHTML = `<div class="sheetHead"><h2>Gizlenen quizler</h2><button class="icon" data-close aria-label="Kapat">${ic("x")}</button></div>
@@ -2280,6 +2281,42 @@ function openSheet(kind, ctx = {}) {
       <div class="sheetFoot"><button class="btn ghost" data-close>Vazgeç</button><button class="btn danger" data-do="leave">${ic("door-open")}Ayrıl</button></div>`;
   }
   if (!sheet.open) sheet.showModal();
+}
+// Onay paneli: quiz gizleme, listeden kaldırma, yayından kaldırma
+function rmSheet() {
+  const { act, id } = sheetCtx;
+  const l = allLists().find((x) => String(x.id) === String(id)) || { name: "Bu quiz" };
+  const own = String(id).startsWith("my");
+  const [title, text, icon, label] = {
+    hide: ["Bu quiz gizlensin mi?", "Yalnızca senden gizlenir; başkaları görmeye devam eder. Profilinin yanındaki göz simgesinden istediğin zaman geri açabilirsin.", "eye-off", "Gizle"],
+    unsave: ["Listenden kaldırılsın mı?", own ? "Bu quiz yalnızca bu tarayıcıda kayıtlı. Kaldırırsan geri getirilemez." : "Listenden kalkar. İstersen sonra sanatçıyı yeniden arayıp ekleyebilirsin.", "trash-2", "Kaldır"],
+    unpublish: ["Yayından kaldırılsın mı?", "Topluluktan kalkar; artık kimse göremez ve oynayamaz. Bu işlem geri alınamaz.", "trash-2", "Yayından kaldır"],
+  }[act] || [];
+  sheetBody.innerHTML = `<div class="sheetHead rmHead">${cover(l, "sImg")}<div><small class="kicker" data-noi18n>${esc(l.name)}</small><h2>${title}</h2></div><button class="icon" data-close aria-label="Kapat">${ic("x")}</button></div>
+    <p class="muted">${text}</p>
+    <div class="sheetFoot"><button class="btn ghost" data-close autofocus>Vazgeç</button><button class="btn danger" data-do="rmConfirm">${ic(icon)}${label}</button></div>`;
+}
+async function rmConfirm() {
+  const { act, id } = sheetCtx;
+  closeSheet();
+  if (act === "hide") {
+    const q = (ui.community || []).find((x) => x.id === id);
+    hideQuiz(q || id);
+    ui.community = (ui.community || []).filter((x) => x.id !== id);
+    topbar();
+    toast("Gizlendi. Profilinin yanındaki göz simgesinden geri açabilirsin.");
+  } else if (act === "unsave") {
+    removeCustom(id);
+    toast("Listenden kaldırıldı.");
+  } else if (act === "unpublish") {
+    const l = ui.community?.find((x) => x.id === id && x.mine);
+    if (!l) return;
+    await removeQuiz(l);
+    ui.community = ui.community.filter((x) => x !== l);
+    toast("Quiz yayından kaldırıldı.");
+  }
+  if (screen === "home") renderHome();
+  else render();
 }
 function closeSheet() {
   if (sheet.open) sheet.close();
@@ -2945,6 +2982,8 @@ async function doAction(a, el) {
       scrollTo({ top: 0, behavior: "smooth" });
       return setTimeout(() => $("#joinCode")?.focus(), 350);
     }
+    case "rmConfirm":
+      return rmConfirm();
     case "lobRefresh":
       return refreshLobbies(true);
     case "editQuiz":
@@ -3130,22 +3169,9 @@ document.addEventListener("click", async (e) => {
       location.href = "create/?edit=" + encodeURIComponent(d.edit);
       return;
     }
-    if (d.unpublish) {
-      const l = ui.community?.find((x) => x.id === d.unpublish && x.mine);
-      if (!l || !confirm(`"${l.name}" yayından kaldırılsın mı? Başkaları artık göremez.`)) return;
-      await removeQuiz(l);
-      ui.community = ui.community.filter((x) => x !== l);
-      toast("Quiz yayından kaldırıldı.");
-      return renderHome();
-    }
-    if (d.hidequiz) {
-      const q = (ui.community || []).find((x) => x.id === d.hidequiz);
-      hideQuiz(q || d.hidequiz);
-      ui.community = (ui.community || []).filter((x) => x.id !== d.hidequiz);
-      topbar();
-      toast("Gizlendi. Profilinin yanındaki göz simgesinden geri açabilirsin.");
-      return renderHome();
-    }
+    // gizle / listeden kaldır / yayından kaldır: yanlış tıklamaya karşı önce onay paneli
+    if (d.unpublish) return openSheet("rmConfirm", { act: "unpublish", id: d.unpublish });
+    if (d.hidequiz) return openSheet("rmConfirm", { act: "hide", id: d.hidequiz });
     if (d.unhide) {
       unhideQuiz(d.unhide);
       ui.community = null;
@@ -3155,10 +3181,7 @@ document.addEventListener("click", async (e) => {
       else closeSheet();
       return toast("Quiz yeniden gösteriliyor.");
     }
-    if (d.unsave) {
-      removeCustom(d.unsave);
-      return renderHome();
-    }
+    if (d.unsave) return openSheet("rmConfirm", { act: "unsave", id: d.unsave });
     if (d.hit) return pickHit(Number(d.hit));
     if (d.pressed) return; // basıldığı anda işlendi
     if (d.rk !== undefined) {
