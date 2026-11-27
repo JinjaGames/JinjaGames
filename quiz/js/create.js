@@ -4,7 +4,7 @@ import { searchArtists, searchTracks, artistInfo, artistTop, artistAlbums, album
 import { fetchCommunity, loadFull, publishQuiz, removeQuiz, myPubkey, MIN_TRACKS, MAX_TRACKS } from "./community.js?v=10";
 import { TCATS, TART, EMOJIS, T_MIN, T_MAX, cleanItems, cleanCat, cleanEmoji, isTF, IMG } from "./trivia.js?v=4";
 import { cleanOps, RANK_PTS, OP_PTS } from "./engine.js?v=11";
-import { initI18n } from "./i18n.js?v=8";
+import { initI18n } from "./i18n.js?v=9";
 import { rankItems } from "./rank.js?v=4";
 import { OP_MIN } from "./community.js?v=10";
 
@@ -95,6 +95,34 @@ async function shrinkImage(file) {
 const isBlank = (e) => !e.q.trim() && (e.type === "tf" || e.a.every((x) => !x.trim()));
 const editing = () => !!(st.d || st.localId);
 const hasContent = () => st.tracks.length > 0 || st.items.some((e) => !isBlank(e)) || !!st.rank?.items || st.ops.some((o) => o.url || o.anime || o.song);
+
+// ---- onay paneli (tarayıcının düz onay kutusu yerine): çıkarken, türü değiştirirken, silerken ----
+const askDlg = document.createElement("dialog");
+askDlg.className = "sheet";
+askDlg.innerHTML = `<div id="sheetBody"></div>`;
+document.body.append(askDlg);
+function ask({ title, text = "", ok = "Evet", danger = true }) {
+  return new Promise((res) => {
+    askDlg.firstElementChild.innerHTML = `<div class="sheetHead"><h2>${esc(title)}</h2><button type="button" class="icon" data-ask="0" aria-label="Kapat">${ic("x")}</button></div>
+      ${text ? `<p class="muted">${esc(text)}</p>` : ""}
+      <div class="sheetFoot"><button type="button" class="btn ghost" data-ask="0" autofocus>Vazgeç</button><button type="button" class="btn ${danger ? "danger" : "primary"}" data-ask="1">${esc(ok)}</button></div>`;
+    const done = (v) => { askDlg.removeEventListener("click", onClick); askDlg.removeEventListener("cancel", onCancel); askDlg.close(); res(v); };
+    const onClick = (e) => { if (e.target === askDlg) return done(false); const b = e.target.closest("[data-ask]"); if (b) done(b.dataset.ask === "1"); };
+    const onCancel = (e) => { e.preventDefault(); done(false); };
+    askDlg.addEventListener("click", onClick);
+    askDlg.addEventListener("cancel", onCancel);
+    askDlg.showModal();
+  });
+}
+// Sayfadan çıkan bağlantılar (geri ok, logo): kaydedilmemiş içerik varsa önce sor
+document.addEventListener("click", async (e) => {
+  const a = e.target.closest("a[href]");
+  if (!a || e.defaultPrevented || e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || a.target === "_blank") return;
+  if (!hasContent() || st.saving) return;
+  e.preventDefault();
+  const yes = await ask({ title: editing() ? "Düzenlemeden çıkılsın mı?" : "Quiz oluşturmaktan çıkılsın mı?", text: "Kaydetmediğin değişiklikler kaybolur.", ok: "Çık" });
+  if (yes) { st.saving = true; location.href = a.href; }
+}, true);
 const have = () => new Set(st.tracks.map((t) => t.id));
 const full = () => st.tracks.length >= MAX_TRACKS;
 
@@ -567,9 +595,9 @@ async function saveTrivia() {
   }
 }
 // push: tür seçiminden editöre geçiş geçmişe yazılır; tarayıcının geri tuşu tür seçimine döner.
-function setKind(kind, push = false) {
+async function setKind(kind, push = false) {
   if (kind === st.kind) return;
-  if (hasContent() && !confirm("Quiz türünü değiştirirsen eklediklerin silinir. Devam edilsin mi?")) return;
+  if (hasContent() && !(await ask({ title: "Quiz türü değiştirilsin mi?", text: "Türü değiştirirsen eklediklerin silinir.", ok: "Değiştir" }))) return;
   st.kind = kind; st.tracks = []; st.items = kind === "trivia" ? [blank()] : [];
   st.rank = null; st.ops = kind === "op" ? [blankOp(), blankOp(), blankOp(), blankOp()] : []; st.results = null; st.q = ""; st.busy = false;
   if (kind === "op") st.emoji = "📺"; else if (kind === "trivia") st.emoji = "🧠";
@@ -588,13 +616,13 @@ document.addEventListener("click", async (e) => {
   try {
     if (d.kind) return setKind(d.kind, !st.kind);
     if (d.rankartist !== undefined) return buildRank(st.results[Number(d.rankartist)]);
-    if (d.opdel !== undefined) { const i = Number(d.opdel); const o = st.ops[i]; if ((o.url || o.anime || o.song) && !confirm(`${i + 1}. opening silinsin mi?`)) return; st.ops.splice(i, 1); if (!st.ops.length) st.ops.push(blankOp()); return drawLists(); }
+    if (d.opdel !== undefined) { const i = Number(d.opdel); const o = st.ops[i]; if ((o.url || o.anime || o.song) && !(await ask({ title: `${i + 1}. opening silinsin mi?`, ok: "Sil" }))) return; st.ops.splice(i, 1); if (!st.ops.length) st.ops.push(blankOp()); return drawLists(); }
     if (d.emoji) { st.emoji = cleanEmoji(d.emoji); return drawLists(); }
     if (d.tvtype) { const [i, t] = d.tvtype.split(":"); st.items[Number(i)].type = t === "tf" ? "tf" : "4"; return drawLists(); }
     if (d.tviw) { const [i, w] = d.tviw.split(":"); st.items[Number(i)].iw = w === "q" ? "q" : "a"; return drawLists(); }
     if (d.tvimgdel) { const e = st.items[Number(d.tvimgdel)]; delete e.img; delete e.iw; return drawLists(); }
     if (d.tvtf) { const [i, v] = pair(d.tvtf); st.items[i].tf = !!v; return drawLists(); }
-    if (d.tvdel) { const i = Number(d.tvdel); if (!isBlank(st.items[i]) && !confirm(`${i + 1}. soru silinsin mi?`)) return; st.items.splice(i, 1); if (!st.items.length) st.items.push(blank()); return drawLists(); }
+    if (d.tvdel) { const i = Number(d.tvdel); if (!isBlank(st.items[i]) && !(await ask({ title: `${i + 1}. soru silinsin mi?`, ok: "Sil" }))) return; st.items.splice(i, 1); if (!st.items.length) st.items.push(blank()); return drawLists(); }
     if (d.tvmove) { const [i, dir] = pair(d.tvmove); const j = i + dir; if (j < 0 || j >= st.items.length) return; [st.items[i], st.items[j]] = [st.items[j], st.items[i]]; return drawLists(); }
     if (d.tab) { st.tab = d.tab; st.results = null; st.artist = null; st.busy = false; searchN++; st.q = ""; drawLists(); runSearch(); return $("#crq").focus(); }
     if (d.artist !== undefined) return openArtist(st.results[Number(d.artist)]);
@@ -639,7 +667,7 @@ document.addEventListener("click", async (e) => {
         A.loadingAll = null; drawLists();
         return toast(n ? `${n} şarkı eklendi.` : "Yeni şarkı yok.");
       }
-      case "clear": if (confirm("Quizdeki tüm şarkılar çıkarılsın mı?")) (st.tracks = []), drawLists(); return;
+      case "clear": if (await ask({ title: "Quizdeki tüm şarkılar çıkarılsın mı?", ok: "Hepsini çıkar" })) (st.tracks = []), drawLists(); return;
       case "save": return save();
       case "closeTab": window.close(); return toast("Bu sekmeyi kapatıp lobi sekmesine dönebilirsin.");
       case "tvAdd": {
@@ -662,7 +690,7 @@ document.addEventListener("click", async (e) => {
         return toast(`${Math.min(got.length, room)} soru eklendi.`);
       }
       case "unpublish":
-        if (!confirm(`"${st.name}" yayından kaldırılsın mı? Başkaları artık göremez.`)) return;
+        if (!(await ask({ title: "Yayından kaldırılsın mı?", text: `“${st.name}” topluluktan kalkar; artık kimse göremez ve oynayamaz. Bu işlem geri alınamaz.`, ok: "Yayından kaldır" }))) return;
         await removeQuiz({ d: st.d, at: st.prevAt, pubkey: myPubkey() });
         toast("Quiz yayından kaldırıldı.");
         return setTimeout(() => (location.href = "../?tab=topluluk"), 600);
@@ -712,12 +740,12 @@ addEventListener("beforeunload", (e) => {
 });
 
 const turOf = (params) => ({ trivia: "trivia", sarki: "song", song: "song", tersten: "rev", rev: "rev", siralama: "rank", rank: "rank", opening: "op", op: "op" })[params.get("type") || params.get("tur")];
-addEventListener("popstate", () => {
+addEventListener("popstate", async () => {
   const params = new URLSearchParams(location.search);
   if (params.get("edit") || params.get("duzenle")) return;
   const k = turOf(params) || null;
   if (k === st.kind) return;
-  setKind(k);
+  await setKind(k);
   // Eklenenler silinmesin diye vazgeçildiyse adres yine bulunduğun türü göstersin.
   if (st.kind !== k && st.kind) history.pushState(null, "", `?tur=${{ song: "sarki", rev: "tersten", rank: "siralama", op: "opening" }[st.kind] || "trivia"}`);
 });

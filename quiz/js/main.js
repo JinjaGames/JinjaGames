@@ -13,7 +13,7 @@ import { hostRoom, guestRoom, newCode, validCode } from "./net.js?v=5";
 import { announceLobby, listLobbies } from "./lobbies.js?v=4";
 import { countPlay, loadPlays, plays, players, onPlays, playsLoaded } from "./plays.js?v=6";
 import { dailyQuiz, dailyDate, dailyLeft, dailyLabel, dailyResult, saveDaily, dailyStreak } from "./daily.js?v=1";
-import { initI18n, LANG, applyLang } from "./i18n.js?v=8";
+import { initI18n, LANG, applyLang } from "./i18n.js?v=9";
 
 // ---------- yardımcılar ----------
 const $ = (s, r = document) => r.querySelector(s);
