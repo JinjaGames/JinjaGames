@@ -40,11 +40,15 @@ export function countPlay(id) {
   local.set(LOCAL, m);
   local.set(DIRTY, [...new Set([...local.get(DIRTY, []), k])].slice(-60));
   if (m[k] === 1 && playsLoaded()) people.set(k, (people.get(k) || 0) + 1); // bu tarayıcının ilk oyunu
-  totals.set(k, (totals.get(k) || 0) + 1);
+  totals.set(k, (totals.get(k) || 0) + 1); // kendi oyunun ekranda hemen görünür
+  if (cacheAt) saveCache();
   listeners.forEach((fn) => fn());
+  // yazma hemen yapılır; art arda biten quizler (lobide bir oyun) tek seferde gider
   clearTimeout(flushT);
-  flushT = setTimeout(flush, 2500);
+  flushT = setTimeout(flush, 15000);
 }
+// sekme kapanırken / arka plana atılırken bekleyenleri göndermeyi dene (olmazsa sonraki açılışta gider)
+addEventListener("visibilitychange", () => { if (document.hidden && local.get(DIRTY, []).length) { clearTimeout(flushT); flush(); } });
 let flushT = 0;
 let flushing = false;
 async function flush() {
@@ -76,11 +80,40 @@ function parse(e) {
   return { k, pk: e.pubkey.slice(0, 12), n: Math.min(PLAYS_MAX, n) };
 }
 
+// Toplamlar herkese anlık değil, en çok 10 dakikada bir yeniden toplanır: arada tarayıcıdaki önbellekten
+// okunur (sayfa kaç kez açılırsa açılsın rölelere sorulmaz). Röleler ve sitenin trafiği rahat eder.
+export const PLAYS_REFRESH = 10 * 60 * 1000;
+const CACHE = "jqPlaysCache";
+let cacheAt = 0;
+function saveCache() {
+  local.set(CACHE, { at: cacheAt, t: [...totals], p: [...people] });
+}
+function readCache() {
+  const c = local.get(CACHE, null);
+  if (!c || !Number.isFinite(c.at) || Date.now() - c.at > PLAYS_REFRESH || Date.now() < c.at || !Array.isArray(c.t)) return false;
+  const ok = (e) => Array.isArray(e) && playKey(e[0]) && Number.isInteger(e[1]) && e[1] >= 0;
+  totals.clear();
+  people.clear();
+  for (const e of c.t) if (ok(e)) totals.set(e[0], e[1]);
+  for (const e of Array.isArray(c.p) ? c.p : []) if (ok(e)) people.set(e[0], e[1]);
+  cacheAt = c.at;
+  return true;
+}
 let loadP = null;
 let loadAt = 0;
-/** Bütün quizlerin oynanma sayılarını toplar (arşiv + röleler + bu tarayıcı). fresh: yeniden topla. */
+/** Bütün quizlerin oynanma sayılarını toplar (arşiv + röleler + bu tarayıcı). fresh: süresi dolduysa yeniden topla. */
 export function loadPlays({ fresh = false } = {}) {
-  if (fresh && loadP && Date.now() - loadAt > 60000) loadP = null;
+  if (!loadP && readCache()) {
+    loaded = true;
+    loadAt = cacheAt;
+    loadP = Promise.resolve();
+    flush();
+    queueMicrotask(() => listeners.forEach((fn) => fn()));
+    return loadP;
+  }
+  if (loadP && Date.now() - loadAt < PLAYS_REFRESH) return loadP;
+  if (loadP && !fresh) return loadP;
+  loadP = null;
   loadAt = Date.now();
   loadP ??= (async () => {
     flush();
@@ -101,7 +134,8 @@ export function loadPlays({ fresh = false } = {}) {
       }
     } catch {}
     const sub = "pl" + Math.random().toString(36).slice(2, 8);
-    await Promise.all(RELAYS.map((url) => relayCall(url,
+    // okumak için üç röle yeter (her kayıt altı röleye yazılır)
+    await Promise.all(RELAYS.slice(0, 3).map((url) => relayCall(url,
       (ws) => ws.send(JSON.stringify(["REQ", sub, { kinds: [KIND], "#t": [TAG], limit: 5000 }])),
       (x) => {
         if ((x[0] === "EOSE" || x[0] === "CLOSED") && x[1] === sub) return true;
@@ -115,6 +149,8 @@ export function loadPlays({ fresh = false } = {}) {
     totals.clear();
     people.clear();
     for (const [k, m] of per) { totals.set(k, [...m.values()].reduce((a, b) => a + b, 0)); people.set(k, m.size); }
+    cacheAt = Date.now();
+    saveCache();
     loaded = true;
     listeners.forEach((fn) => fn());
   })().catch(() => { loaded = true; });

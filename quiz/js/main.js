@@ -11,7 +11,7 @@ import { ANIME_QUIZZES, ERAS, animeItems, animeOps } from "./anime.js?v=3";
 import { NUMCATS, fmtNum, farEnough } from "./numdata.js";
 import { hostRoom, guestRoom, newCode, validCode } from "./net.js?v=5";
 import { announceLobby, listLobbies } from "./lobbies.js?v=4";
-import { countPlay, loadPlays, plays, players, onPlays, playsLoaded } from "./plays.js?v=5";
+import { countPlay, loadPlays, plays, players, onPlays, playsLoaded } from "./plays.js?v=6";
 import { dailyQuiz, dailyDate, dailyLeft, dailyLabel, dailyResult, saveDaily, dailyStreak } from "./daily.js?v=1";
 import { initI18n, LANG, applyLang } from "./i18n.js?v=4";
 
@@ -798,8 +798,8 @@ async function refreshLobbies(force = false) {
   lobbiesAt = Date.now();
   drawLobbies();
 }
-// oynanma sayıları: ana sayfa açıkken beş dakikada bir yeniden toplanır
-setInterval(() => { if (screen === "home" && !mode && !document.hidden) loadPlays({ fresh: true }); }, 300000);
+// oynanma sayıları: ana sayfa açıkken en çok 10 dakikada bir yeniden toplanır (arada önbellekten)
+setInterval(() => { if (screen === "home" && !mode && !document.hidden) loadPlays({ fresh: true }); }, 60000);
 // ana sayfa açıkken yarım dakikada bir tazele
 setInterval(() => { if (screen === "home" && !mode && !document.hidden) refreshLobbies(); }, 30000);
 function drawLobbies() {
