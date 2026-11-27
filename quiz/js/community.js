@@ -4,8 +4,8 @@
 // Gelen her kayıt imzası doğrulandıktan ve alan alan süzüldükten sonra kullanılır.
 import { schnorr, sha256, bytesToHex, hexToBytes } from "../vendor/nostr-sign.js";
 import { cdn } from "./music.js?v=5";
-import { cleanItems, cleanCat, cleanEmoji, T_MIN, T_MAX } from "./trivia.js?v=3";
-import { cleanRank, cleanOps } from "./engine.js?v=9";
+import { cleanItems, cleanCat, cleanEmoji, T_MIN, T_MAX } from "./trivia.js?v=4";
+import { cleanRank, cleanOps } from "./engine.js?v=10";
 
 export const OP_MIN = 4; // anime opening quizinde en az (şıklar diğer openinglerden oluşur)
 

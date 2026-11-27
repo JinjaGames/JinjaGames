@@ -38,25 +38,54 @@ function open(code) {
   return { room, send, onMessage };
 }
 
+// Bu tarayıcının gizli cihaz anahtarı: oyuncu aynı cihazdan yeniden katılınca (sekme kapanıp link yeniden
+// açılınca, telefon uygulamayı arka planda kapatınca) eski kaydının yerine geçer, ikinci bir kopya oluşmaz.
+// Başkalarına gösterilmez; yalnızca kurucuya "merhaba" ile gider.
+export const deviceKey = (() => {
+  let k = "";
+  try { k = localStorage.getItem("jqDevKey") || ""; } catch {}
+  if (!/^[a-z0-9]{16,32}$/.test(k)) {
+    k = Array.from(crypto.getRandomValues(new Uint8Array(20)), (b) => (b % 36).toString(36)).join("");
+    try { localStorage.setItem("jqDevKey", k); } catch {}
+  }
+  return k;
+})();
+const STALE = 75000; // bu kadar süre hiç ses vermeyen oyuncu (telefonu arka planda) çevrimdışı sayılır
+
 // Kurucu: oyuncuların komutlarını alır, her birine kendi durumunu yollar.
-export function hostRoom(code, { onHello, onAction, onLeave }) {
+// claim(pid, key): bu oyuncu katılabilir mi; { old } aynı cihazın lobideki eski kimliği, { err } ret sebebi.
+export function hostRoom(code, { onHello, onAction, onLeave, onBack, claim, onChat }) {
   const { room, send, onMessage } = open(code);
   const peers = new Map(); // peerId -> pid
+  const seen = new Map(); // peerId -> son mesaj zamanı
+  const stale = new Set(); // sessiz kaldığı için çevrimdışı sayılan eşler
+  const profiles = new Map(); // peerId -> profil (geri dönünce yeniden eklemek için)
+  const drop = (peerId, reason) => {
+    send({ t: "denied", reason }, { target: peerId });
+    peers.delete(peerId);
+    seen.delete(peerId);
+    stale.delete(peerId);
+    profiles.delete(peerId);
+  };
   onMessage((m, ctx) => {
     const peerId = ctx?.peerId ?? ctx;
     if (!m || typeof m !== "object") return;
+    seen.set(peerId, Date.now());
+    if (stale.delete(peerId) && peers.has(peerId)) onBack?.(peers.get(peerId), profiles.get(peerId));
     if (m.t === "sync") return send({ t: "sync", c: m.c, h: Date.now() }, { target: peerId });
     if (m.t === "hello") {
       // Oyuncu kimliği sayfaya ve olay işleyicilerine girer: yalnızca güvenli karakterler.
       if (typeof m.pid !== "string" || !/^[a-z0-9]{4,16}$/.test(m.pid)) return;
-      // Bir oyuncunun kimliğini kopyalayıp onun yerine cevap vermek engellenir: kimlik başka bir bağlı eşe aitse reddet.
-      if ([...peers].some(([p, id]) => id === m.pid && p !== peerId)) {
-        send({ t: "denied", reason: "Bu oyuncu lobide zaten bağlı. Birkaç saniye sonra tekrar dene." }, { target: peerId });
-        return;
-      }
+      const key = typeof m.key === "string" && /^[a-z0-9]{16,32}$/.test(m.key) ? m.key : "";
+      // Bir oyuncunun kimliğini kopyalayıp onun yerine cevap vermek engellenir: aynı kimlik ancak aynı cihaz anahtarıyla
+      // devralınabilir. Aynı cihazdan gelen yeni bağlantı eskisinin (kopmuş ya da arka planda kalmış) yerine geçer.
+      const c = claim ? claim(m.pid, key) : {};
+      if (c.err) return send({ t: "denied", reason: c.err }, { target: peerId });
+      for (const [p, id] of [...peers]) if (p !== peerId && (id === m.pid || (c.old && id === c.old))) drop(p, "Bu cihazdan yeniden bağlandın; eski bağlantı kapatıldı.");
       // Önce eşi kaydet ki onHello'nun tetiklediği durum yayını yeni oyuncuya da ulaşsın.
       peers.set(peerId, m.pid);
-      const err = onHello(m.pid, m.profile, peerId);
+      profiles.set(peerId, m.profile);
+      const err = onHello(m.pid, m.profile, key, c.old || null);
       if (err) {
         peers.delete(peerId);
         send({ t: "denied", reason: err }, { target: peerId });
@@ -65,6 +94,7 @@ export function hostRoom(code, { onHello, onAction, onLeave }) {
     }
     const pid = peers.get(peerId);
     if (!pid) return;
+    if (m.t === "chat") return onChat?.(pid, m.x);
     if (m.t === "act") {
       let error = null;
       try {
@@ -79,12 +109,29 @@ export function hostRoom(code, { onHello, onAction, onLeave }) {
   room.onPeerLeave = (peerId) => {
     const pid = peers.get(peerId);
     peers.delete(peerId);
+    seen.delete(peerId);
+    stale.delete(peerId);
+    profiles.delete(peerId);
     if (pid && ![...peers.values()].includes(pid)) onLeave(pid);
   };
+  // Telefonu arka plana atılan oyuncunun bağlantısı çoğu zaman kapanmaz, yalnızca susar: uzun süre ses
+  // vermeyen oyuncu çevrimdışı sayılır (lobiden düşer), yeniden ses verince geri gelir.
+  const watch = setInterval(() => {
+    const now = Date.now();
+    for (const [peerId, pid] of peers) {
+      if (stale.has(peerId) || now - (seen.get(peerId) || now) < STALE) continue;
+      stale.add(peerId);
+      if (![...peers].some(([p, id]) => id === pid && !stale.has(p))) onLeave(pid);
+    }
+  }, 10000);
   return {
     peers,
     sendState(viewFor) {
       for (const [peerId, pid] of peers) send({ t: "state", s: viewFor(pid) }, { target: peerId });
+    },
+    // Sohbet mesajı herkese gider; hiçbir yerde saklanmaz.
+    chat(msg) {
+      for (const peerId of peers.keys()) send({ t: "chat", m: msg }, { target: peerId });
     },
     kick(pid) {
       for (const [peerId, p] of peers)
@@ -96,6 +143,7 @@ export function hostRoom(code, { onHello, onAction, onLeave }) {
     // "Ayrıl": oyunculara lobinin kapandığını söyle, sonra çık. Sayfa yenilenirken (quiet) söyleme;
     // kurucu birkaç saniyede geri döner.
     close({ quiet = false } = {}) {
+      clearInterval(watch);
       if (quiet) return room.leave();
       try { send({ t: "bye" }); } catch {}
       setTimeout(() => room.leave(), 400);
@@ -104,7 +152,7 @@ export function hostRoom(code, { onHello, onAction, onLeave }) {
 }
 
 // Oyuncu: kurucuyu bulur, saatini eşitler, komut gönderir.
-export function guestRoom(code, pid, profile, { onState, onDenied, onHostLost, onHostBack }) {
+export function guestRoom(code, pid, profile, { onState, onDenied, onHostLost, onHostBack, onChat }) {
   const { room, send, onMessage } = open(code);
   let hostPeer = null;
   let offset = 0;
@@ -125,7 +173,7 @@ export function guestRoom(code, pid, profile, { onState, onDenied, onHostLost, o
       // Kurucu bilinirken başka biri kendini kurucu ilan edemez; kurucu ayrılırsa (sayfayı yenilediyse) bu adaylara dönülür.
       if (hostPeer && hostPeer !== peerId) { hostCands.add(peerId); return; }
       helloTo.add(peerId);
-      send({ t: "hello", pid, profile }, { target: peerId });
+      send({ t: "hello", pid, profile, key: deviceKey }, { target: peerId });
       return;
     }
     if (m.t === "state") {
@@ -155,6 +203,8 @@ export function guestRoom(code, pid, profile, { onState, onDenied, onHostLost, o
         bestRtt = rtt;
         offset = m.h + rtt / 2 - now;
       }
+    } else if (m.t === "chat") {
+      onChat?.(m.m);
     } else if (m.t === "denied") {
       onDenied(m.reason);
     } else if (m.t === "bye") {
@@ -169,7 +219,7 @@ export function guestRoom(code, pid, profile, { onState, onDenied, onHostLost, o
     helloTo.delete(peerId);
     hostCands.delete(peerId);
     if (peerId !== hostPeer) return;
-    for (const c of hostCands) { helloTo.add(c); send({ t: "hello", pid, profile }, { target: c }); }
+    for (const c of hostCands) { helloTo.add(c); send({ t: "hello", pid, profile, key: deviceKey }, { target: c }); }
     hostCands.clear();
     hostPeer = null;
     onHostLost?.();
@@ -183,6 +233,10 @@ export function guestRoom(code, pid, profile, { onState, onDenied, onHostLost, o
     },
     get connected() {
       return !!hostPeer;
+    },
+    chat(text) {
+      if (!hostPeer) throw Error("Kurucuya bağlı değilsin.");
+      send({ t: "chat", x: text }, { target: hostPeer });
     },
     act(a) {
       if (!hostPeer) return Promise.reject(Error("Kurucuya bağlı değilsin."));

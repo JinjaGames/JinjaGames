@@ -1,15 +1,17 @@
 import { PRESETS, MIXES, loadTracks, searchArtists, customLists, saveCustom, removeCustom, fold, cdn, realPic, loadPresetPictures } from "./music.js?v=5";
 import { sfx, sfxEnabled, setSfx, setSfxVolume } from "./sfx.js?v=5";
 import { randomName } from "./names.js";
-import { fetchCommunity, removeQuiz, hideQuiz, unhideQuiz, hiddenList } from "./community.js?v=7";
-import { Game, MAX_PLAYERS, RANK_PTS, OP_PTS } from "./engine.js?v=9";
-import { lbKey, loadBoard, peekBoard, submitScore, myBest, isMine, LB_TOP, LB_QUESTIONS } from "./board.js?v=2";
-import { maskName } from "./badwords.js?v=1";
+import { fetchCommunity, removeQuiz, hideQuiz, unhideQuiz, hiddenList } from "./community.js?v=8";
+import { Game, MAX_PLAYERS, RANK_PTS, OP_PTS } from "./engine.js?v=10";
+import { lbKey, loadBoard, peekBoard, submitScore, myBest, isMine, LB_TOP, LB_QUESTIONS } from "./board.js?v=3";
+import { maskName, isBadName } from "./badwords.js?v=1";
 import { RANK_QUIZZES, RANK_CATS, rankItems, fromYouTube } from "./rank.js?v=4";
-import { TRIVIA, TCATS, TART, EMOJIS, cleanItems, IMG, ANI_IMG, FLAG, flagUrl, cleanEmo } from "./trivia.js?v=3";
+import { TRIVIA, TCATS, TART, EMOJIS, cleanItems, IMG, ANI_IMG, FLAG, flagUrl, cleanEmo } from "./trivia.js?v=4";
 import { ANIME_QUIZZES, ERAS, animeItems, animeOps } from "./anime.js?v=3";
 import { NUMCATS, fmtNum, farEnough } from "./numdata.js";
-import { hostRoom, guestRoom, newCode, validCode } from "./net.js?v=2";
+import { hostRoom, guestRoom, newCode, validCode } from "./net.js?v=3";
+import { announceLobby, listLobbies } from "./lobbies.js?v=1";
+import { countPlay, loadPlays, plays, onPlays, playsLoaded } from "./plays.js?v=1";
 
 // ---------- yardımcılar ----------
 const $ = (s, r = document) => r.querySelector(s);
@@ -123,6 +125,7 @@ function topbar() {
     <button class="brand" data-go="home" aria-label="JinjaQuiz ana sayfa"><span class="mark"><svg class="logo" viewBox="0 0 48 48" aria-hidden="true"><defs><linearGradient id="jqG" x1="8" y1="6" x2="40" y2="42" gradientUnits="userSpaceOnUse"><stop stop-color="#ff3b2f"/><stop offset=".6" stop-color="#e3171f"/><stop offset="1" stop-color="#ff6a3d"/></linearGradient></defs><path d="M36.4 9.6A19.5 19.5 0 1 0 43.3 30" fill="none" stroke="url(#jqG)" stroke-width="3.6" stroke-linecap="round"/><path d="M12.2 13.1A16 16 0 0 0 20 39.5" fill="none" stroke="#ff3b2f" stroke-width="1.1" stroke-linecap="round" opacity=".45"/><g class="eq" stroke="#ff8a5c" stroke-width="2.4" stroke-linecap="round"><path d="M40.2 12.6v3.4"/><path d="M43.6 15.2v5.2"/><path d="M46.6 18.6v2.6"/></g><path d="M19.4 10L38 7.4l-3.3 6-6.7.6-1.8 14.6c-.7 5.6-4.6 8.4-9.2 8-3.9-.4-5.9-3.2-5.4-6.9l5.8-.6c-.1 2 .8 2.9 2.1 2.8 1.3-.1 2-1.2 2.2-3.2l1.7-14-5.4.6z" fill="url(#jqG)" stroke="#1a0606" stroke-width=".8" stroke-linejoin="round"/><path d="M25.2 14.6l-1.6 13.2M21.2 11l11.6-1.6" stroke="#fff" stroke-width="1.5" stroke-linecap="round" opacity=".92"/><g transform="rotate(14 32.5 32)"><path d="M32.5 22.5l2.3 7.2 7.2 2.3-7.2 2.3-2.3 7.2-2.3-7.2-7.2-2.3 7.2-2.3z" fill="#18161b" stroke="#f6f1ef" stroke-width="1.2" stroke-linejoin="round"/><path d="M32.5 22.5l2.3 7.2-2.3 2.3zM42 32l-7.2 2.3-2.3-2.3zM32.5 41.5l-2.3-7.2 2.3-2.3zM23 32l7.2-2.3 2.3 2.3z" fill="#3a3640"/></g><circle cx="32.5" cy="32" r="2.1" fill="#f6f1ef"/><circle cx="32.5" cy="32" r=".9" fill="#18161b"/></svg></span><b lang="en">JINJA</b><span lang="en">QUIZ</span></button>
     <div class="barEnd">
       ${inRoom ? `<button class="pill live" data-go="room">${ic("users")}<span>Lobiye dön</span></button>` : ""}
+      ${mode && mode.role !== "solo" ? `<button class="icon chatBtn${chat.open ? " on" : ""}" data-chattoggle title="Lobi sohbeti" aria-label="Lobi sohbeti${chat.unread ? ` (${chat.unread} yeni mesaj)` : ""}" aria-expanded="${chat.open}">${ic("message-circle")}${chat.unread ? `<small>${chat.unread}</small>` : ""}</button>` : ""}
       ${screen === "room" && mode ? `<label class="vol" title="Ses düzeyi">${ic("volume-2")}<input type="range" id="vol" min="0" max="100" step="1" value="${Math.round(volume() * 100)}" aria-label="Ses düzeyi"></label>` : ""}
       ${screen !== "room" && hiddenList().length ? `<button class="icon hidBtn" data-sheet="hidden" title="Gizlenen quizler (${hiddenList().length})" aria-label="Gizlenen quizler">${ic("eye-off")}<small>${hiddenList().length}</small></button>` : ""}
       <button class="meBtn" data-sheet="profile" aria-label="Profili düzenle">${avatar(profile || {})}<span>${esc(profile?.name || "Profil")}</span></button>
@@ -370,7 +373,7 @@ function unseal(str) {
 function persist() {
   if (!mode || mode.role === "solo") return;
   try {
-    store.set("jqSession", { role: mode.role, code: mode.code, game: mode.role === "host" ? seal(mode.game) : null }, sessionStorage);
+    store.set("jqSession", { role: mode.role, code: mode.code, game: mode.role === "host" ? seal(mode.game) : null, pub: !!mode.pub }, sessionStorage);
   } catch {}
 }
 function onGame(game) {
@@ -378,15 +381,21 @@ function onGame(game) {
   view = game.view(pid);
   mode.net?.sendState((p) => game.view(p));
   persist();
+  // daha önce sorulan sorular bu tarayıcıda hatırlanır (aynı quiz yeniden açılınca aynı sorular gelmesin)
+  if (game.usedDirty) { game.usedDirty = false; store.set("jqSeen", game.used); }
+  trackPlays(view);
+  lobbyAnnounce();
   render();
 }
-function startHost({ solo = false, restore = null } = {}) {
+function startHost({ solo = false, restore = null, pub = false } = {}) {
   if (!profile) return openSheet("profile", { then: () => startHost({ solo }) });
   const code = restore?.code || newCode();
   const game = restore
     ? Game.restore(restore, onGame)
     : new Game({ code, solo, host: { pid, profile }, onChange: onGame });
-  mode = { role: solo ? "solo" : "host", game, code };
+  if (!restore) game.used = store.get("jqSeen", {});
+  if (chat.code !== code) chatReset(solo ? "" : code);
+  mode = { role: solo ? "solo" : "host", game, code, pub: !solo && !!pub };
   if (!solo) attachHost();
   screen = "room";
   onGame(game);
@@ -397,17 +406,37 @@ function startHost({ solo = false, restore = null } = {}) {
 function attachHost() {
   const { game, code } = mode;
   mode.net = hostRoom(code, {
-      onHello(p, prof) {
+      // Aynı cihazdan yeniden gelen oyuncu (sekme kapanıp link yeniden açıldı, telefon uygulamayı kapattı)
+      // eski kaydını devralır: lobide ikinci bir kopyası oluşmaz, puanı korunur.
+      claim(p, key) {
+        if (p === game.hostId) return { err: "Bu kimlikle katılamazsın." };
+        const ex = game.players.find((x) => x.pid === p);
+        if (ex) return ex.key && ex.key !== key ? { err: "Bu oyuncu lobide zaten bağlı. Birkaç saniye sonra tekrar dene." } : {};
+        const same = game.byKey(key);
+        return same ? { old: same.pid } : {};
+      },
+      onHello(p, prof, key, old) {
         try {
-          game.join(p, prof);
+          if (old) game.rebind(old, p);
+          const known = game.players.some((x) => x.pid === p);
+          game.join(p, prof, key);
           game.emit();
-          if (game.phase === "lobby") toast(`${prof?.name || "Bir oyuncu"} lobiye katıldı.`);
+          if (!known && game.phase === "lobby") toast(`${prof?.name || "Bir oyuncu"} lobiye katıldı.`);
           return null;
         } catch (e) {
           return e.message;
         }
       },
+      onBack(p, prof) {
+        // Arka planda sessiz kalıp düşen oyuncu yeniden ses verdi
+        try {
+          if (game.players.some((x) => x.pid === p)) game.setOnline(p, true);
+          else game.join(p, prof);
+          game.emit();
+        } catch {}
+      },
       onAction: (p, a) => game.handle(p, a),
+      onChat: (p, text) => hostChat(p, text),
       onLeave(p) {
         game.setOnline(p, false);
         game.emit();
@@ -430,20 +459,26 @@ document.addEventListener("visibilitychange", () => {
     }
   } catch {}
 });
-function startGuest(code) {
-  if (!profile) return openSheet("profile", { then: () => startGuest(code) });
-  leaveRoom(true);
-  mode = { role: "guest", code, connecting: true, since: Date.now() };
+function startGuest(code, { fromList = false } = {}) {
+  if (!profile) return openSheet("profile", { then: () => startGuest(code, { fromList }) });
+  const same = mode?.role === "guest" && mode.code === code;
+  leaveRoom(true, same);
+  if (chat.code !== code) chatReset(code);
+  mode = { role: "guest", code, connecting: true, since: Date.now(), fromList };
   view = null;
   screen = "room";
   mode.net = guestRoom(code, pid, profile, {
     onState(s) {
       if (mode?.role !== "guest") return;
       if (!s || typeof s !== "object") return;
+      const first = mode.connecting;
       mode.connecting = false;
       mode.lost = false;
       const was = view?.phase;
       view = cleanView(s);
+      // Açık lobi listesinden katıldı ama oyun o arada başlamış
+      if (first && mode.fromList && view.phase !== "lobby") toast("Bu lobide oyun başladı. Sıradaki sorudan itibaren sen de oynarsın.");
+      trackPlays(view);
       if (was === "done" && view.phase === "lobby") {
         screen = "room";
         toast("Kurucu herkesi lobiye döndürdü.");
@@ -466,18 +501,189 @@ function startGuest(code) {
       mode.lost = false;
       toast("Kurucu geri döndü.");
     },
+    onChat(m) {
+      if (mode?.role === "guest" && chat.code === code) chatAdd(m);
+    },
   });
   persist();
   render();
 }
+// ---------- lobi sohbeti: geçici, hiçbir yere yazılmaz ----------
+// Mesajlar yalnızca o an lobide olanlara gider (kurucunun tarayıcısı üzerinden); en fazla son 10 mesaj bellekte
+// durur. Sonradan katılan eskileri görmez; lobiden çıkınca ya da lobi kapanınca hepsi silinir. Quizler ve oyunlar
+// arasında sürer. Ad, kurucudaki oyuncu kaydından yazılır (başkası adına mesaj atılamaz).
+const CHAT_MAX = 10;
+const chat = { code: "", list: [], open: false, unread: 0, rate: new Map() };
+const chatClean = (t) => String(t ?? "").replace(/[\u0000-\u001f\u007f​-‏‪-‮⁦-⁩]/g, " ").replace(/\s+/g, " ").trim().slice(0, 200);
+const chatMask = (t) => t.replace(/\S+/g, (w) => (isBadName(w) ? "*".repeat(Math.min(8, Math.max(3, [...w].length))) : w));
+function chatReset(code = "") {
+  Object.assign(chat, { code, list: [], unread: 0 });
+  if (!code) chat.open = false;
+  chat.rate.clear();
+  chatDraw();
+}
+function chatAdd(m) {
+  if (!m || typeof m !== "object") return;
+  const text = chatMask(chatClean(m.text));
+  if (!text) return;
+  const msg = {
+    id: String(m.id || "").replace(/[^a-z0-9]/g, "").slice(0, 12) || uid(),
+    pid: String(m.pid || "").replace(/[^a-z0-9]/g, "").slice(0, 16),
+    name: chatClean(m.name).slice(0, 20) || "Oyuncu",
+    avatar: AVATARS.includes(m.avatar) ? m.avatar : "headphones",
+    color: COLORS.includes(m.color) ? m.color : "coral",
+    text,
+  };
+  if (chat.list.some((x) => x.id === msg.id)) return;
+  chat.list = [...chat.list, msg].slice(-CHAT_MAX);
+  if (msg.pid !== pid && (!chat.open || document.hidden)) {
+    chat.unread = Math.min(99, chat.unread + 1);
+    chatPeek(msg);
+    sfx("pick");
+  }
+  chatDraw();
+}
+// Kurucu: mesajı doğrular, hızını sınırlar (10 sn'de en çok 5), herkese yollar.
+function hostChat(from, text) {
+  if (mode?.role !== "host") return false;
+  const p = mode.game.players.find((x) => x.pid === from);
+  const t = chatClean(text);
+  if (!p || !t) return false;
+  const now = Date.now();
+  const r = (chat.rate.get(from) || []).filter((x) => now - x < 10000);
+  if (r.length >= 5) return false;
+  r.push(now);
+  chat.rate.set(from, r);
+  const msg = { id: uid(), pid: from, name: p.name, avatar: p.avatar, color: p.color, text: chatMask(t) };
+  chatAdd(msg);
+  mode.net?.chat(msg);
+  return true;
+}
+function chatSend(text) {
+  const t = chatClean(text);
+  if (!t || !mode || mode.role === "solo") return false;
+  if (mode.role === "host") {
+    if (!hostChat(pid, t)) { toast("Biraz yavaş: birkaç saniye sonra tekrar yaz.", "bad"); return false; }
+    return true;
+  }
+  try { mode.net.chat(t); return true; } catch (e) { fail(e); return false; }
+}
+const chatEl = document.createElement("div");
+chatEl.id = "chat";
+chatEl.hidden = true;
+chatEl.innerHTML = `<section class="chatPanel" id="chatPanel" aria-label="Lobi sohbeti" hidden>
+    <header class="chatHead"><span class="chatTitle">${ic("message-circle")}<b>Lobi sohbeti</b></span><small>Geçici · son 10 mesaj · kaydedilmez</small><button class="icon sm" data-chatclose aria-label="Sohbeti kapat">${ic("x")}</button></header>
+    <ol class="chatList" id="chatList" aria-live="polite"></ol>
+    <form class="chatForm" id="chatForm" autocomplete="off"><input id="chatIn" maxlength="200" placeholder="Mesaj yaz…" enterkeyhint="send" aria-label="Mesaj yaz"><button class="btn primary" type="submit" aria-label="Gönder">${ic("send")}</button></form>
+  </section>
+  <button class="chatPeek" id="chatPeek" data-chattoggle hidden></button>`;
+document.body.append(chatEl);
+let peekT = 0;
+function chatPeek(m) {
+  const el = $("#chatPeek");
+  if (!el || chatEl.hidden) return;
+  el.innerHTML = `${avatar(m, "xs")}<span><b>${esc(m.name)}</b> ${esc(m.text)}</span>`;
+  el.hidden = false;
+  el.classList.remove("show");
+  void el.offsetWidth;
+  el.classList.add("show");
+  clearTimeout(peekT);
+  peekT = setTimeout(() => (el.hidden = true), 4000);
+}
+// Sohbet yalnızca bir lobideyken (kurucu ya da oyuncu) görünür; tek başına oyunda yok.
+function chatVis() {
+  const on = !!mode && mode.role !== "solo";
+  if (chatEl.hidden === !on) return;
+  chatEl.hidden = !on;
+  if (!on) { chat.open = false; $("#chatPeek").hidden = true; }
+  chatDraw();
+}
+function chatDraw() {
+  const on = !!mode && mode.role !== "solo";
+  const open = on && chat.open;
+  $("#chatPanel").hidden = !open;
+  document.body.classList.toggle("chatOpen", open);
+  if (open && !document.hidden) chat.unread = 0;
+  const list = $("#chatList");
+  list.innerHTML = chat.list.length
+    ? chat.list.map((m) => `<li class="${m.pid === pid ? "me" : ""}">${avatar(m, "xs")}<span class="chatMsg"><b>${esc(m.name)}</b><span>${esc(m.text)}</span></span></li>`).join("")
+    : `<li class="chatEmpty">${ic("message-circle")}<span>Henüz mesaj yok. Selam ver!<small>Yalnızca son 10 mesaj görünür; sonradan katılan eskileri görmez, lobi kapanınca hepsi silinir.</small></span></li>`;
+  list.scrollTop = list.scrollHeight;
+  topbar();
+}
+function chatToggle(open = !chat.open) {
+  chat.open = open;
+  if (open) $("#chatPeek").hidden = true;
+  chatDraw();
+  // telefonda klavye kendiliğinden açılmasın; bilgisayarda yazmaya hazır olsun
+  if (open && matchMedia("(hover: hover) and (pointer: fine)").matches) $("#chatIn")?.focus();
+}
+document.addEventListener("visibilitychange", () => { if (!document.hidden && chat.open) chatDraw(); });
+
+// ---------- açık lobiler: kurucu, lobisi herkese açıksa ve oyun başlamadıysa ana sayfada duyurur ----------
+const lobby = { said: false, body: "", at: 0, t: 0 };
+function lobbyInfo() {
+  const g = mode?.game;
+  if (mode?.role !== "host" || !g) return null;
+  const open = !!mode.pub && g.phase === "lobby";
+  return {
+    open, phase: g.phase === "lobby" ? "lobby" : "game",
+    host: profile || {}, players: g.players.filter((p) => p.online).length, max: MAX_PLAYERS,
+    quizzes: g.queue.slice(0, 3).map((s) => s.name), more: Math.max(0, g.queue.length - 3),
+  };
+}
+// Değişiklikler toplanıp en çok 15 sn'de bir, değişmese de dakikada bir yayınlanır; kapanınca bir kez "kapandı" der.
+function lobbyAnnounce(force = false) {
+  const info = lobbyInfo();
+  if (!info || (!info.open && !lobby.said)) return;
+  const body = JSON.stringify(info);
+  const now = Date.now();
+  if (!force && body === lobby.body && now - lobby.at < 60000) return;
+  clearTimeout(lobby.t);
+  const wait = info.open ? Math.max(0, 15000 - (now - lobby.at)) : 0;
+  lobby.t = setTimeout(() => {
+    const cur = lobbyInfo();
+    if (!cur || (!cur.open && !lobby.said)) return;
+    lobby.body = JSON.stringify(cur);
+    lobby.at = Date.now();
+    lobby.said = cur.open;
+    announceLobby(mode.code, cur);
+  }, wait);
+}
+setInterval(() => lobbyAnnounce(true), 60000);
+
+// ---------- oynanma sayısı: biten her quiz, oynayan herkesin kendi sayısına eklenir ----------
+const playSeen = { code: "", ids: new Set() };
+function trackPlays(v) {
+  if (!v || !Array.isArray(v.history)) return;
+  if (playSeen.code !== v.code) {
+    // lobiye yeni girildi (ya da sayfa yenilendi): önceden bitmiş quizler sayılmaz
+    playSeen.code = v.code;
+    playSeen.ids = new Set(v.history.map((h) => h.id));
+    return;
+  }
+  for (const h of v.history) {
+    if (playSeen.ids.has(h.id)) continue;
+    playSeen.ids.add(h.id);
+    if (h.qid && h.top?.some((t) => t.pid === v.me)) countPlay(h.qid);
+  }
+}
+const playNum = (n) => (n >= 1e6 ? `${(n / 1e6).toLocaleString("tr", { maximumFractionDigits: 1 })} Mn` : n >= 1e4 ? `${Math.round(n / 1e3).toLocaleString("tr")} B` : n >= 1e3 ? `${(n / 1e3).toLocaleString("tr", { maximumFractionDigits: 1 })} B` : String(n));
+const playsTag = (l, cls = "plays") => { const n = plays(l.id); return n ? `<span class="${cls}" title="${num(n).toLocaleString("tr")} kez oynandı">${ic("play")}${playNum(n)}</span>` : ""; };
+onPlays(() => { if (screen === "home" && !mode && !sheet.open) renderHome(); else if (screen === "detail") { const s = $("#dtPlays"); if (s && sheetCtx?.list) s.outerHTML = dtPlaysHtml(sheetCtx.list); } });
+const dtPlaysHtml = (l) => { const n = plays(l.id); return `<span id="dtPlays"${n ? "" : " hidden"}>${ic("play")}${num(n).toLocaleString("tr")} kez oynandı</span>`; };
+
 // Kurucu lobide tek başına mı? (Bağlı başka oyuncu yok.)
 function hostAlone() {
   return mode?.role === "host" && !mode.game.players.some((p) => p.online && p.pid !== pid);
 }
-function leaveRoom(silent = false) {
+function leaveRoom(silent = false, keepChat = false) {
   stopClip();
   mode?.game && clearTimeout(mode.game.timer);
+  if (mode?.role === "host" && lobby.said) { lobby.said = false; announceLobby(mode.code, { open: false }); }
+  clearTimeout(lobby.t);
   mode?.net?.close();
+  if (!keepChat) chatReset();
   mode = null;
   view = null;
   store.del("jqSession", sessionStorage);
@@ -534,6 +740,7 @@ function sfxTrack() {
 }
 function render() {
   topbar();
+  chatVis();
   if (screen === "room" && mode) { const out = renderRoom(); sfxTrack(); return out; }
   if (screen === "detail" && sheetCtx?.list) return renderDetail();
   if (screen === "number") return renderNumber();
@@ -542,6 +749,53 @@ function render() {
   renderHome();
 }
 
+// ---------- ana sayfa: açık lobiler ----------
+ui.lobbies = null; // null: yükleniyor
+let lobbiesAt = 0, lobbiesBusy = false;
+async function refreshLobbies(force = false) {
+  if (lobbiesBusy || (!force && Date.now() - lobbiesAt < 20000)) return;
+  lobbiesBusy = true;
+  if (force) { ui.lobbies = null; drawLobbies(); }
+  try { ui.lobbies = await listLobbies(); } catch { ui.lobbies = []; }
+  lobbiesBusy = false;
+  lobbiesAt = Date.now();
+  drawLobbies();
+}
+// ana sayfa açıkken yarım dakikada bir tazele
+setInterval(() => { if (screen === "home" && !mode && !document.hidden) refreshLobbies(); }, 30000);
+function drawLobbies() {
+  const el = $("#lobbies");
+  if (el) el.outerHTML = lobbiesHtml();
+}
+function lobbiesHtml() {
+  const ls = ui.lobbies;
+  const body = ls === null
+    ? `<div class="lbyRow" aria-busy="true">${Array.from({ length: 2 }, () => `<div class="lbyCard sk"></div>`).join("")}</div>`
+    : ls.length
+    ? `<div class="lbyRow">${ls.map((l) => `<button class="lbyCard" data-joinlobby="${esc(l.code)}" aria-label="${esc(l.host.name)} lobisine katıl">
+        ${avatar(l.host)}
+        <span class="lbyInfo"><b>${esc(l.host.name)}</b><small>${l.quizzes.length ? `${ic("list-music")}${esc(l.quizzes.join(" · "))}${l.more ? ` +${l.more}` : ""}` : "Quiz seçiliyor"}</small></span>
+        <span class="lbyCount">${ic("users")}${num(l.players)}/${num(l.max)}</span>
+        <span class="lbyGo">Katıl ${ic("chevron-right")}</span>
+      </button>`).join("")}</div>`
+    : `<p class="lbyEmpty">${ic("globe")}<span>Şu an katılınabilecek açık lobi yok. <button class="linkBtn" data-do="create">Lobi kur</button>, “Herkese açık” yap; burada herkes görsün.</span></p>`;
+  return `<section class="hm-lobbies" id="lobbies" aria-label="Açık lobiler">
+    <div class="hm-railHead"><h3>${ic("globe")}Açık lobiler${ls?.length ? ` <em class="newTag">${ls.length}</em>` : ""}</h3><button class="hm-more" data-do="lobRefresh" aria-label="Listeyi yenile">${ic("refresh-cw")}Yenile</button></div>
+    ${body}
+  </section>`;
+}
+// ---------- sıralama: önerilen / en çok oynanan / en yeni ----------
+ui.sort = ["plays", "new"].includes(store.get("jqSort", "")) ? store.get("jqSort", "") : "";
+function sortLists(lists) {
+  if (ui.sort === "plays") return lists.map((l, i) => [l, plays(l.id), i]).sort((a, b) => b[1] - a[1] || a[2] - b[2]).map((x) => x[0]);
+  if (ui.sort === "new") return lists.map((l, i) => [l, num(l.at), i]).sort((a, b) => b[1] - a[1] || a[2] - b[2]).map((x) => x[0]);
+  return lists;
+}
+const sortBar = () => `<div class="sortBar" role="group" aria-label="Sırala">${ic("arrow-up-down")}${[["", "Önerilen"], ["plays", "En çok oynanan"], ["new", "En yeni"]].map(([v, t]) => `<button data-sort="${v}" aria-pressed="${ui.sort === v}">${t}</button>`).join("")}</div>`;
+function topPlayedRail() {
+  const top = allLists().filter((l) => l.genre !== "Senin" && plays(l.id) > 0).sort((a, b) => plays(b.id) - plays(a.id)).slice(0, 16);
+  return top.length >= 3 ? rail("En çok oynananlar", "flame", top.map((l, k) => qcard(l, k)).join(""), "") : "";
+}
 function allLists() {
   return [...PRESETS, ...MIXES, ...RANK_QUIZZES, ...ANIME_QUIZZES, ...TRIVIA, ...(ui.community || []), ...customLists().map((l) => ({ ...l, genre: "Senin" }))];
 }
@@ -582,9 +836,9 @@ function drawHome() {
   const mine = customLists().map((l) => ({ ...l, genre: "Senin" }));
   if (ui.genre === "Senin" && !mine.length) ui.genre = "Keşfet";
   const browsing = ui.genre !== "Keşfet" || q;
-  const lists = allLists().filter(
+  const lists = sortLists(allLists().filter(
     (l) => inTab(l) && (!q || fold(l.name).includes(q) || fold(l.author || "").includes(q) || fold(l.cat || "").includes(q)),
-  );
+  ));
   const commTrivia = (ui.community || []).filter((l) => l.kind === "trivia");
   const comm = ui.community || [];
   const tab = TABS.find((t) => t[0] === ui.genre) || TABS[0];
@@ -620,6 +874,8 @@ function drawHome() {
     </div>
   </section>
 
+  ${lobbiesHtml()}
+
   <section class="hm-modes" aria-label="Oyun modları">
     <button class="mode m-song" data-tab="Müzik" data-scroll="1"><span class="modeIc">${ic("music")}</span><b>Şarkı Quizi</b><small>Bir saniyelik kesitten şarkıyı bil</small><i class="modeGo">${ic("chevron-right")}</i></button>
     <button class="mode m-rev" data-tab="Tersten" data-scroll="1"><span class="modeIc">${ic("rewind")}</span><b>Tersten Şarkı <em>Yeni</em></b><small>${MIXES.length} karma liste, şarkı tersten çalar</small><i class="modeGo">${ic("chevron-right")}</i></button>
@@ -645,6 +901,7 @@ function drawHome() {
         .join("")}
     </nav>
     ${SUBS[ui.genre] ? `<div class="seg chips subChips">${["", ...SUBS[ui.genre]].map((c) => `<button data-sub="${esc(c)}" aria-pressed="${ui.cat === c}">${esc(c || "Hepsi")}</button>`).join("")}</div>` : ""}
+    ${browsing && ui.genre !== "Sayı" ? sortBar() : ""}
     <div id="results">${resultsHtml()}</div>
     ${
       ui.genre === "Sayı"
@@ -653,9 +910,10 @@ function drawHome() {
         ? `${lists.length ? `<div class="hm-grid">${lists.map((l, k) => qcard(l, k)).join("")}</div>` : ""}
           ${ui.genre === "Topluluk" ? communityState() : ""}
           ${!lists.length && !ui.results && (ui.genre !== "Topluluk" || ui.community?.length) ? `<p class="hm-empty">${ic("search")}<span>Burada bir şey yok.${ui.genre === "Keşfet" || ui.genre === "Müzik" ? ' "Sanatçı bul" ile Deezer\'da ara; binlerce sanatçı var.' : ""}</span></p>` : ""}`
-        : `${rail("Popüler sanatçılar", "flame", PRESETS.map((l, k) => acard(l, k)).join(""), "Müzik")}
+        : `${topPlayedRail()}
+          ${rail("Popüler sanatçılar", "mic-vocal", PRESETS.map((l, k) => acard(l, k)).join(""), "Müzik")}
           ${rail("Sıralama quizleri", "list-ordered", RANK_QUIZZES.slice(0, 24).map((l, k) => acard(l, k)).join(""), "Sıralama")}
-          ${rail("Tersten şarkı quizi", "rewind", MIXES.map((l, k) => acard(l, k)).join(""), "Tersten")}
+          ${rail("Tersten şarkı quizi", "rewind", MIXES.map((l, k) => acard(l, k, true)).join(""), "Tersten")}
           ${rail("Anime quizleri", "tv", ANIME_QUIZZES.map((l, k) => qcard(l, k)).join(""), "Anime")}
           ${triviaRail(commTrivia)}
           ${numRail()}
@@ -830,7 +1088,7 @@ function communityState() {
 function qcard(l, k = 0) {
   return `<div class="qcard ${l.genre === "Topluluk" ? "community" : ""}" style="--i:${Math.min(k, 20)}">
     <button class="qcardBtn" data-list="${esc(l.id)}" aria-label="${esc(l.name)} quizini aç">
-      <span class="qcardArt">${cover(l, "qcardImg", true)}</span>
+      <span class="qcardArt">${cover(l, "qcardImg", true)}${playsTag(l, "plays qcardPlays")}</span>
       <span class="qcardTag">${esc(l.genre)}</span>
       <span class="qcardInfo"><b>${esc(l.name)}</b><small>${cardSub(l)}</small></span>
       <span class="qcardPlay">${ic("play")}</span>
@@ -838,9 +1096,9 @@ function qcard(l, k = 0) {
     ${cardTools(l)}
   </div>`;
 }
-function acard(l, k = 0) {
-  return `<button class="acard" data-list="${esc(l.id)}" style="--i:${k}" aria-label="${esc(l.name)} quizini aç">
-    <span class="acardArt">${cover(l, "acardImg")}</span>
+function acard(l, k = 0, rev = false) {
+  return `<button class="acard" data-list="${esc(l.id)}"${rev ? ' data-rev="1"' : ""} style="--i:${k}" aria-label="${esc(l.name)} quizini aç">
+    <span class="acardArt">${cover(l, "acardImg")}${playsTag(l, "plays acardPlays")}</span>
     <b>${esc(l.name)}</b><small>${esc(l.kind === "rank" ? l.rcat || "Sıralama" : l.genre)}</small>
   </button>`;
 }
@@ -892,7 +1150,7 @@ function renderRoom() {
     return;
   }
   const v = view;
-  const sig = JSON.stringify({ ...v, now: 0, lost: mode.lost });
+  const sig = JSON.stringify({ ...v, now: 0, lost: mode.lost, pub: mode.pub });
   if (sig === lastSig) return paint();
   // Soru sürerken başkası cevaplayınca yalnızca küçük parçaları güncelle; düğmeleri baştan çizme
   // (aksi halde o an basılan şık kaybolabiliyor).
@@ -968,6 +1226,8 @@ function lobbyHtml(v) {
           <button class="btn primary" data-do="link">${ic("copy")}Davet bağlantısı</button>
           <button class="btn soft" data-do="code">Kodu kopyala</button>
         </div>
+        ${host ? `<div class="pubRow"><div class="seg" role="radiogroup" aria-label="Lobi görünürlüğü"><button data-pub="0" aria-pressed="${!mode.pub}">${ic("lock")}Özel</button><button data-pub="1" aria-pressed="${!!mode.pub}">${ic("globe")}Herkese açık</button></div>
+          <small class="muted">${mode.pub ? "Ana sayfadaki “Açık lobiler” listesinde görünüyor; oyun başlayınca listeden düşer." : "Yalnızca bağlantıyı ya da kodu bilenler katılabilir."}</small></div>` : ""}
       </div>`
       }
       <div class="block">
@@ -1808,7 +2068,7 @@ addEventListener("popstate", () => {
   if (st?.jqScreen === "detail" && st.id) {
     if (screen !== "detail" || String(sheetCtx.list?.id) !== st.id) {
       if (screen === "home") homeY = scrollY;
-      openList(st.id, true);
+      openList(st.id, true, !!st.rev);
     }
     return;
   }
@@ -1963,7 +2223,7 @@ function pickBodyHtml() {
   const note = wait ? `<p class="muted pickNote">${spinner()} Topluluk quizleri yükleniyor…</p>`
     : lists.length ? ""
     : `<p class="muted pickNote">${pick.q ? "Aramana uyan quiz yok." : pick.tab === "Topluluk" && ui.communityErr ? "Topluluk quizlerine şu an ulaşılamadı." : "Bu türde henüz quiz yok; ilkini sen oluştur."}</p>`;
-  return `<div class="pickGrid">${make}${lists.map((l) => `<button class="pickItem" data-list="${esc(l.id)}">${cover(l, "pImg")}<b>${esc(l.name)}</b><small>${cardSub(l)}</small></button>`).join("")}</div>${note}`;
+  return `<div class="pickGrid">${make}${lists.map((l) => `<button class="pickItem" data-list="${esc(l.id)}"><span class="pArt">${cover(l, "pImg")}${playsTag(l, "plays pPlays")}</span><b>${esc(l.name)}</b><small>${cardSub(l)}</small></button>`).join("")}</div>${note}`;
 }
 function drawPick() {
   const b = sheet.open && sheetCtx?.kind === "picker" && $("#pickBody");
@@ -2043,7 +2303,6 @@ function optsHtml(l) {
   return `<div class="opts">
       <div class="opt optCount"><span>Soru sayısı</span><div class="seg" data-opt="count">${[5, 10, 15, 20, 30].map((n) => `<button data-v="${n}" aria-pressed="${sheetCtx.count === n}"${n === LB_QUESTIONS ? TEN : ""}>${n}</button>`).join("")}</div></div>
       <div class="opt"><span>Cevap</span><div class="seg" data-opt="mode"><button data-v="choice" aria-pressed="${sheetCtx.mode === "choice"}">Şıklı</button><button data-v="text" aria-pressed="${sheetCtx.mode === "text"}">Yazarak</button></div></div>
-      <div class="opt"><span>Çalış</span><div class="seg" data-opt="rev"><button data-v="0" aria-pressed="${!sheetCtx.rev}">Normal</button><button data-v="1" aria-pressed="${!!sheetCtx.rev}">${ic("rewind")}Tersten</button></div></div>
       <div class="opt"><span>Kesit uzunluğu</span>${clipSeg()}</div>
     </div>
     <details class="tracks" id="tracksBox"><summary>${ic("list-music")} Şarkıları seç <span id="selCount"></span></summary><div id="trackList">${skRows(4)}</div></details>`;
@@ -2135,6 +2394,7 @@ function renderDetail() {
           <div class="dtStats">
             <span>${ic(l.kind === "rank" ? "list-ordered" : l.kind === "op" ? "tv" : trivia ? "circle-help" : "list-music")}<b id="trackCount">${l.kind === "rank" ? "İlk 5 · 20 şık" : l.kind === "op" ? `${n} opening` : trivia ? `${n} soru` : n ? `${n} şarkı` : `${spinner()} şarkılar`}</b></span>
             <span>${ic("layers")}${esc(l.kind === "rank" ? l.rcat || "Sıralama" : l.kind === "op" ? "Anime" : trivia ? l.cat || "Trivia" : l.genre || "Müzik")}</span>
+            ${dtPlaysHtml(l)}
             ${b.score ? `<span>${ic("trophy")}${num(b.score)}</span>` : ""}
           </div>
           ${l.author ? `<div class="dtBy">${ic("user")}<span><small>Oluşturan</small><b>${esc(l.author)}</b></span></div>` : ""}
@@ -2152,6 +2412,7 @@ function renderDetail() {
         ${modeChoice(l)}
         <div class="dtOpts">${optsHtml(l)}</div>
         <button class="btn primary xl wide dtStart" data-do="detailGo" ${ik ? "" : "disabled data-needtracks=1"}>${ic("sparkles")}Başla</button>
+        ${(l.genre === "Topluluk" && l.mine) || (l.genre === "Senin" && (l.tracks?.length || l.items?.length) && !String(l.id).startsWith("dz")) ? `<button class="btn ghost wide dtEdit" data-do="editQuiz">${ic("sliders-horizontal")}Quizi düzenle <small>ad, yazar, sorular, tür</small></button>` : ""}
         ${b.score || b.streak ? `<div class="dtRec">${ic("trophy")}<span>Rekorların: ${b.score ? `<b>${num(b.score)}</b> puan` : ""}${b.score && b.streak ? " · " : ""}${b.streak ? `<b>${num(b.streak)}</b> soruluk seri` : ""}</span></div>` : ""}
       </div>
       ${lbOf(l) ? `<div class="dtBoard">${boardHtml(lbOf(l))}</div>` : ""}
@@ -2172,12 +2433,12 @@ function setupPayload() {
   if (list.kind === "rank" || list.kind === "op") {
     if (!list.items?.length) throw Error(list.items ? "Bu quiz için soru bulunamadı." : "Sorular hazırlanıyor, birazdan tekrar dene.");
     const ranked = list.kind === "op" && isRanked(list);
-    return { type: "add", kind: list.kind, list: { name: list.name, emoji: list.emoji || "", picture: list.picture || "" }, items: list.items, count: list.kind === "rank" ? list.items.length : ranked ? Math.min(LB_QUESTIONS, list.items.length) : count, mode: list.kind, clip: 0, video: !!sheetCtx.video, lid: lbOf(list), ranked };
+    return { type: "add", kind: list.kind, list: { name: list.name, emoji: list.emoji || "", picture: list.picture || "" }, items: list.items, count: list.kind === "rank" ? list.items.length : ranked ? Math.min(LB_QUESTIONS, list.items.length) : count, mode: list.kind, clip: 0, video: !!sheetCtx.video, lid: lbOf(list), qid: String(list.id || ""), ranked };
   }
   if (list.kind === "trivia") {
     const survival = sheetCtx.gmode === "survival" && sheetCtx.play !== "party" && !(mode && mode.role !== "solo");
     const ranked = !survival && isRanked(list);
-    return { type: "add", kind: "trivia", list: { name: list.name, emoji: list.emoji || "" }, items: list.items, count: survival ? list.items.length : ranked ? Math.min(LB_QUESTIONS, list.items.length) : count, mode: "choice", clip: 0, survival, lid: lbOf(list), ranked };
+    return { type: "add", kind: "trivia", list: { name: list.name, emoji: list.emoji || "" }, items: list.items, count: survival ? list.items.length : ranked ? Math.min(LB_QUESTIONS, list.items.length) : count, mode: "choice", clip: 0, survival, lid: lbOf(list), qid: String(list.id || ""), ranked };
   }
   if (!tracks) throw Error("Şarkılar henüz yüklenmedi.");
   const ranked = isRanked(list);
@@ -2192,6 +2453,8 @@ function setupPayload() {
     clip,
     reverse: !!rev,
     lid: lbOf(list),
+    // tersten oynanan karma liste ayrı bir quiz sayılır
+    qid: String(list.id || "") + (rev && list.mix ? "-r" : ""),
     ranked,
   };
 }
@@ -2248,7 +2511,7 @@ function showHomeFromHistory() {
   if (after) after();
   else requestAnimationFrame(() => scrollTo({ top: homeY }));
 }
-function openList(id, fromHistory = false) {
+function openList(id, fromHistory = false, revHint = false) {
   const l = allLists().find((x) => String(x.id) === String(id));
   if (!l) return;
   if (l.anime && !l.items) loadAnime(l, l.era || "pop");
@@ -2266,11 +2529,13 @@ function openList(id, fromHistory = false) {
   }
   if (l.opsrc && !l.items?.length) animeOps().then((items) => { l.items = items; if (sheetCtx?.list === l) { sheetCtx.count = Math.min(10, items.length || 10); const o = $(".opts"); if (o) o.outerHTML = optsHtml(l); } });
   const last = store.get("jqSetup", {});
-  const rev = (l.mix && ui.genre === "Tersten") || l.rev ? 1 : 0;
+  // Tersten mi normal mi: quizin kendisinden ya da açıldığı kategoriden (Tersten sekmesi / rafı) gelir; ayrıca sorulmaz.
+  const tab = sheet.open && sheetCtx?.kind === "picker" ? pick.tab : ui.genre;
+  const rev = l.rev || (l.mix && (revHint || tab === "Tersten")) ? 1 : 0;
   const ctx = { list: l, count: last.count || 10, mode: last.mode || "choice", clip: rev ? 5 : last.clip || 3, rev, play: "solo", gmode: lbOf(l) ? "ranked" : "normal" };
   // Lobide kurucu quiz eklerken pencere; ana sayfada tam detay sayfası
   if (mode && mode.role !== "solo" && isHost()) return openSheet("setup", ctx);
-  if (!fromHistory) pushScreen({ jqScreen: "detail", id: String(l.id) });
+  if (!fromHistory) pushScreen({ jqScreen: "detail", id: String(l.id), rev });
   sheetCtx = ctx;
   screen = "detail";
   render();
@@ -2465,6 +2730,11 @@ async function doAction(a, el) {
       return act({ type: "lobby" });
     case "pickCreate":
       return pickCreate();
+    case "lobRefresh":
+      return refreshLobbies(true);
+    case "editQuiz":
+      location.href = "create/?edit=" + encodeURIComponent(sheetCtx.list?.id || "");
+      return;
     case "reset":
       return act({ type: "reset" });
 
@@ -2556,7 +2826,23 @@ document.addEventListener("click", async (e) => {
     }
     if (d.sheet) return openSheet(d.sheet);
     if (d.do) return await doAction(d.do, b);
-    if (d.list) return openList(d.list);
+    if ("chattoggle" in d) return chatToggle();
+    if ("chatclose" in d) return chatToggle(false);
+    if (d.joinlobby) return validCode(d.joinlobby) && startGuest(d.joinlobby, { fromList: true });
+    if (d.pub !== undefined && mode?.role === "host") {
+      mode.pub = d.pub === "1";
+      persist();
+      lastSig = "";
+      if (mode.pub) toast("Lobin artık ana sayfadaki “Açık lobiler”de görünüyor.");
+      lobbyAnnounce(true);
+      return render();
+    }
+    if (d.sort !== undefined) {
+      ui.sort = d.sort;
+      store.set("jqSort", ui.sort);
+      return renderHome();
+    }
+    if (d.list) return openList(d.list, false, d.rev === "1");
     if (d.numcat) return startNumber(d.numcat);
     if (d.npick !== undefined) return numPick(Number(d.npick));
     if (d.ptab) {
@@ -2778,6 +3064,11 @@ document.addEventListener("submit", (e) => {
   if (f.id === "searchForm") return runSearch($("#search").value, "home");
   if (f.id === "pickSearch") return runSearch($("#pickQ").value, "picker");
 
+  if (f.id === "chatForm") {
+    const inp = $("#chatIn");
+    if (chatSend(inp.value)) inp.value = "";
+    return;
+  }
   if (f.id === "guessForm") {
     const v = $("#guess").value.trim();
     if (!v) return;
@@ -2785,6 +3076,7 @@ document.addEventListener("submit", (e) => {
   }
 });
 document.addEventListener("keydown", (e) => {
+  if (e.key === "Escape" && chat.open && !sheet.open) return chatToggle(false);
   if (screen !== "room" || sheet.open || !view?.question || view.phase !== "question") return;
   if (e.target.matches("input, textarea")) return;
   const n = Number(e.key);
@@ -2813,6 +3105,8 @@ function boot() {
   if (tab === "senin" && customLists().length) ui.genre = "Senin";
   if (tab) history.replaceState(null, "", location.pathname);
   loadCommunity();
+  loadPlays();
+  refreshLobbies();
   loadPresetPictures().then((changed) => {
     if (changed && screen === "home" && !mode) renderHome();
   });
@@ -2820,7 +3114,7 @@ function boot() {
   const invite = ((new URLSearchParams(location.search).get("room") || new URLSearchParams(location.search).get("oda")) || "").toUpperCase();
   if (saved?.role === "host" && saved.game) {
     try {
-      startHost({ restore: typeof saved.game === "string" ? unseal(saved.game) : saved.game });
+      startHost({ restore: typeof saved.game === "string" ? unseal(saved.game) : saved.game, pub: !!saved.pub });
       // oluşturma sayfası aynı sekmede açıldıysa: kaydedilen quiz lobiye dönünce açılır
       const back = store.get("jqLobbyBack", null, sessionStorage);
       store.del("jqLobbyBack", sessionStorage);

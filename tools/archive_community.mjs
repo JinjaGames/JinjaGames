@@ -136,4 +136,58 @@ if (beforeS !== JSON.stringify(scoreEvents.map((e) => e.id).sort()) || !oldS.len
   mkdirSync(dirname(SCORES), { recursive: true });
   writeFileSync(SCORES, JSON.stringify({ note: "JinjaQuiz puan sıralaması arşivi (imzalı Nostr kayıtları, oyuncu başına en iyi puan). tools/archive_community.mjs üretir.", events: scoreEvents }) + "\n");
 }
+// ---- Oynanma sayıları (quiz/js/plays.js) ----
+// Her oyuncunun her quiz için kaydında o quizi kaç kez bitirdiği yazar; arşiv kişi başına en yüksek sayıyı tutar
+// (kişi = açık anahtarın ilk 12 hanesi). Site toplamı arşiv + rölelerden hesaplar.
+const PLAYS = join(ROOT, "quiz/data/plays.json");
+const PLAYS_TAG = "jinjaquiz-plays";
+const PLAYS_MAX = 500;
+function playOf(e) {
+  try {
+    if (!e || e.kind !== KIND || typeof e.content !== "string" || e.content.length > 400) return null;
+    if (!e.tags.some((t) => t[0] === "t" && t[1] === PLAYS_TAG)) return null;
+    const c = JSON.parse(e.content);
+    const k = String(c?.q || "");
+    if (!/^[a-z0-9][a-z0-9-]{0,63}$/.test(k) || /^(my|dz)/.test(k) || dTag(e) !== "jqplays:" + k || c.v !== 1 || !Number.isInteger(c.n) || c.n < 1) return null;
+    const id = bytesToHex(sha256(enc.encode(JSON.stringify([0, e.pubkey, e.created_at, e.kind, e.tags, e.content]))));
+    if (id !== e.id || !schnorr.verify(hexToBytes(e.sig), hexToBytes(e.id), hexToBytes(e.pubkey))) return null;
+    return { k, pk: e.pubkey.slice(0, 12), n: Math.min(PLAYS_MAX, c.n) };
+  } catch {
+    return null;
+  }
+}
+function fetchPlays(url) {
+  return new Promise((resolve) => {
+    const got = [];
+    let ws;
+    const done = () => { clearTimeout(t); try { ws.close(); } catch {} resolve(got); };
+    const t = setTimeout(done, 15000);
+    try { ws = new WebSocket(url); } catch { return done(); }
+    ws.onopen = () => ws.send(JSON.stringify(["REQ", "pl", { kinds: [KIND], "#t": [PLAYS_TAG], limit: 5000 }]));
+    ws.onerror = done;
+    ws.onmessage = (m) => {
+      let x;
+      try { x = JSON.parse(m.data); } catch { return; }
+      if (x[0] === "EVENT" && x[1] === "pl") got.push(x[2]);
+      if ((x[0] === "EOSE" || x[0] === "CLOSED") && x[1] === "pl") done();
+    };
+  });
+}
+let by = {};
+try { by = JSON.parse(readFileSync(PLAYS, "utf8")).by || {}; } catch {}
+const beforeP = JSON.stringify(by);
+const resP = await Promise.all(RELAYS.map(fetchPlays));
+let nP = 0;
+for (const e of resP.flat()) {
+  const p = playOf(e);
+  if (!p) continue;
+  nP++;
+  by[p.k] ||= {};
+  if (!(by[p.k][p.pk] >= p.n)) by[p.k][p.pk] = p.n;
+}
+const sortedBy = Object.fromEntries(Object.keys(by).sort().map((k) => [k, Object.fromEntries(Object.entries(by[k]).sort())]));
+console.log(`Oynanma kayıtları: ${nP} geçerli, ${Object.keys(sortedBy).length} quiz`);
+if (JSON.stringify(sortedBy) !== beforeP) {
+  writeFileSync(PLAYS, JSON.stringify({ note: "JinjaQuiz oynanma sayıları (kişi başına en yüksek sayı; kişi = açık anahtarın ilk 12 hanesi). tools/archive_community.mjs üretir.", by: sortedBy }) + "\n");
+}
 process.exit(0);

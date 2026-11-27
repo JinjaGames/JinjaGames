@@ -3301,3 +3301,88 @@ body.rkDragging, body.rkDragging * { cursor: grabbing !important; -webkit-user-s
 /* oluşturma sayfası lobiden açıldıysa: bitti ekranı */
 .lobbyDone { display: grid; justify-items: center; gap: 12px; max-width: 520px; margin: 12vh auto; padding: 0 16px; text-align: center; }
 .lobbyDone > .ic { width: 56px; height: 56px; padding: 12px; border-radius: 50%; background: var(--accent); color: var(--accent-ink); }
+/* ---------- lobi sohbeti (geçici) ---------- */
+.chatBtn { position: relative; width: 42px; height: 42px; border-radius: 50%; background: var(--s2); border: 1px solid var(--line); }
+.chatBtn.on { background: var(--accent); color: var(--accent-ink); border-color: transparent; }
+.chatBtn small { position: absolute; top: -4px; right: -4px; min-width: 18px; height: 18px; padding: 0 5px; border-radius: 9px; background: var(--accent); color: #fff; font: 800 11px/18px var(--body); box-shadow: 0 0 0 2px var(--bg); animation: pop 0.3s var(--ease); }
+.chatPanel { position: fixed; z-index: 40; right: 16px; top: 76px; width: min(360px, calc(100vw - 32px)); height: min(480px, calc(100dvh - 110px)); display: grid; grid-template-rows: auto 1fr auto; border-radius: var(--r-lg); background: color-mix(in srgb, var(--s1) 96%, transparent); border: 1px solid var(--line); box-shadow: 0 24px 60px -12px #000c; backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px); overflow: hidden; animation: rise 0.25s var(--ease); }
+.chatPanel[hidden] { display: none; }
+.chatHead { display: grid; grid-template-columns: 1fr auto; align-items: center; column-gap: 8px; padding: 12px 12px 10px 16px; border-bottom: 1px solid var(--line); }
+.chatTitle { display: flex; align-items: center; gap: 8px; font: 800 18px var(--display); text-transform: uppercase; letter-spacing: 0.02em; }
+.chatTitle .ic { color: var(--accent); }
+.chatHead small { grid-column: 1; grid-row: 2; color: var(--muted); font-size: 12px; }
+.chatHead .icon { grid-column: 2; grid-row: 1 / 3; }
+.chatList { list-style: none; margin: 0; padding: 12px; display: flex; flex-direction: column; gap: 10px; overflow-y: auto; overscroll-behavior: contain; }
+.chatList li { display: flex; align-items: flex-end; gap: 8px; max-width: 92%; animation: rise 0.25s var(--ease); }
+.chatList li.me { align-self: flex-end; flex-direction: row-reverse; }
+.chatMsg { display: grid; gap: 2px; padding: 8px 12px; border-radius: 16px 16px 16px 4px; background: var(--s2); border: 1px solid var(--line); min-width: 0; }
+.chatList li.me .chatMsg { border-radius: 16px 16px 4px 16px; background: color-mix(in srgb, var(--accent) 22%, var(--s2)); border-color: color-mix(in srgb, var(--accent) 35%, transparent); }
+.chatMsg b { font-size: 12px; color: var(--muted); }
+.chatMsg span { overflow-wrap: anywhere; line-height: 1.35; }
+.chatList li.chatEmpty { align-self: center; max-width: 100%; margin: auto 0; flex-direction: column; align-items: center; text-align: center; gap: 8px; color: var(--muted); }
+.chatEmpty .ic { width: 28px; height: 28px; opacity: 0.6; }
+.chatEmpty span { display: grid; gap: 6px; }
+.chatEmpty small { font-size: 12px; opacity: 0.8; }
+.chatForm { display: flex; gap: 8px; padding: 10px 12px 12px; border-top: 1px solid var(--line); }
+.chatForm input { flex: 1; min-width: 0; height: 44px; padding: 0 14px; border-radius: 999px; border: 1.5px solid var(--line); background: var(--bg); color: var(--ink); font: inherit; font-size: 16px; }
+.chatForm input:focus { outline: none; border-color: var(--accent); }
+.chatForm .btn { width: 44px; height: 44px; padding: 0; border-radius: 50%; flex: none; justify-content: center; }
+.chatPeek { position: fixed; z-index: 39; right: 16px; top: 76px; max-width: min(340px, calc(100vw - 32px)); display: flex; align-items: center; gap: 8px; padding: 8px 14px 8px 8px; border-radius: 999px; background: var(--s2); border: 1px solid var(--line); box-shadow: 0 14px 40px -10px #000c; color: var(--ink); text-align: left; font-size: 14px; }
+.chatPeek[hidden] { display: none; }
+.chatPeek span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.chatPeek.show { animation: peekIn 4s var(--ease) both; }
+@keyframes peekIn { 0% { opacity: 0; transform: translateY(-8px); } 8%, 85% { opacity: 1; transform: none; } 100% { opacity: 0; } }
+@media (max-width: 700px) {
+  /* telefonda: alttan açılan yarım ekran; oyunu tamamen kapatmaz, kapatma düğmesi üstte */
+  .chatPanel { left: 0; right: 0; top: auto; bottom: 0; width: 100%; height: min(58dvh, 460px); border-radius: var(--r-lg) var(--r-lg) 0 0; border-bottom: 0; padding-bottom: env(safe-area-inset-bottom); }
+  .chatPeek { top: auto; bottom: calc(96px + env(safe-area-inset-bottom)); left: 12px; right: 12px; max-width: none; }
+  body.chatOpen .dock { padding-bottom: calc(min(58dvh, 460px) + 12px); }
+}
+@media (prefers-reduced-motion: reduce) { .chatPanel, .chatList li, .chatPeek.show { animation: none; } }
+
+/* ---------- açık lobiler ---------- */
+.hm-lobbies { margin: 0 0 30px; }
+.hm-more .ic { width: 15px; height: 15px; }
+.lbyRow { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 12px; }
+.lbyCard { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; grid-template-rows: auto auto; align-items: center; column-gap: 12px; row-gap: 6px; padding: 14px 16px; border-radius: 18px; background: linear-gradient(140deg, color-mix(in srgb, #2fd3a6 12%, var(--s1)), var(--s1) 70%); border: 1px solid color-mix(in srgb, #2fd3a6 22%, #ffffff14); text-align: left; transition: transform 0.2s var(--ease), border-color 0.2s; }
+.lbyCard:hover, .lbyCard:focus-visible { transform: translateY(-3px); border-color: #2fd3a6; outline: none; }
+.lbyCard > .av { grid-row: 1 / 3; }
+.lbyInfo { display: grid; gap: 2px; min-width: 0; }
+.lbyInfo b { font-weight: 800; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.lbyInfo small { display: flex; align-items: center; gap: 4px; color: var(--muted); font-size: 13px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.lbyInfo small .ic { flex: none; width: 13px; height: 13px; }
+.lbyCount { display: inline-flex; align-items: center; gap: 4px; font-weight: 700; font-size: 13px; color: var(--muted); }
+.lbyCount .ic { width: 14px; height: 14px; }
+.lbyGo { grid-column: 2 / 4; justify-self: end; display: inline-flex; align-items: center; gap: 2px; font-weight: 800; font-size: 14px; color: #2fd3a6; }
+.lbyGo .ic { width: 16px; height: 16px; }
+.lbyCard.sk { min-height: 78px; background: var(--s1); border-color: var(--line); animation: skPulse 1.2s ease-in-out infinite alternate; }
+@keyframes skPulse { to { opacity: 0.55; } }
+.lbyEmpty { display: flex; align-items: center; gap: 12px; margin: 0; padding: 16px 18px; border-radius: 18px; border: 1px dashed var(--line); color: var(--muted); }
+.lbyEmpty > .ic { flex: none; color: #2fd3a6; }
+.linkBtn { color: var(--accent); font-weight: 700; text-decoration: underline; text-underline-offset: 3px; padding: 0; }
+.pubRow { grid-column: 1 / -1; display: grid; gap: 6px; }
+.pubRow .seg { width: fit-content; max-width: 100%; }
+.pubRow small { font-size: 13px; }
+@media (max-width: 560px) { .lbyRow { grid-template-columns: 1fr; } .pubRow .seg { width: 100%; } .pubRow .seg button { flex: 1; } }
+
+/* ---------- sıralama ve oynanma sayısı ---------- */
+.sortBar { display: flex; align-items: center; gap: 4px; margin: -4px 0 14px; color: var(--muted); overflow-x: auto; scrollbar-width: none; }
+.sortBar::-webkit-scrollbar { display: none; }
+.sortBar > .ic { flex: none; width: 16px; height: 16px; margin-right: 4px; }
+.sortBar button { flex: none; min-height: 34px; padding: 0 12px; border-radius: 999px; font-size: 14px; font-weight: 700; color: var(--muted); border: 1px solid transparent; }
+.sortBar button:hover { color: var(--ink); }
+.sortBar button[aria-pressed="true"] { color: var(--ink); background: var(--s2); border-color: var(--line); }
+.plays { display: inline-flex; align-items: center; gap: 3px; font: 800 12px/1 var(--body); }
+.plays .ic { width: 11px; height: 11px; }
+.qcardPlays, .acardPlays, .pPlays { position: absolute; z-index: 2; padding: 5px 8px 5px 6px; border-radius: 999px; background: #000b; color: #fff; backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px); }
+.qcardPlays { top: 10px; right: 10px; }
+.acardPlays { bottom: 8%; left: 50%; transform: translateX(-50%); }
+.pArt { position: relative; display: block; }
+.pPlays { top: 6px; right: 6px; padding: 4px 7px 4px 5px; font-size: 11px; }
+#dtPlays[hidden] { display: none; }
+.dtEdit { margin-top: 10px; gap: 8px; }
+.dtEdit small { color: var(--muted); font-weight: 500; }
+@media (max-width: 560px) { .dtEdit small { display: none; } }
+/* oluşturma: düzenlerken normal / tersten */
+.crRevSeg { margin-left: auto; }
+.crRevSeg button { padding: 0 10px; gap: 4px; }

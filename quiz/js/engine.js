@@ -1,7 +1,7 @@
 // Oyun motoru. Kurucunun tarayıcısında çalışır ve tek doğruluk kaynağıdır.
 // Diğer oyuncular yalnızca kendilerine özel durum özetini (view) alır.
 import { fold, preview } from "./music.js?v=5";
-import { cleanItems, cleanEmoji } from "./trivia.js?v=3";
+import { cleanItems, cleanEmoji } from "./trivia.js?v=4";
 
 export const MAX_PLAYERS = 12;
 const PLAYS = 3;
@@ -62,6 +62,11 @@ const shuffle = (a) => {
   return a;
 };
 const uid = () => Math.random().toString(36).slice(2, 10);
+// Sorunun kimliği (daha önce sorulanları hatırlamak için kısa özet)
+const hash = (s) => { let h = 2166136261; for (const c of String(s)) h = Math.imul(h ^ c.codePointAt(0), 16777619) >>> 0; return h.toString(36); };
+const qKey = (kind, x) => hash(kind === "trivia" || kind === "rank" ? x.q : kind === "op" ? x.yt : x.id);
+const USED_MAX = 400; // havuz başına hatırlanan soru
+const USED_POOLS = 80;
 
 function clean(p = {}) {
   return {
@@ -115,6 +120,7 @@ export class Game {
     this.seconds = 20;
     this.autoNext = true;
     this.history = []; // bu lobide biten quizler (en yeni sonda)
+    this.used = {}; // havuz -> daha önce sorulan soruların özetleri (aynı sorular tekrar gelmesin)
     this.question = null;
     this.timer = null;
     this.join(host.pid, host.profile);
@@ -122,12 +128,13 @@ export class Game {
 
   // ---- kalıcılık (kurucu sayfayı yenilerse oyun kaldığı yerden sürer) ----
   toJSON() {
-    const { onChange, timer, ...rest } = this;
+    const { onChange, timer, usedDirty, ...rest } = this;
     return rest;
   }
   static restore(data, onChange) {
     const g = Object.assign(Object.create(Game.prototype), data, { onChange, timer: null });
     g.history ??= [];
+    g.used ??= {};
     for (const p of g.players) p.online = p.pid === g.hostId;
     if (g.phase === "preparing") g.prepare();
     g.schedule();
@@ -139,7 +146,7 @@ export class Game {
   }
 
   // ---- oyuncular ----
-  join(pid, profile) {
+  join(pid, profile, key = "") {
     let p = this.players.find((x) => x.pid === pid);
     if (!p) {
       if (this.players.length >= (this.solo ? 1 : MAX_PLAYERS)) throw Error("Lobi dolu.");
@@ -147,7 +154,41 @@ export class Game {
       this.players.push(p);
     }
     Object.assign(p, clean(profile), { online: true });
+    if (key && !p.key) p.key = key; // gizli cihaz anahtarı: oyunculara gönderilmez (view'da yok)
     return p;
+  }
+  /** Aynı cihazdan yeni kimlikle dönen oyuncu: eski kaydı (puanı, cevabı) yeni kimliğe taşınır. */
+  rebind(old, neu) {
+    const p = this.players.find((x) => x.pid === old);
+    if (!p || old === this.hostId || old === neu || this.players.some((x) => x.pid === neu)) return;
+    p.pid = neu;
+    const a = this.question?.answers;
+    if (a?.[old]) { a[neu] = a[old]; delete a[old]; }
+  }
+  /** Bu cihaz anahtarı lobide başka bir kimlikle kayıtlı mı? */
+  byKey(key) {
+    return key ? this.players.find((x) => x.key === key && x.pid !== this.hostId) : null;
+  }
+  // Havuzdan n soru: daha önce sorulmamış olanlar önce. Hepsi sorulduysa yeni tur başlar.
+  fresh(pk, kind, pool, n) {
+    this.used ??= {};
+    const used = new Set(this.used[pk] || []);
+    const isNew = pool.filter((x) => !used.has(qKey(kind, x)));
+    let pick;
+    if (isNew.length >= n) {
+      pick = shuffle(isNew).slice(0, n);
+      for (const x of pick) used.add(qKey(kind, x));
+    } else {
+      pick = [...shuffle(isNew), ...shuffle(pool.filter((x) => used.has(qKey(kind, x))))].slice(0, n);
+      used.clear();
+      for (const x of pick) used.add(qKey(kind, x));
+    }
+    delete this.used[pk]; // en son kullanılan havuz sona geçer (eskiler önce silinir)
+    this.used[pk] = [...used].slice(-USED_MAX);
+    const keys = Object.keys(this.used);
+    for (const k of keys.slice(0, Math.max(0, keys.length - USED_POOLS))) delete this.used[k];
+    this.usedDirty = true;
+    return pick;
   }
   setOnline(pid, online) {
     const p = this.players.find((x) => x.pid === pid);
@@ -163,8 +204,10 @@ export class Game {
 
   // ---- kuyruk ----
   // ranked: Puanlı mod. Soru sayısı sabit (10 ya da quizde daha azı varsa hepsi), şarkı seçimi yok; yalnızca bu oyunlar sıralamaya girer.
-  addSet({ list, tracks, ids, count, mode, clip, kind, items, survival, reverse, video, lid, ranked }) {
+  addSet({ list, tracks, ids, count, mode, clip, kind, items, survival, reverse, video, lid, ranked, qid }) {
     lid = lbKeyOf(lid);
+    qid = lbKeyOf(qid);
+    const pk = qid || lid || "n-" + hash(list?.name || "");
     if (this.queue.length >= 12) throw Error("Kuyrukta en fazla 12 quiz olabilir.");
     if (kind === "rank" || kind === "op") {
       const pool = kind === "rank" ? cleanRank(items) : cleanOps(items);
@@ -179,11 +222,13 @@ export class Game {
         picture: list.picture || "",
         emoji: list.emoji ? cleanEmoji(list.emoji) : "",
         tracks: pool,
-        questions: shuffle(pool).slice(0, n),
+        questions: kind === "rank" ? shuffle(pool).slice(0, n) : this.fresh(pk, kind, pool, n),
         mode: kind,
         clip: 0,
         video: !!video,
         lid,
+        qid,
+        pk,
         ranked: !!ranked,
       });
       return;
@@ -204,10 +249,12 @@ export class Game {
         picture: "",
         emoji: list.emoji ? cleanEmoji(list.emoji) : "",
         tracks: pool,
-        questions: shuffle(pool).slice(0, n),
+        questions: surv ? shuffle(pool) : this.fresh(pk, "trivia", pool, n),
         mode: "choice",
         clip: 0,
         lid,
+        qid,
+        pk,
         ranked: !!ranked && !surv,
       });
       return;
@@ -221,12 +268,15 @@ export class Game {
       art: list.art || "",
       picture: list.picture || "",
       tracks,
-      questions: shuffle(pool).slice(0, n),
+      ids: pool.length < tracks.length ? pool.map((t) => t.id) : null,
+      questions: this.fresh(pk, "song", pool, n),
       mode: mode === "text" ? "text" : "choice",
       // tersten çalınan quizde kesit daha uzun: kolay 10, orta 5, zor 3 sn
       reverse: !!reverse,
       clip: reverse ? ([3, 5, 10].includes(clip) ? clip : 5) : [1, 3, 5].includes(clip) ? clip : 3,
       lid,
+      qid,
+      pk,
       ranked: !!ranked,
     });
   }
@@ -257,7 +307,8 @@ export class Game {
         count: set.questions.length,
         top: [...this.players].sort((a, b) => b.round - a.round).map((p) => ({ pid: p.pid, name: p.name, pts: p.round })),
         emoji: set.emoji || "",
-        set: { kind: set.kind, emoji: set.emoji, name: set.name, art: set.art, picture: set.picture, tracks: set.tracks, pool: set.questions.length, mode: set.mode, clip: set.clip, reverse: !!set.reverse, video: !!set.video, lid: set.lid || "", ranked: !!set.ranked },
+        qid: set.qid || "",
+        set: { kind: set.kind, emoji: set.emoji, name: set.name, art: set.art, picture: set.picture, tracks: set.tracks, pool: set.questions.length, mode: set.mode, clip: set.clip, reverse: !!set.reverse, video: !!set.video, lid: set.lid || "", qid: set.qid || "", pk: set.pk || "", ranked: !!set.ranked },
       });
       if (this.history.length > 10) this.history.shift();
       this.rankAt = this.phase === "ranking" && !this.solo ? Date.now() + NEXT_QUIZ : null;
@@ -513,7 +564,8 @@ export class Game {
         this.index = -1;
         this.question = null;
         for (const p of this.players) (p.score = 0), (p.round = 0), (p.lbr = 0), (p.hits = 0);
-        this.queue = this.queue.map((s) => ({ ...s, id: uid(), streak: 0, questions: shuffle(s.survival ? s.tracks : s.questions) }));
+        // aynı quizler yeniden: sorulmamış sorular önce (havuz bittiyse yeni tur)
+        this.queue = this.queue.map((s) => ({ ...s, id: uid(), streak: 0, questions: s.survival ? shuffle(s.tracks) : s.kind === "rank" ? shuffle(s.questions) : this.fresh(s.pk || "n-" + hash(s.name), s.kind || "song", s.tracks.filter((t) => !s.ids || s.ids.includes(t.id)), s.questions.length) }));
         break;
       case "lobby":
         // Çok oyunculu: herkes lobiye döner; genel puanlar ve geçmiş kalır, oynanan quizler sıradan çıkar.
@@ -542,12 +594,14 @@ export class Game {
           art: h.set.art,
           picture: h.set.picture,
           tracks: pool,
-          questions: shuffle(pool).slice(0, h.set.pool),
+          questions: h.set.kind === "rank" ? shuffle(pool).slice(0, h.set.pool) : this.fresh(h.set.pk || "n-" + hash(h.set.name), h.set.kind || "song", pool, h.set.pool),
           mode: h.set.mode,
           clip: h.set.clip,
           reverse: !!h.set.reverse,
           video: !!h.set.video,
           lid: h.set.lid || "",
+          qid: h.set.qid || "",
+          pk: h.set.pk || "",
           ranked: !!h.set.ranked,
         });
         break;
@@ -612,7 +666,7 @@ export class Game {
       set: this.set,
       index: this.index,
       rankAt: this.phase === "ranking" ? this.rankAt || null : null,
-      history: this.history.map(({ id, name, art, picture, emoji, count, top }) => ({ id, name, art, picture, emoji: emoji || "", count, top })),
+      history: this.history.map(({ id, name, art, picture, emoji, count, top, qid }) => ({ id, name, art, picture, emoji: emoji || "", count, top, qid: qid || "" })),
       question:
         q && ["preparing", "question", "reveal"].includes(this.phase)
           ? {

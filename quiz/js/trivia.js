@@ -1,6 +1,7 @@
 import { MORE } from "./trivia-more.js?v=2";
 import { EXTRA, FLAG_QUIZZES, flagFor } from "./trivia-extra.js?v=2";
 import { NEW } from "./trivia-new.js?v=1";
+import { NEW2 } from "./trivia-new2.js?v=1";
 
 // Trivia quizleri: müzik dışı bilgi soruları. Her soru { q: soru, a: [doğru, yanlış, yanlış, yanlış] }
 // biçimindedir; ilk cevap her zaman doğrudur, oyunda şıklar karıştırılır. Doğru/Yanlış soruları iki şıklıdır.
@@ -540,7 +541,7 @@ export const TRIVIA = [
     Q("Logosunda sıçrayan bir kedi bulunan spor markası hangisidir?", "Puma", "Jack Wolfskin", "Under Armour", "Lotto"),
     Q("Kırmızı-beyaz logosu ve kıvrımlı yazısıyla bilinen içecek markası hangisidir?", "Coca-Cola", "Pepsi", "Fanta", "Sprite"),
     Q("Logosunda kırmızı bir 'play' düğmesi bulunan platform hangisidir?", "YouTube", "Netflix", "Twitch", "Vimeo"),
-  ]),  ...MORE, ...NEW,
+  ]),  ...MORE, ...NEW, ...NEW2,
 ];
 // Ek soruları birleştir (aynı soru iki kez girmez) ve ülke cevaplarına bayrak ekle.
 for (const t of TRIVIA) {

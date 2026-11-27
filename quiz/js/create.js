@@ -1,11 +1,11 @@
 // JinjaQuiz: quiz oluşturma sayfası (/quiz/create/). Sanatçı ve şarkı araması ayrı sekmelerde;
 // sanatçının popüler şarkıları ve tüm albümleri tek tek ya da topluca eklenebilir.
 import { searchArtists, searchTracks, artistInfo, artistTop, artistAlbums, albumTracks, ownTracks, isAlternate, customLists, saveCustom, removeCustom, cleanTracks, fold, cdn } from "./music.js?v=5";
-import { fetchCommunity, publishQuiz, removeQuiz, myPubkey, MIN_TRACKS, MAX_TRACKS } from "./community.js?v=7";
-import { TCATS, TART, EMOJIS, T_MIN, T_MAX, cleanItems, cleanCat, cleanEmoji, isTF, IMG } from "./trivia.js?v=3";
-import { cleanOps, RANK_PTS, OP_PTS } from "./engine.js?v=9";
+import { fetchCommunity, publishQuiz, removeQuiz, myPubkey, MIN_TRACKS, MAX_TRACKS } from "./community.js?v=8";
+import { TCATS, TART, EMOJIS, T_MIN, T_MAX, cleanItems, cleanCat, cleanEmoji, isTF, IMG } from "./trivia.js?v=4";
+import { cleanOps, RANK_PTS, OP_PTS } from "./engine.js?v=10";
 import { rankItems } from "./rank.js?v=4";
-import { OP_MIN } from "./community.js?v=7";
+import { OP_MIN } from "./community.js?v=8";
 
 const $ = (s, r = document) => r.querySelector(s);
 const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
@@ -164,6 +164,9 @@ function sideHtml() {
 
 function kindSwitch() {
   const k = KINDS.find((x) => x[0] === st.kind);
+  // Düzenlerken tür baştan seçilemez (sorular kaybolurdu); ama şarkı quizi normal ↔ tersten arasında değiştirilebilir.
+  if (editing() && (st.kind === "song" || st.kind === "rev"))
+    return `<div class="crKindNow">${ic(k?.[1] || "music")}<span><small>Quiz türü</small><b>${esc(k?.[2] || "")}</b></span><div class="seg crRevSeg" role="radiogroup" aria-label="Çalış"><button data-do="setSong" aria-pressed="${st.kind === "song"}">${ic("music")}Normal</button><button data-do="setRev" aria-pressed="${st.kind === "rev"}">${ic("rewind")}Tersten</button></div></div>`;
   return `<div class="crKindNow">${ic(k?.[1] || "music")}<span><small>Quiz türü</small><b>${esc(k?.[2] || "")}</b></span>${editing() ? "" : `<button class="btn ghost sm" data-do="chooseKind">Değiştir</button>`}</div>`;
 }
 function chooserHtml() {
@@ -610,6 +613,8 @@ document.addEventListener("click", async (e) => {
     switch (d.do) {
       case "backArtists": st.artist = null; return drawLists();
       case "chooseKind": return setKind(null);
+      case "setSong": if (st.kind === "rev") { st.kind = "song"; drawAll(); } return;
+      case "setRev": if (st.kind === "song") { st.kind = "rev"; drawAll(); } return;
       case "rankRefresh": return st.rank?.artist && buildRank(st.rank.artist, true);
       case "opAdd": {
         if (st.ops.length >= 100) return toast("En fazla 100 opening.", "bad");
