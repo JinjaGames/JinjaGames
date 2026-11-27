@@ -847,7 +847,7 @@ function sortLists(lists) {
 const sortBar = () => `<div class="sortBar" role="group" aria-label="Sırala">${[["", "Önerilen"], ["plays", "En çok oynanan"], ["new", "En yeni"]].map(([v, t]) => `<button data-sort="${v}" aria-pressed="${ui.sort === v}">${t}</button>`).join("")}</div>`;
 function topPlayedRail() {
   const top = allLists().filter((l) => l.genre !== "Senin" && plays(l.id) > 0).sort((a, b) => plays(b.id) - plays(a.id)).slice(0, 16);
-  return top.length >= 3 ? rail("En çok oynananlar", "flame", top.map((l, k) => qcard(l, k)).join(""), "") : "";
+  return top.length >= 3 ? rail("En çok oynananlar", "flame", top.map((l, k) => card(l, k)).join(""), "") : "";
 }
 // Ana sayfadaki kapaklar: sitenin kendi quizlerinden (topluluk hariç) her açılışta farklı bir karışım
 const HERO_SEED = Math.random().toString(36).slice(2);
@@ -1008,7 +1008,7 @@ function drawHome() {
       ui.genre === "Sayı"
         ? `<div class="numGrid">${NUMCATS.map((c, k) => numCard(c, k)).join("")}</div>`
         : browsing
-        ? `${lists.length ? `<div class="hm-grid">${lists.map((l, k) => qcard(l, k)).join("")}</div>` : ""}
+        ? `${lists.length ? `<div class="hm-grid">${lists.map((l, k) => card(l, k)).join("")}</div>` : ""}
           ${ui.genre === "Topluluk" ? communityState() : ""}
           ${!lists.length && !ui.results && (ui.genre !== "Topluluk" || ui.community?.length) ? `<p class="hm-empty">${ic("search")}<span>Burada bir şey yok.${ui.genre === "Keşfet" || ui.genre === "Müzik" ? ' "Sanatçı bul" ile Deezer\'da ara; binlerce sanatçı var.' : ""}</span></p>` : ""}`
         : `${topPlayedRail()}
@@ -1018,8 +1018,8 @@ function drawHome() {
           ${rail("Anime quizleri", "tv", ANIME_QUIZZES.map((l, k) => qcard(l, k)).join(""), "Anime")}
           ${triviaRail(commTrivia)}
           ${numRail()}
-          ${rail("Topluluk quizleri", "users", comm.slice(0, 12).map((l, k) => qcard(l, k)).join("") || communityState(), comm.length ? "Topluluk" : "")}
-          ${mine.length ? rail("Senin quizlerin", "bookmark", mine.map((l, k) => qcard(l, k)).join(""), "Senin") : ""}`
+          ${rail("Topluluk quizleri", "users", comm.slice(0, 12).map((l, k) => card(l, k)).join("") || communityState(), comm.length ? "Topluluk" : "")}
+          ${mine.length ? rail("Senin quizlerin", "bookmark", mine.map((l, k) => card(l, k)).join(""), "Senin") : ""}`
     }
   </section>
 
@@ -1195,11 +1195,20 @@ function qcard(l, k = 0) {
   </div>`;
 }
 function acard(l, k = 0, rev = false) {
-  return `<button class="acard" data-list="${esc(l.id)}"${rev ? ' data-rev="1"' : ""} style="--i:${k}" aria-label="${esc(l.name)} quizini aç">
+  const n = num(l.tracks?.length || l.n);
+  const sub = l.genre === "Topluluk" ? `<bdi data-noi18n>${esc(l.author)}</bdi> · ${l.rev ? "Tersten · " : ""}${n} şarkı`
+    : l.genre === "Senin" ? (n ? `${l.rev ? "Tersten · " : ""}${n} şarkı` : "Senin")
+    : esc(l.kind === "rank" ? l.rcat || "Sıralama" : l.genre);
+  return `<button class="acard" data-list="${esc(l.id)}"${rev ? ' data-rev="1"' : ""} style="--i:${Math.min(k, 20)}" aria-label="${esc(l.name)} quizini aç">
     <span class="acardArt">${cover(l, "acardImg")}${playsTag(l, "plays acardPlays")}</span>
-    <b>${esc(l.name)}</b><small>${esc(l.kind === "rank" ? l.rcat || "Sıralama" : l.genre)}</small>
+    <b>${esc(l.name)}</b><small>${sub}</small>
   </button>`;
 }
+// Şarkı quizleri (sanatçılar, karma listeler, topluluk ve kendi listelerin) her yerde yuvarlak, plak gibi dönen kartla;
+// trivia, sıralama ve anime quizleri kare kartla gösterilir.
+const isSong = (l) => !l.kind && !l.anime;
+const scard = (l, k = 0) => `<div class="acardW">${acard(l, k)}${cardTools(l)}</div>`;
+const card = (l, k = 0) => (isSong(l) ? scard(l, k) : qcard(l, k));
 function cardSub(l) {
   if (l.anime) return l.items?.length ? `Anime · ${l.items.length} soru` : "Anime trivia";
   if (l.kind === "rank") return l.genre === "Topluluk" ? `${ic("user")}${esc(l.author)} · Sıralama` : `${esc(l.rcat || "Sıralama")} · ilk 5 şarkı`;
