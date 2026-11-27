@@ -155,6 +155,10 @@ function validScore(e) {
     if (!e.tags.some((t) => t[0] === "t" && t[1] === SCORE_TAG)) return false;
     const c = JSON.parse(e.content);
     if (!c || c.v !== 1 || "jqscore:" + c.q !== d || !Number.isInteger(c.s) || c.s < 0 || c.s > 2000) return false;
+    // sitedeki mantık sınırı (quiz/js/board.js, plausible) ile aynı
+    const cc = Math.max(0, Math.min(10, Number(c.c) | 0)), k = c.q;
+    const ok = /^(t-|daily-)/.test(k) || /^an-(?!op$)/.test(k) ? c.s <= Math.min(1000, cc * 100) : k === "an-op" ? c.s <= 1500 : k.startsWith("nq-") ? c.s <= 1625 : c.s <= Math.min(1625, cc * 163);
+    if (!ok) return false;
     const id = bytesToHex(sha256(enc.encode(JSON.stringify([0, e.pubkey, e.created_at, e.kind, e.tags, e.content]))));
     if (id !== e.id) return false;
     return schnorr.verify(hexToBytes(e.sig), hexToBytes(e.id), hexToBytes(e.pubkey));
@@ -204,7 +208,7 @@ if (beforeS !== JSON.stringify(scoreEvents.map((e) => e.id).sort()) || !oldS.len
 // (kişi = açık anahtarın ilk 12 hanesi). Site toplamı arşiv + rölelerden hesaplar.
 const PLAYS = join(ROOT, "quiz/data/plays.json");
 const PLAYS_TAG = "jinjaquiz-plays";
-const PLAYS_MAX = 500;
+const PLAYS_MAX = 100;
 function playOf(e) {
   try {
     if (!e || e.kind !== KIND || typeof e.content !== "string" || e.content.length > 400) return null;

@@ -109,7 +109,7 @@ const D = {
   "Kurucuya bağlı değilsin.": "You're not connected to the host.", "Lobi dolu.": "The lobby is full.", "Bu kimlikle katılamazsın.": "You can't join with this identity.",
   "Bu oyuncu lobide zaten bağlı. Birkaç saniye sonra tekrar dene.": "This player is already connected. Try again in a few seconds.",
   "Bu cihazdan yeniden bağlandın; eski bağlantı kapatıldı.": "You reconnected from this device; the old connection was closed.",
-  "Bu lobi şifreli.": "This lobby is password-protected.", "Şifre yanlış, tekrar dene.": "Wrong password, try again.", "Şifreli lobi": "Locked lobby", "Şifre": "Password",
+  "Bu lobi şifreli.": "This lobby is password-protected.", "Çok fazla yanlış şifre. Bir dakika sonra tekrar dene.": "Too many wrong passwords. Try again in a minute.", "Şifre yanlış, tekrar dene.": "Wrong password, try again.", "Şifreli lobi": "Locked lobby", "Şifre": "Password",
   "Katılmak için kurucunun verdiği şifreyi yaz.": "Enter the password the host gave you.",
   // sohbet
   "Sohbet": "Chat", "Lobi sohbeti": "Lobby chat", "Geçici · son 10 mesaj · kaydedilmez": "Temporary · last 10 messages · not saved", "Mesaj yaz…": "Type a message…",

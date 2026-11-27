@@ -31,6 +31,14 @@ const local = {
   },
 };
 
+// Puanın mantık sınırı: imzalı kayıt herkes tarafından yazılabildiği için, 10 soruda alınabilecek en yüksek puanı
+// (ve doğru sayısıyla tutarlılığı) aşan kayıtlar sayılmaz. Trivia: soru başı 100; şarkı: en zor ayarda soru başı 163.
+export function plausible(key, s, c) {
+  if (/^(t-|daily-)/.test(key) || /^an-(?!op$)/.test(key)) return s <= Math.min(1000, c * 100);
+  if (key === "an-op") return s <= 1500;
+  if (key.startsWith("nq-")) return s <= 1625;
+  return s <= Math.min(1625, c * 163);
+}
 /** Kaydı sıralama satırına çevirir; bozuksa null. */
 function parse(e, key) {
   const d = (e.tags.find((t) => t[0] === "d") || [])[1] || "";
@@ -39,6 +47,8 @@ function parse(e, key) {
   try { c = JSON.parse(e.content); } catch { return null; }
   const s = Number(c?.s);
   if (!c || c.v !== 1 || c.q !== key || !Number.isInteger(s) || s < 0 || s > LB_MAX) return null;
+  const cc = Math.max(0, Math.min(LB_QUESTIONS, Number(c.c) | 0));
+  if (!plausible(key, s, cc)) return null;
   return {
     pk: e.pubkey,
     s,

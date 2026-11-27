@@ -6,7 +6,7 @@ import { sign, valid, relayCall, sendToRelays, RELAYS, myPubkey, blocked } from 
 
 const KIND = 30078;
 const TAG = "jinjaquiz-plays";
-export const PLAYS_MAX = 500; // bir kişinin bir quiz için sayılan en fazla oynanması (şişirmeye karşı)
+export const PLAYS_MAX = 100; // bir kişinin bir quiz için sayılan en fazla oynanması (şişirmeye karşı)
 const LOCAL = "jqPlays";
 const DIRTY = "jqPlaysDirty";
 const local = {
@@ -77,8 +77,11 @@ function parse(e) {
 }
 
 let loadP = null;
-/** Bütün quizlerin oynanma sayılarını toplar (arşiv + röleler + bu tarayıcı). */
-export function loadPlays() {
+let loadAt = 0;
+/** Bütün quizlerin oynanma sayılarını toplar (arşiv + röleler + bu tarayıcı). fresh: yeniden topla. */
+export function loadPlays({ fresh = false } = {}) {
+  if (fresh && loadP && Date.now() - loadAt > 60000) loadP = null;
+  loadAt = Date.now();
   loadP ??= (async () => {
     flush();
     const per = new Map(); // quiz -> Map(kişi -> sayı)

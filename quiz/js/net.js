@@ -60,6 +60,18 @@ export function hostRoom(code, { onHello, onAction, onLeave, onBack, claim, onCh
   const seen = new Map(); // peerId -> son mesaj zamanı
   const stale = new Set(); // sessiz kaldığı için çevrimdışı sayılan eşler
   const profiles = new Map(); // peerId -> profil (geri dönünce yeniden eklemek için)
+  // Güvenlik: bir eş kurucuyu mesaja boğamaz (5 sn'de en çok 60 mesaj, her biri en çok 80 KB),
+  // şifreli lobide şifre art arda denenemez (5 yanlıştan sonra 1 dakika bekler).
+  const rate = new Map(); // peerId -> { t, n, pwN, pwUntil }
+  const tooMuch = (peerId, m) => {
+    const now = Date.now();
+    const r = rate.get(peerId) || { t: now, n: 0, pwN: 0, pwUntil: 0 };
+    if (now - r.t > 5000) { r.t = now; r.n = 0; }
+    r.n++;
+    rate.set(peerId, r);
+    if (r.n > 60) return true;
+    try { return JSON.stringify(m).length > 80000; } catch { return true; }
+  };
   const drop = (peerId, reason) => {
     send({ t: "denied", reason }, { target: peerId });
     peers.delete(peerId);
@@ -69,7 +81,8 @@ export function hostRoom(code, { onHello, onAction, onLeave, onBack, claim, onCh
   };
   onMessage((m, ctx) => {
     const peerId = ctx?.peerId ?? ctx;
-    if (!m || typeof m !== "object") return;
+    if (!m || typeof m !== "object" || Array.isArray(m)) return;
+    if (tooMuch(peerId, m)) return;
     seen.set(peerId, Date.now());
     if (stale.delete(peerId) && peers.has(peerId)) onBack?.(peers.get(peerId), profiles.get(peerId));
     if (m.t === "sync") return send({ t: "sync", c: m.c, h: Date.now() }, { target: peerId });
@@ -80,7 +93,10 @@ export function hostRoom(code, { onHello, onAction, onLeave, onBack, claim, onCh
       const pw = typeof m.pw === "string" ? m.pw.slice(0, 40) : "";
       // Bir oyuncunun kimliğini kopyalayıp onun yerine cevap vermek engellenir: aynı kimlik ancak aynı cihaz anahtarıyla
       // devralınabilir. Aynı cihazdan gelen yeni bağlantı eskisinin (kopmuş ya da arka planda kalmış) yerine geçer.
+      const r = rate.get(peerId);
+      if (r && r.pwUntil > Date.now()) return send({ t: "denied", reason: "Çok fazla yanlış şifre. Bir dakika sonra tekrar dene." }, { target: peerId });
       const c = claim ? claim(m.pid, key, pw) : {};
+      if (c.pw && pw && r && ++r.pwN >= 5) { r.pwN = 0; r.pwUntil = Date.now() + 60000; }
       if (c.err) return send({ t: "denied", reason: c.err, ...(c.pw ? { pw: 1 } : {}) }, { target: peerId });
       for (const [p, id] of [...peers]) if (p !== peerId && (id === m.pid || (c.old && id === c.old))) drop(p, "Bu cihazdan yeniden bağlandın; eski bağlantı kapatıldı.");
       // Önce eşi kaydet ki onHello'nun tetiklediği durum yayını yeni oyuncuya da ulaşsın.
@@ -113,6 +129,7 @@ export function hostRoom(code, { onHello, onAction, onLeave, onBack, claim, onCh
     seen.delete(peerId);
     stale.delete(peerId);
     profiles.delete(peerId);
+    rate.delete(peerId);
     if (pid && ![...peers.values()].includes(pid)) onLeave(pid);
   };
   // Telefonu arka plana atılan oyuncunun bağlantısı çoğu zaman kapanmaz, yalnızca susar: uzun süre ses

@@ -3,17 +3,17 @@ import { sfx, sfxEnabled, setSfx, setSfxVolume } from "./sfx.js?v=5";
 import { randomName } from "./names.js";
 import { fetchCommunity, loadFull, removeQuiz, hideQuiz, unhideQuiz, hiddenList } from "./community.js?v=10";
 import { Game, MAX_PLAYERS, RANK_PTS, OP_PTS } from "./engine.js?v=11";
-import { lbKey, loadBoard, peekBoard, submitScore, myBest, isMine, LB_TOP, LB_QUESTIONS } from "./board.js?v=5";
+import { lbKey, loadBoard, peekBoard, submitScore, myBest, isMine, LB_TOP, LB_QUESTIONS } from "./board.js?v=6";
 import { maskName, isBadName } from "./badwords.js?v=1";
 import { RANK_QUIZZES, RANK_CATS, rankItems, fromYouTube } from "./rank.js?v=4";
 import { TRIVIA, TCATS, TART, EMOJIS, cleanItems, IMG, ANI_IMG, FLAG, flagUrl, cleanEmo } from "./trivia.js?v=4";
 import { ANIME_QUIZZES, ERAS, animeItems, animeOps } from "./anime.js?v=3";
 import { NUMCATS, fmtNum, farEnough } from "./numdata.js";
-import { hostRoom, guestRoom, newCode, validCode } from "./net.js?v=4";
+import { hostRoom, guestRoom, newCode, validCode } from "./net.js?v=5";
 import { announceLobby, listLobbies } from "./lobbies.js?v=4";
-import { countPlay, loadPlays, plays, players, onPlays, playsLoaded } from "./plays.js?v=4";
+import { countPlay, loadPlays, plays, players, onPlays, playsLoaded } from "./plays.js?v=5";
 import { dailyQuiz, dailyDate, dailyLeft, dailyLabel, dailyResult, saveDaily, dailyStreak } from "./daily.js?v=1";
-import { initI18n, LANG, applyLang } from "./i18n.js?v=3";
+import { initI18n, LANG, applyLang } from "./i18n.js?v=4";
 
 // ---------- yardımcılar ----------
 const $ = (s, r = document) => r.querySelector(s);
@@ -127,10 +127,10 @@ function topbar() {
     ${screen === "home" ? `<a class="jg-back" href="/" title="JinjaGames ana sayfasına dön" aria-label="JinjaGames ana sayfasına dön"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14.5 5.5L8 12l6.5 6.5"/></svg><img src="/favicon-j-shuriken-32.png" width="20" height="20" alt=""></a>` : `<button class="jg-back" data-go="home" title="JinjaQuiz ana sayfasına dön" aria-label="JinjaQuiz ana sayfasına dön"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14.5 5.5L8 12l6.5 6.5"/></svg><img src="/favicon-j-shuriken-32.png" width="20" height="20" alt=""></button>`}
     <button class="brand" data-go="home" aria-label="JinjaQuiz ana sayfa"><span class="mark"><svg class="logo" viewBox="0 0 48 48" aria-hidden="true"><defs><linearGradient id="jqG" x1="8" y1="6" x2="40" y2="42" gradientUnits="userSpaceOnUse"><stop stop-color="#ff3b2f"/><stop offset=".6" stop-color="#e3171f"/><stop offset="1" stop-color="#ff6a3d"/></linearGradient></defs><path d="M36.4 9.6A19.5 19.5 0 1 0 43.3 30" fill="none" stroke="url(#jqG)" stroke-width="3.6" stroke-linecap="round"/><path d="M12.2 13.1A16 16 0 0 0 20 39.5" fill="none" stroke="#ff3b2f" stroke-width="1.1" stroke-linecap="round" opacity=".45"/><g class="eq" stroke="#ff8a5c" stroke-width="2.4" stroke-linecap="round"><path d="M40.2 12.6v3.4"/><path d="M43.6 15.2v5.2"/><path d="M46.6 18.6v2.6"/></g><path d="M19.4 10L38 7.4l-3.3 6-6.7.6-1.8 14.6c-.7 5.6-4.6 8.4-9.2 8-3.9-.4-5.9-3.2-5.4-6.9l5.8-.6c-.1 2 .8 2.9 2.1 2.8 1.3-.1 2-1.2 2.2-3.2l1.7-14-5.4.6z" fill="url(#jqG)" stroke="#1a0606" stroke-width=".8" stroke-linejoin="round"/><path d="M25.2 14.6l-1.6 13.2M21.2 11l11.6-1.6" stroke="#fff" stroke-width="1.5" stroke-linecap="round" opacity=".92"/><g transform="rotate(14 32.5 32)"><path d="M32.5 22.5l2.3 7.2 7.2 2.3-7.2 2.3-2.3 7.2-2.3-7.2-7.2-2.3 7.2-2.3z" fill="#18161b" stroke="#f6f1ef" stroke-width="1.2" stroke-linejoin="round"/><path d="M32.5 22.5l2.3 7.2-2.3 2.3zM42 32l-7.2 2.3-2.3-2.3zM32.5 41.5l-2.3-7.2 2.3-2.3zM23 32l7.2-2.3 2.3 2.3z" fill="#3a3640"/></g><circle cx="32.5" cy="32" r="2.1" fill="#f6f1ef"/><circle cx="32.5" cy="32" r=".9" fill="#18161b"/></svg></span><b lang="en">JINJA</b><span lang="en">QUIZ</span></button>
     ${screen === "home" && !mode ? `<nav class="barNav" aria-label="Bölümler">
-      <button data-nav="daily">${ic("sparkles")}Günün quizi</button>
-      <button data-nav="lobbies">${ic("globe")}Açık lobiler</button>
-      <button data-nav="catalog">${ic("layers")}Kategoriler</button>
-      <a href="create/">${ic("plus")}Quiz oluştur</a>
+      <button data-nav="daily">Günün quizi</button>
+      <button data-nav="lobbies">Açık lobiler</button>
+      <button data-nav="catalog">Kategoriler</button>
+      <a href="create/">Quiz oluştur</a>
     </nav>` : ""}
     <div class="barEnd">
       ${screen === "home" && !mode ? `<button class="btn primary sm barCta" data-do="create">${ic("users")}Lobi kur</button>` : ""}
@@ -592,7 +592,7 @@ chatEl.className = "chatBox";
 chatEl.hidden = true;
 function chatBuild() {
   chatEl.setAttribute("aria-label", "Lobi sohbeti");
-  chatEl.innerHTML = `<header class="chatHead"><span class="chatTitle">${ic("message-circle")}<b>Sohbet</b></span><small>Geçici · son 10 mesaj</small><button type="button" class="icon sm chatExp" aria-label="Sohbeti genişlet ya da daralt">${ic("chevron-down")}</button><button type="button" class="icon sm chatMin" aria-label="Sohbeti kapat" title="Sohbeti kapat">${ic("x")}</button></header>
+  chatEl.innerHTML = `<header class="chatHead"><span class="chatTitle"><b>Sohbet</b></span><small>Geçici · son 10 mesaj</small><button type="button" class="icon sm chatExp" aria-label="Sohbeti genişlet ya da daralt">${ic("chevron-down")}</button><button type="button" class="icon sm chatMin" aria-label="Sohbeti kapat" title="Sohbeti kapat">${ic("x")}</button></header>
   <ol class="chatList" id="chatList" aria-live="polite"></ol>
   <form class="chatForm" id="chatForm" autocomplete="off"><button type="button" class="icon sm chatMin chatMinM" aria-label="Sohbeti kapat" title="Sohbeti kapat">${ic("x")}</button><input id="chatIn" maxlength="200" placeholder="Mesaj yaz…" enterkeyhint="send" aria-label="Mesaj yaz"><button class="btn primary" type="submit" aria-label="Gönder">${ic("send")}</button></form>`;
   if (!chatEl.hidden) chatDraw();
@@ -629,7 +629,7 @@ function chatDraw() {
   chatEl.classList.toggle("exp", !!chat.exp);
   const list = $("#chatList");
   list.innerHTML = chat.list.length
-    ? chat.list.map((m) => `<li class="${m.pid === pid ? "me" : ""}" data-noi18n>${avatar(view?.players?.find((p) => p.pid === m.pid) || m, "xs")}<span class="chatMsg"><b>${esc(m.name)}</b> <span>${esc(m.text)}</span></span></li>`).join("")
+    ? chat.list.map((m) => `<li class="${m.pid === pid ? "me" : ""}" data-noi18n>${avatar(view?.players?.find((p) => p.pid === m.pid) || m, "xs")}<span class="chatMsg"><b>${esc(maskName(m.name))}</b> <span>${esc(m.text)}</span></span></li>`).join("")
     : `<li class="chatEmpty">Henüz mesaj yok. Selam ver! 👋</li>`;
   list.scrollTop = list.scrollHeight;
 }
@@ -798,6 +798,8 @@ async function refreshLobbies(force = false) {
   lobbiesAt = Date.now();
   drawLobbies();
 }
+// oynanma sayıları: ana sayfa açıkken beş dakikada bir yeniden toplanır
+setInterval(() => { if (screen === "home" && !mode && !document.hidden) loadPlays({ fresh: true }); }, 300000);
 // ana sayfa açıkken yarım dakikada bir tazele
 setInterval(() => { if (screen === "home" && !mode && !document.hidden) refreshLobbies(); }, 30000);
 function drawLobbies() {
@@ -809,8 +811,8 @@ const LOBBY_SHOW = 4;
 function lobbiesHtml() {
   const ls = ui.lobbies;
   const card = (l) => `<button class="lbyCard" data-joinlobby="${esc(l.code)}" aria-label="${esc(l.host.name)} lobisine katıl">
-      <span class="lbyTop">${avatar(l.host, "lg")}<span class="lbyWho"><b data-noi18n>${esc(l.host.name)}</b><small>${l.lock ? `${ic("lock")}Şifreli lobi` : `${ic("globe")}Herkese açık`}</small></span><span class="lbyGo">${l.lock ? "Şifreyle katıl" : "Katıl"}${ic("chevron-right")}</span></span>
-      <span class="lbyQuiz">${l.quizzes.length ? l.quizzes.map((q) => `<i data-noi18n>${esc(q)}</i>`).join("") + (l.more ? `<i>+${l.more}</i>` : "") : `<i class="muted">Quiz seçiliyor</i>`}</span>
+      <span class="lbyTop">${avatar(l.host, "lg")}<span class="lbyWho"><b data-noi18n>${esc(maskName(l.host.name))}</b><small>${l.lock ? `${ic("lock")}Şifreli lobi` : `${ic("globe")}Herkese açık`}</small></span><span class="lbyGo">${l.lock ? "Şifreyle katıl" : "Katıl"}${ic("chevron-right")}</span></span>
+      <span class="lbyQuiz">${l.quizzes.length ? l.quizzes.map((q) => `<i data-noi18n>${esc(maskName(q))}</i>`).join("") + (l.more ? `<i>+${l.more}</i>` : "") : `<i class="muted">Quiz seçiliyor</i>`}</span>
       <span class="lbyBar"><span class="lbyFill" style="width:${Math.round((num(l.players) / Math.max(1, num(l.max))) * 100)}%"></span></span>
       <span class="lbyFoot">${ic("users")}${num(l.players)}/${num(l.max)} oyuncu</span>
     </button>`;
@@ -822,14 +824,14 @@ function lobbiesHtml() {
     : `<div class="lbyEmpty"><span class="lbyRadar" aria-hidden="true">${ic("globe")}</span><div><b>Şu an açık lobi yok</b><p class="muted">İlk açık lobiyi sen kur; herkes buradan tek dokunuşla katılabilir.</p>
         <div class="lbyBtns"><button class="btn primary sm" data-do="create">${ic("users")}Lobi kur</button><button class="btn soft sm" data-do="focusJoin">${ic("log-in")}Kodla katıl</button></div></div></div>`;
   return `<section class="hm-lobbies" id="lobbies" aria-label="Açık lobiler">
-    <div class="lbyHead"><div><span class="kicker"><i class="liveDot" aria-hidden="true"></i>Canlı</span><h2>Açık lobiler${ls?.length ? ` <em class="newTag">${ls.length}</em>` : ""}</h2></div><button class="btn ghost sm" data-do="lobRefresh" aria-label="Listeyi yenile">${ic("refresh-cw")}Yenile</button></div>
+    <div class="lbyHead"><div><h2>Açık lobiler${ls?.length ? ` <em class="newTag">${ls.length}</em>` : ""}</h2></div><button class="btn ghost sm" data-do="lobRefresh" aria-label="Listeyi yenile">${ic("refresh-cw")}Yenile</button></div>
     ${body}
   </section>`;
 }
 // Ana sayfada öne çıkan "kendi quizini oluştur" kartı
 function createCardHtml() {
   return `<section class="hm-create" id="create" aria-label="Quiz oluştur">
-    <span class="kicker">${ic("sparkles")} Kendi quizin</span>
+    <span class="kicker">Kendi quizin</span>
     <h2>Kendi quizini yap, herkes oynasın.</h2>
     <p class="muted">Türünü seç, birkaç dakikada kur. Herkese açık yayınlarsan Topluluk'ta herkes görür.</p>
     <a class="btn primary wide" href="create/">${ic("plus")}Quiz oluştur</a>
@@ -842,7 +844,7 @@ function sortLists(lists) {
   if (ui.sort === "new") return lists.map((l, i) => [l, num(l.at), i]).sort((a, b) => b[1] - a[1] || a[2] - b[2]).map((x) => x[0]);
   return lists;
 }
-const sortBar = () => `<div class="sortBar" role="group" aria-label="Sırala">${ic("arrow-up-down")}${[["", "Önerilen"], ["plays", "En çok oynanan"], ["new", "En yeni"]].map(([v, t]) => `<button data-sort="${v}" aria-pressed="${ui.sort === v}">${t}</button>`).join("")}</div>`;
+const sortBar = () => `<div class="sortBar" role="group" aria-label="Sırala">${[["", "Önerilen"], ["plays", "En çok oynanan"], ["new", "En yeni"]].map(([v, t]) => `<button data-sort="${v}" aria-pressed="${ui.sort === v}">${t}</button>`).join("")}</div>`;
 function topPlayedRail() {
   const top = allLists().filter((l) => l.genre !== "Senin" && plays(l.id) > 0).sort((a, b) => plays(b.id) - plays(a.id)).slice(0, 16);
   return top.length >= 3 ? rail("En çok oynananlar", "flame", top.map((l, k) => qcard(l, k)).join(""), "") : "";
@@ -865,7 +867,7 @@ function dailyHtml() {
   const marks = (res?.marks || []).map((m) => (m ? "🟩" : "🟥")).join("");
   return `<section class="hm-daily${res ? " done" : ""}" id="daily">
     <div class="dlyMain">
-      <span class="kicker">${ic("sparkles")} Günün quizi · ${esc(dailyLabel(d.daily))}</span>
+      <span class="kicker">Günün quizi · ${esc(dailyLabel(d.daily))}</span>
       <h2>${res ? "Bugünün quizini çözdün!" : "Bugün herkes aynı 10 soruyu çözüyor"}</h2>
       ${res ? `<p class="dlyRes"><b>${num(res.hits)}/${d.items.length}</b> doğru · <b>${num(res.pts)}</b> puan${marks ? ` <span class="dlyMarks">${marks}</span>` : ""}</p>` : `<p class="muted">Her gün yeni 10 soru, her biri farklı bir kategoriden. İlk oyunun günün sıralamasına yazılır.</p>`}
       <div class="dlyBtns">${res
@@ -987,7 +989,7 @@ function drawHome() {
 
   <section class="catalog hm-cat" id="catalog">
     <div class="hm-catHead">
-      <div><span class="kicker">${ic(tab[1])} ${esc(tab[0])}</span><h2>${esc(tab[2])}</h2></div>
+      <div><span class="kicker">${esc(tab[0])}</span><h2>${esc(tab[2])}</h2></div>
       <form class="search hm-search" id="searchForm" role="search">
         ${ic("search")}
         <input id="search" type="search" placeholder="Quiz, kategori ya da sanatçı ara…" value="${esc(ui.query)}" aria-label="Quiz, kategori ya da sanatçı ara">
@@ -1097,7 +1099,7 @@ function numCard(c, k = 0) {
 }
 function numRail() {
   return `<div class="hm-rail num">
-    <div class="hm-railHead"><h3>${ic("hash")}Sayı Quizi <em class="newTag">Yeni</em></h3><button class="hm-more" data-tab="Sayı">Tümünü gör ${ic("chevron-right")}</button></div>
+    <div class="hm-railHead"><h3>Sayı Quizi</h3><button class="hm-more" data-tab="Sayı">Tümünü gör ${ic("chevron-right")}</button></div>
     <div class="hm-track">${NUMCATS.map((c, k) => numCard(c, k)).join("")}</div>
   </div>`;
 }
@@ -1157,7 +1159,7 @@ function mixCats(list) {
 function triviaRail(comm) {
   const cats = TCATS.filter((c) => TRIVIA.some((t) => t.cat === c) || comm.some((t) => t.cat === c));
   return `<div class="hm-rail trivia">
-    <div class="hm-railHead"><h3>${ic("circle-help")}Trivia</h3><button class="hm-more" data-tab="Trivia">Tümünü gör ${ic("chevron-right")}</button></div>
+    <div class="hm-railHead"><h3>Trivia</h3><button class="hm-more" data-tab="Trivia">Tümünü gör ${ic("chevron-right")}</button></div>
     <div class="catTiles">${cats
       .map((c) => {
         const n = TRIVIA.filter((t) => t.cat === c).length + comm.filter((t) => t.cat === c).length;
@@ -1170,7 +1172,7 @@ function triviaRail(comm) {
 }
 function rail(title, icon, inner, more, cls = "") {
   return `<div class="hm-rail ${cls}">
-    <div class="hm-railHead"><h3>${ic(icon)}${esc(title)}</h3>${more ? `<button class="hm-more" data-tab="${esc(more)}">Tümünü gör ${ic("chevron-right")}</button>` : ""}</div>
+    <div class="hm-railHead"><h3>${esc(title)}</h3>${more ? `<button class="hm-more" data-tab="${esc(more)}">Tümünü gör ${ic("chevron-right")}</button>` : ""}</div>
     <div class="hm-track">${inner}</div>
   </div>`;
 }
@@ -1344,7 +1346,7 @@ function lobbyHtml(v) {
         ? ""
         : `<aside class="players block">
       <div class="blockHead"><h2>Oyuncular</h2><span class="count">${num(v.players.length)}/${MAX_PLAYERS}</span></div>
-      ${v.history?.length ? `<p class="standHead">${ic("trophy")} Genel sıralama · ${v.history.length} quiz</p>` : ""}
+      ${v.history?.length ? `<p class="standHead">Genel sıralama · ${v.history.length} quiz</p>` : ""}
       <ul class="${v.history?.length ? "standings" : ""}">${(v.history?.length ? [...v.players].sort((a, b) => num(b.score) - num(a.score)) : v.players)
         .map(
           (p, i) => `<li class="${p.online ? "" : "off"} ${p.pid === v.me ? "me" : ""}" style="--i:${i}">${v.history?.length ? `<span class="rank r${i + 1}">${i + 1}</span>` : ""}${avatar(p)}<b><bdi data-noi18n>${esc(p.name)}</bdi>${p.pid === v.me ? " <small>(sen)</small>" : ""}</b>
@@ -1788,7 +1790,7 @@ function opVerdict(r) {
 function opAnswers(v, q, reveal) {
   const p = opPicks(q);
   const mineA = q.mine?.answer && typeof q.mine.answer === "object" ? q.mine.answer : null;
-  const row = (opts, key, title, icon, right, picked) => `<div class="opRow"><h3>${ic(icon)}${title}</h3><div class="answers ${v.solo ? "" : "multi"}">${(opts || [])
+  const row = (opts, key, title, icon, right, picked) => `<div class="opRow"><h3>${title}</h3><div class="answers ${v.solo ? "" : "multi"}">${(opts || [])
     .map((o, i) => {
       const isRight = reveal && o === right;
       const isPicked = picked === o;
