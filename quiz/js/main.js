@@ -13,7 +13,7 @@ import { hostRoom, guestRoom, newCode, validCode } from "./net.js?v=5";
 import { announceLobby, listLobbies } from "./lobbies.js?v=4";
 import { countPlay, loadPlays, plays, players, onPlays, playsLoaded } from "./plays.js?v=6";
 import { dailyQuiz, dailyDate, dailyLeft, dailyLabel, dailyResult, saveDaily, dailyStreak } from "./daily.js?v=1";
-import { initI18n, LANG, applyLang } from "./i18n.js?v=5";
+import { initI18n, LANG, applyLang } from "./i18n.js?v=6";
 
 // ---------- yardımcılar ----------
 const $ = (s, r = document) => r.querySelector(s);
@@ -2285,6 +2285,14 @@ function openSheet(kind, ctx = {}) {
 // Onay paneli: quiz gizleme, listeden kaldırma, yayından kaldırma
 function rmSheet() {
   const { act, id } = sheetCtx;
+  if (act === "kick") {
+    const p = view?.players?.find((x) => x.pid === id);
+    if (!p) return closeSheet();
+    sheetBody.innerHTML = `<div class="sheetHead rmHead">${avatar(p, "lg")}<div><small class="kicker" data-noi18n>${esc(p.name)}</small><h2>Lobiden çıkarılsın mı?</h2></div><button class="icon" data-close aria-label="Kapat">${ic("x")}</button></div>
+      <p class="muted">Bu oyuncu lobiden çıkarılır. İstersen davet bağlantısıyla yeniden katılabilir.</p>
+      <div class="sheetFoot"><button class="btn ghost" data-close autofocus>Vazgeç</button><button class="btn danger" data-do="rmConfirm">${ic("x")}Çıkar</button></div>`;
+    return;
+  }
   const l = allLists().find((x) => String(x.id) === String(id)) || { name: "Bu quiz" };
   const own = String(id).startsWith("my");
   const [title, text, icon, label] = {
@@ -2297,18 +2305,22 @@ function rmSheet() {
     <div class="sheetFoot"><button class="btn ghost" data-close autofocus>Vazgeç</button><button class="btn danger" data-do="rmConfirm">${ic(icon)}${label}</button></div>`;
 }
 async function rmConfirm() {
-  const { act, id } = sheetCtx;
+  const { act: what, id } = sheetCtx;
   closeSheet();
-  if (act === "hide") {
+  if (what === "hide") {
     const q = (ui.community || []).find((x) => x.id === id);
     hideQuiz(q || id);
     ui.community = (ui.community || []).filter((x) => x.id !== id);
     topbar();
     toast("Gizlendi. Profilinin yanındaki göz simgesinden geri açabilirsin.");
-  } else if (act === "unsave") {
+  } else if (what === "unsave") {
     removeCustom(id);
     toast("Listenden kaldırıldı.");
-  } else if (act === "unpublish") {
+  } else if (what === "kick") {
+    if (mode?.role !== "host" || !view?.players?.some((x) => x.pid === id)) return;
+    mode.net.kick(id);
+    return act({ type: "kick", pid: id });
+  } else if (what === "unpublish") {
     const l = ui.community?.find((x) => x.id === id && x.mine);
     if (!l) return;
     await removeQuiz(l);
@@ -3223,10 +3235,7 @@ document.addEventListener("click", async (e) => {
     if (d.secs) return act({ type: "settings", seconds: Number(d.secs) });
     if (d.remove) return act({ type: "remove", id: d.remove });
     if (d.move) return act({ type: "move", id: d.move, dir: Number(d.dir) });
-    if (d.kick) {
-      if (mode.role === "host") mode.net.kick(d.kick);
-      return act({ type: "kick", pid: d.kick });
-    }
+    if (d.kick) return openSheet("rmConfirm", { act: "kick", id: d.kick });
     if (d.pav) {
       Object.assign(sheetCtx.ed, { avatar: d.pav, photo: "", name: $("#pName").value });
       return profileSheet();
