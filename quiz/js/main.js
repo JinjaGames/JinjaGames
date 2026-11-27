@@ -13,7 +13,7 @@ import { hostRoom, guestRoom, newCode, validCode } from "./net.js?v=5";
 import { announceLobby, listLobbies } from "./lobbies.js?v=4";
 import { countPlay, loadPlays, plays, players, onPlays, playsLoaded } from "./plays.js?v=6";
 import { dailyQuiz, dailyDate, dailyLeft, dailyLabel, dailyResult, saveDaily, dailyStreak } from "./daily.js?v=1";
-import { initI18n, LANG, applyLang } from "./i18n.js?v=6";
+import { initI18n, LANG, applyLang } from "./i18n.js?v=7";
 
 // ---------- yardımcılar ----------
 const $ = (s, r = document) => r.querySelector(s);
@@ -2232,11 +2232,15 @@ setInterval(() => {
   if ((inGame() || inLobby()) && !history.state?.jqGame) history.pushState({ jqGame: 1 }, "");
 }, 500);
 addEventListener("popstate", () => {
+  if (screen === "number" && inGame()) {
+    if (confirm(LEAVE_Q)) showHomeFromHistory();
+    else history.pushState({ jqGame: 1 }, "");
+    return;
+  }
   if (inGame() || inLobby()) {
-    if (confirm(inGame() ? LEAVE_Q : "Lobiden ayrılmak istediğine emin misin?")) {
-      if (screen === "number") showHomeFromHistory();
-      else leaveRoom();
-    } else history.pushState({ jqGame: 1 }, "");
+    // geri tuşu: sayfada kal, onay panelini aç
+    history.pushState({ jqGame: 1 }, "");
+    if (!sheet.open) openSheet("leave");
     return;
   }
   const st = history.state;
@@ -2276,9 +2280,16 @@ function openSheet(kind, ctx = {}) {
       ${list.length ? `<ol class="hidList">${list.map((x) => `<li>${ic("eye-off")}<span><b>${esc(x.name || "Adsız quiz")}</b>${x.author ? `<small>${esc(x.author)}</small>` : ""}</span><button class="btn soft sm" data-unhide="${esc(x.id)}">${ic("eye")}Geri göster</button></li>`).join("")}</ol>` : `<p class="muted">Gizlenen quiz yok.</p>`}`;
   }
   if (kind === "leave") {
-    sheetBody.innerHTML = `<div class="sheetHead"><h2>Lobiden ayrılsın mı?</h2></div>
-      <p class="muted">${isHost() && !view?.solo ? "Kurucu sensin; ayrılırsan oyun herkes için biter." : "Puanın bu lobide kalır, kodla geri dönebilirsin."}</p>
-      <div class="sheetFoot"><button class="btn ghost" data-close>Vazgeç</button><button class="btn danger" data-do="leave">${ic("door-open")}Ayrıl</button></div>`;
+    const solo = mode?.role === "solo" || view?.solo;
+    const playing = inGame();
+    const text = solo
+      ? "Bu oyundaki ilerlemen kaybolur."
+      : isHost()
+      ? hostAlone() ? "Lobide başka kimse yok; ayrılırsan lobi kapanır." : "Kurucu sensin; ayrılırsan lobi herkes için kapanır."
+      : playing ? "Bu oyundaki ilerlemen kaybolur. Puanın lobide kalır, kodla geri dönebilirsin." : "Puanın bu lobide kalır, kodla geri dönebilirsin.";
+    sheetBody.innerHTML = `<div class="sheetHead"><h2>${solo ? "Quizden çıkılsın mı?" : "Lobiden ayrılsın mı?"}</h2><button class="icon" data-close aria-label="Kapat">${ic("x")}</button></div>
+      <p class="muted">${text}</p>
+      <div class="sheetFoot"><button class="btn ghost" data-close autofocus>Vazgeç</button><button class="btn danger" data-do="leave">${ic("door-open")}${solo ? "Çık" : "Ayrıl"}</button></div>`;
   }
   if (!sheet.open) sheet.showModal();
 }
@@ -3087,9 +3098,9 @@ document.addEventListener("click", async (e) => {
   try {
     if ("close" in d) return closeSheet();
     if (d.go) {
-      if (d.go === "home" && inGame() && !confirm(LEAVE_Q)) return;
-      // Tek başına oynarken ana sayfaya dönmek oyunu bitirir (geri dönülecek bir lobi yok).
-      if (d.go === "home" && (mode?.role === "solo" || hostAlone())) return leaveRoom();
+      // Ana sayfaya dönmek oyunu ya da lobiyi bitirecekse önce onay paneli
+      if (d.go === "home" && screen === "number" && inGame() && !confirm(LEAVE_Q)) return;
+      if (d.go === "home" && screen === "room" && mode && (inGame() || mode.role === "solo" || hostAlone())) return openSheet("leave");
       if (d.go === "home" && !mode && screen !== "home") return backHome();
       screen = d.go === "room" && mode ? "room" : "home";
       lastSig = "";
