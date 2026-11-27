@@ -1,12 +1,14 @@
 // JinjaQuiz: quiz oluşturma sayfası (/quiz/create/). Sanatçı ve şarkı araması ayrı sekmelerde;
 // sanatçının popüler şarkıları ve tüm albümleri tek tek ya da topluca eklenebilir.
 import { searchArtists, searchTracks, artistInfo, artistTop, artistAlbums, albumTracks, ownTracks, isAlternate, customLists, saveCustom, removeCustom, cleanTracks, fold, cdn } from "./music.js?v=5";
-import { fetchCommunity, loadFull, publishQuiz, removeQuiz, myPubkey, MIN_TRACKS, MAX_TRACKS } from "./community.js?v=10";
+import { fetchCommunity, loadFull, publishQuiz, removeQuiz, myPubkey, MIN_TRACKS, MAX_TRACKS } from "./community.js?v=11";
 import { TCATS, TART, EMOJIS, T_MIN, T_MAX, cleanItems, cleanCat, cleanEmoji, isTF, IMG } from "./trivia.js?v=4";
-import { cleanOps, RANK_PTS, OP_PTS } from "./engine.js?v=11";
-import { initI18n } from "./i18n.js?v=10";
+import { cleanOps, RANK_PTS, OP_PTS } from "./engine.js?v=12";
+import { isBadName } from "./badwords.js?v=1";
+import { quizSlug } from "./slug.js?v=1";
+import { initI18n } from "./i18n.js?v=11";
 import { rankItems } from "./rank.js?v=4";
-import { OP_MIN } from "./community.js?v=10";
+import { OP_MIN } from "./community.js?v=11";
 
 const $ = (s, r = document) => r.querySelector(s);
 const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
@@ -114,10 +116,20 @@ function ask({ title, text = "", ok = "Evet", danger = true }) {
     askDlg.showModal();
   });
 }
+// Lobinin içinde açıldıysa (?gomulu=1): sayfa lobinin üstündeki pencerededir; çıkış ve kayıt lobiye haber verilir.
+const EMBED = new URLSearchParams(location.search).has("gomulu") && window.parent !== window;
+if (EMBED) document.body.classList.add("embed");
+const toLobby = (m) => window.parent.postMessage(m, location.origin);
+async function embedClose() {
+  if (hasContent() && !st.saving && !(await ask({ title: "Quiz oluşturmaktan çıkılsın mı?", text: "Kaydetmediğin değişiklikler kaybolur. Lobin açık kalır.", ok: "Çık" }))) return;
+  toLobby({ jq: "close" });
+}
+if (EMBED) addEventListener("message", (e) => { if (e.origin === location.origin && e.source === window.parent && e.data?.jq === "askClose") embedClose(); });
 // Sayfadan çıkan bağlantılar (geri ok, logo): kaydedilmemiş içerik varsa önce sor
 document.addEventListener("click", async (e) => {
   const a = e.target.closest("a[href]");
   if (!a || e.defaultPrevented || e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || a.target === "_blank") return;
+  if (EMBED) { e.preventDefault(); return embedClose(); }
   if (!hasContent() || st.saving) return;
   e.preventDefault();
   const yes = await ask({ title: editing() ? "Düzenlemeden çıkılsın mı?" : "Quiz oluşturmaktan çıkılsın mı?", text: "Kaydetmediğin değişiklikler kaybolur.", ok: "Çık" });
@@ -299,6 +311,10 @@ function opMain() {
 const keepCustom = (l) => (saveCustom(l), l);
 const FROM_LOBBY = new URLSearchParams(location.search).has("lobi");
 function finish(q, tab) {
+  if (EMBED) {
+    st.saving = true;
+    return toLobby({ jq: "saved", q });
+  }
   if (FROM_LOBBY && !window.opener) {
     // tarayıcı yeni sekme yerine aynı sekmede açtıysa: lobiye geri dön, quiz orada açılır
     try { sessionStorage.setItem("jqLobbyBack", JSON.stringify({ at: Date.now(), q })); } catch {}
@@ -316,7 +332,11 @@ function finish(q, tab) {
     setTimeout(() => window.close(), 900);
     return;
   }
-  if (tab === "topluluk") try { sessionStorage.setItem("jqJustPublished", JSON.stringify(q)); } catch {}
+  if (tab === "topluluk") {
+    try { sessionStorage.setItem("jqJustPublished", JSON.stringify(q)); } catch {}
+    location.href = "../?q=" + encodeURIComponent(quizSlug(q)) + "&yeni=1";
+    return;
+  }
   location.href = "../?tab=" + tab;
 }
 async function saveOps() {
@@ -535,12 +555,49 @@ async function loadAlbum(al) {
   return tr;
 }
 
+// ---- yayından önce: uygunsuz kelime yok, adres (ad) boş ----
+// Herkese açık quizin adı, açıklaması ve yazar adı küfür içeremez. Her quizin adından bir bağlantısı olur
+// (jinjagames.com/quiz/wegh); aynı türde aynı adla ikinci bir quiz yayınlanamaz, ad değiştirilmelidir.
+const RESERVED = new Set(["gunun-quizi", "create", "olustur", "data", "js", "assets", "vendor", "catalog", "quiz"]);
+let checking = false;
+async function checkPublish() {
+  if (checking) return false;
+  checking = true;
+  try { return await checkPublishNow(); } finally { checking = false; }
+}
+async function checkPublishNow() {
+  const name = st.name;
+  const bad = [["qName", st.name, "Quiz adında"], ["qDesc", st.desc, "Açıklamada"], ["qAuthor", st.author, "Yazar adında"]].find(([, v]) => v && isBadName(v));
+  if (bad) {
+    $("#" + bad[0])?.focus();
+    toast(`${bad[2]} uygunsuz bir kelime var. Lütfen değiştir.`, "bad");
+    return false;
+  }
+  const slug = quizSlug({ name: st.name, kind: st.kind === "rev" || st.kind === "song" ? "" : st.kind, rev: st.kind === "rev" });
+  let taken = RESERVED.has(slug);
+  if (!taken) {
+    try {
+      const [{ PRESETS, MIXES }, { TRIVIA }, { RANK_QUIZZES }, { ANIME_QUIZZES }, comm] = await Promise.all([
+        import("./music.js?v=5"), import("./trivia.js?v=4"), import("./rank.js?v=4"), import("./anime.js?v=3"), fetchCommunity({ ms: 2500 }).catch(() => []),
+      ]);
+      const mineNow = (x) => st.d && x.d === st.d && x.pubkey === myPubkey(); // düzenlenen quizin kendisi
+      taken = [...PRESETS, ...MIXES, ...TRIVIA, ...RANK_QUIZZES, ...ANIME_QUIZZES, ...comm].some((x) => !mineNow(x) && quizSlug(x) === slug);
+    } catch {}
+  }
+  if (taken) {
+    $("#qName")?.focus();
+    toast(`“${name}” adında bir quiz zaten var (jinjagames.com/quiz/${slug}). Lütfen farklı bir ad seç.`, "bad");
+    return false;
+  }
+  return true;
+}
 // ---- kaydet ----
 async function save() {
   st.name = $("#qName").value.trim();
   st.desc = $("#qDesc").value.trim();
   if ($("#qAuthor")) st.author = $("#qAuthor").value.trim();
   if (!st.name) return $("#qName").focus(), toast("Quize bir ad ver.", "bad");
+  if (st.public && !(await checkPublish())) return;
   if (st.kind === "trivia") return saveTrivia();
   if (st.kind === "rank") return saveRank();
   if (st.kind === "op") return saveOps();

@@ -191,7 +191,7 @@ const addS = (e) => {
   const k = e.pubkey + "|" + dTag(e);
   const p = bestS.get(k);
   const s = scoreOf(e), ps = p ? scoreOf(p) : -1;
-  if (!p || s > ps || (s === ps && e.created_at < p.created_at)) bestS.set(k, pick(e));
+  if (!p || s > ps || (s === ps && e.created_at > p.created_at)) bestS.set(k, pick(e)); // eşit puanda yenisi: güncel ad / fotoğraf
 };
 oldS.forEach(addS);
 const beforeS = JSON.stringify(oldS.map((e) => e.id).sort());

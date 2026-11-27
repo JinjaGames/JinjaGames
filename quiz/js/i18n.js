@@ -208,6 +208,30 @@ const D = {
   "Dinlenme verileri alınıyor": "Fetching play data", "En çok dinlenen 5 şarkı sıralanıyor": "Ranking the 5 most-played songs", "15 şaşırtmaca şık seçiliyor": "Choosing 15 decoy options",
   "Aranıyor": "Searching", "Görsel alanı": "Image area", "Doğru cevap açılınca görünür.": "Shown when the answer is revealed.", "Soru sorulurken görünür (ör. “Bu kim?”).": "Shown with the question (e.g. “Who is this?”).",
   "Tek tek şarkı ara ve ekle. Farklı sanatçılardan karışık bir quiz yapabilirsin.": "Search and add songs one by one. You can mix songs from different artists.",
+  // lobi: istekler, kuruculuk, emoji, oluşturma, tema
+  "Quiz öner": "Suggest a quiz", "İstekler": "Requests", "Ekle": "Add", "İsteği kaldır": "Remove request", "Ben de istiyorum": "I want this too", "Oyunu geri al": "Take back your vote",
+  "Oynamak istediğin quize dokun; kurucuya ve herkese istek olarak gider. Başkasının isteğine dokunursan oy vermiş olursun.": "Tap a quiz you want to play; it goes to the host and everyone as a request. Tapping someone else's request counts as a vote.",
+  "Oyuncuların görmek istediği quizler. “Ekle” ile ayarlarını seçip sıraya koyabilirsin.": "Quizzes players want to play. Use “Add” to pick settings and queue them.",
+  "Kurucu henüz quiz eklemedi. Aşağıdan istediğin quizi öner.": "The host hasn't added a quiz yet. Suggest one below.",
+  "İsteğin kurucuya ve herkese gitti.": "Your request went to the host and everyone.", "En fazla 3 isteğe oy verebilirsin; birini geri al.": "You can vote for up to 3 requests; take one back.",
+  "İstek listesi dolu. Kurucu birkaçını eklesin ya da silsin.": "The request list is full. The host should add or remove some.", "Bu quiz kurucuda bulunamadı. Başka bir quiz seç.": "The host doesn't have this quiz. Pick another one.",
+  "Oyun sürerken istek gönderilemez.": "You can't send requests during a game.", "Geçersiz istek.": "Invalid request.", "Bu quiz artık bulunamıyor.": "This quiz can't be found anymore.",
+  "Kurucu yap": "Make host", "Kurucu yapılsın mı?": "Make them host?", "Kurucu değişiyor": "Host is changing", "Yeni kurucuya bağlanılıyor…": "Connecting to the new host…",
+  "Lobiyi artık o yönetir: quiz ekler, oyunu başlatır. Sen oyuncu olarak lobide kalırsın; quiz sırası, puanlar ve sohbet olduğu gibi sürer.": "They'll run the lobby now: add quizzes, start the game. You stay in the lobby as a player; the queue, scores and chat carry on.",
+  "Artık lobinin kurucususun: quiz ekleyip oyunu başlatabilirsin.": "You're the host now: add quizzes and start the game.", "Yeni kurucuya bağlandın.": "Connected to the new host.",
+  "Kuruculuk yalnızca lobideyken devredilebilir.": "Host can only be handed over in the lobby.", "Bu oyuncu şu an bağlı değil.": "This player isn't connected right now.",
+  "Emoji gönder": "Send emoji", "Biraz yavaş!": "Slow down a bit!", "Lobi oluştur": "Create lobby",
+  "Lobi herkese açılsın mı?": "Make the lobby public?", "Herkese aç": "Make public",
+  "Lobin ana sayfadaki “Açık lobiler” listesinde görünür; kodu bilmeyen herkes de katılabilir. Oyun başlayınca listeden düşer, istediğin zaman yeniden özel yapabilirsin.": "Your lobby shows in “Open lobbies” on the home page; anyone can join, even without the code. It leaves the list when the game starts, and you can make it private again anytime.",
+  "Lobin artık özel: yalnızca kodu ya da bağlantıyı bilenler katılabilir.": "Your lobby is private now: only people with the code or link can join.",
+  "Yeni quiz oluştur": "Create a new quiz", "Lobiden çıkmadan; kaydedince sıraya eklemeye hazır açılır": "Without leaving the lobby; once saved it opens ready to queue", "Lobiden çıkmadan oluştur": "Create without leaving",
+  "Tüm quizlerde ara ya da sanatçı bul…": "Search all quizzes or find an artist…", "Quizler yükleniyor…": "Loading quizzes…",
+  "Quiz oluşturmaktan çıkılsın mı?": "Leave quiz creation?", "Kaydetmediğin değişiklikler kaybolur. Lobin açık kalır.": "Unsaved changes will be lost. Your lobby stays open.",
+  "Açık tema": "Light theme", "Koyu tema": "Dark theme", "Açık temaya geç": "Switch to light theme", "Koyu temaya geç": "Switch to dark theme",
+  "Quizin bağlantısını kopyala": "Copy quiz link", "Quizin bağlantısı kopyalandı.": "Quiz link copied.", "Quizin yayında! Bağlantısını kopyalayıp paylaşabilirsin.": "Your quiz is live! Copy its link and share it.",
+  "Bu bağlantıdaki quiz bulunamadı; adı değişmiş ya da kaldırılmış olabilir.": "The quiz at this link wasn't found; it may have been renamed or removed.",
+  "Quiz adında uygunsuz bir kelime var. Lütfen değiştir.": "The quiz name has an inappropriate word. Please change it.", "Açıklamada uygunsuz bir kelime var. Lütfen değiştir.": "The description has an inappropriate word. Please change it.",
+  "Yazar adında uygunsuz bir kelime var. Lütfen değiştir.": "The author name has an inappropriate word. Please change it.",
 };
 const EN = new Map(Object.entries(D));
 const DAYS = { Pazar: "Sunday", Pazartesi: "Monday", Salı: "Tuesday", Çarşamba: "Wednesday", Perşembe: "Thursday", Cuma: "Friday", Cumartesi: "Saturday" };
@@ -257,6 +281,12 @@ const RX = [
   [/^"(.+)" yayından kaldırılsın mı\? Başkaları artık göremez\.$/, "Unpublish \"$1\"? Others won't see it anymore."],
   [/^"(.+)" hazır\. Ayarlarını seçip sıraya ekle\.$/, "\"$1\" is ready. Pick its settings and add it to the queue."],
   [/^Rekorun (.+)$/, "Your record $1"],
+  [/^(.+) istiyor: (.+)$/, "$1 wants: $2"],
+  [/^“(.+)” kurucuya istek olarak gitti\.$/, "“$1” went to the host as a request."],
+  [/^Kuruculuk (.+) devredildi\. Lobide oyuncu olarak devam ediyorsun\.$/, "Host handed over to $1. You continue in the lobby as a player."],
+  [/^(.+) kurucu olsun$/, "Make $1 host"],
+  [/^(\d+) oy$/, (_, n) => pl(n, "vote", "votes")],
+  [/^“(.+)” adında bir quiz zaten var \((.+)\)\. Lütfen farklı bir ad seç\.$/, "A quiz named “$1” already exists ($2). Please choose a different name."],
   [/^rekorun (.+)$/, "your record $1"],
 ];
 function tr1(t) {

@@ -8,6 +8,8 @@
 if(rest==='/'){location.replace('/football/'+location.search+location.hash);return}
 if(/\.[a-z0-9]{2,5}$/i.test(rest))return;
 location.replace('/football/?r='+encodeURIComponent(rest+location.search)+location.hash)})();</script>
+<script>/* JinjaQuiz: her quizin kendi adresi var (/quiz/wegh). Pages'te böyle bir dosya olmadığı için buraya düşer; uygulamaya ?q=wegh olarak verilir, o da adresi yeniden /quiz/wegh yapar. */
+(function(){var m=location.pathname.match(/^\/quiz\/([a-z0-9-]{1,80})\/?$/i);if(!m)return;location.replace('/quiz/?q='+encodeURIComponent(m[1].toLowerCase())+location.hash)})();</script>
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Page Not Found | JinjaGames</title>
 <meta name="description" content="The page you requested could not be found. Return to JinjaGames and explore Cyber Academy, Locard, DayPot, Jelly Trails and Jelly Pipes.">

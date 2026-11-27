@@ -3,7 +3,7 @@
 // Herkese açık röleler eski kayıtları silebilir; tools/archive_community.mjs bu kayıtları da
 // quiz/data/scores.json içine biriktirir. Site ikisini birleştirir, her oyuncunun en iyi puanını sayar.
 // Sıralamaya yalnızca 10 soruluk oyunlar girer; puan, süre ayarından bağımsız hesaplanır (engine.js, lbPoints).
-import { sign, valid, relayCall, sendToRelays, RELAYS, myPubkey, blocked } from "./community.js?v=10";
+import { sign, valid, relayCall, sendToRelays, RELAYS, myPubkey, blocked } from "./community.js?v=11";
 
 export const LB_QUESTIONS = 10;
 export const LB_TOP = 20;
@@ -15,6 +15,27 @@ const PENDING = "jqLbPending";
 const AVATARS = ["headphones", "guitar", "mic-vocal", "disc-3", "radio", "drum"];
 const COLORS = ["coral", "violet", "mint", "gold", "sky", "rose"];
 const str = (v, n) => (typeof v === "string" ? v.replace(/[\u0000-\u001f\u007f]/g, " ").replace(/\s+/g, " ").trim().slice(0, n) : "");
+// Profil fotoğrafı sıralamada küçük (40 px) bir kopya olarak gider; kayıt şişmesin.
+const PHOTO = /^data:image\/(jpeg|png|webp);base64,[A-Za-z0-9+/=]{1,8000}$/;
+const tinyCache = new Map();
+export async function tinyPhoto(src) {
+  if (!src || !/^data:image\/(jpeg|png|webp);base64,/.test(src)) return "";
+  if (tinyCache.has(src)) return tinyCache.get(src);
+  let out = "";
+  try {
+    const img = new Image();
+    img.src = src;
+    await img.decode();
+    const c = document.createElement("canvas");
+    c.width = c.height = 40;
+    const s = Math.min(img.width, img.height);
+    c.getContext("2d").drawImage(img, (img.width - s) / 2, (img.height - s) / 2, s, s, 0, 0, 40, 40);
+    out = c.toDataURL("image/jpeg", 0.72);
+    if (!PHOTO.test(out)) out = "";
+  } catch {}
+  tinyCache.set(src, out);
+  return out;
+}
 
 /** Quiz kimliğini sıralama anahtarına çevirir; uygun değilse "" (o quizin sıralaması yok). */
 export const lbKey = (id) => {
@@ -55,6 +76,7 @@ function parse(e, key) {
     n: str(c.n, 24) || "Anonim",
     a: AVATARS.includes(c.a) ? c.a : "headphones",
     k: COLORS.includes(c.k) ? c.k : "coral",
+    p: typeof c.p === "string" && PHOTO.test(c.p) ? c.p : "",
     c: Math.max(0, Math.min(LB_QUESTIONS, Number(c.c) | 0)),
     at: e.created_at,
   };
@@ -76,14 +98,43 @@ const ownEvents = new Map(); // key -> bu oturumda yayınlanan kendi kaydım (r�
 
 function merge(key, events) {
   const best = new Map();
+  const last = new Map(); // oyuncunun en yeni kaydı: ad, simge ve fotoğraf buradan (profilini değiştirdiyse güncel görünsün)
   for (const e of events) {
     const r = parse(e, key);
     if (!r) continue;
     const p = best.get(r.pk);
     // Aynı oyuncunun en iyi puanı sayılır; eşitse önce ulaşan önde.
     if (!p || r.s > p.s || (r.s === p.s && r.at < p.at)) best.set(r.pk, r);
+    const l = last.get(r.pk);
+    if (!l || r.at > l.at) last.set(r.pk, r);
   }
-  return [...best.values()].sort((a, b) => b.s - a.s || a.at - b.at);
+  return [...best.values()]
+    .map((r) => { const l = last.get(r.pk); return l === r ? r : { ...r, n: l.n, a: l.a, k: l.k, p: l.p }; })
+    .sort((a, b) => b.s - a.s || a.at - b.at);
+}
+
+/**
+ * Sıralamadaki kendi satırım güncel profilimle (ad, simge, fotoğraf) aynı değilse, aynı puanla yeniden imzalanıp
+ * yayınlanır (puan değişmez). Böylece sonradan fotoğraf yükleyen oyuncu da sıralamada fotoğrafıyla görünür.
+ */
+const synced = new Set();
+export async function syncMine(key, { name, avatar, color, photo }) {
+  key = lbKey(key);
+  const c = cache.get(key);
+  if (!key || !c || synced.has(key)) return false;
+  const me = c.rows.find(isMine);
+  if (!me) return false;
+  const p = await tinyPhoto(photo);
+  const n = str(name, 24) || "Anonim", a = AVATARS.includes(avatar) ? avatar : "headphones", k = COLORS.includes(color) ? color : "coral";
+  if (me.n === n && me.a === a && me.k === k && (me.p || "") === p) return false;
+  synced.add(key);
+  const content = JSON.stringify({ v: 1, q: key, s: me.s, c: me.c, n, a, k, ...(p ? { p } : {}) });
+  const e = sign(KIND, [["d", "jqscore:" + key], ["t", LB_TAG], ["client", "jinjagames.com/quiz"]], content);
+  ownEvents.set(key, e);
+  c.events.push(e);
+  c.rows = merge(key, c.events);
+  sendToRelays(e).catch(() => {});
+  return true;
 }
 
 /** Bellekteki son sıralama (yoksa undefined). */
@@ -127,7 +178,7 @@ export const myBest = (key) => Number(local.get(BEST, {})[lbKey(key)]) || 0;
  * 10 soruluk bir oyunun sonucunu sıralamaya gönderir. Yalnızca rekor kırılınca yayınlanır.
  * Dönüş: { sent: bool, best: önceki rekor }.
  */
-export async function submitScore({ key, score, correct, name, avatar, color }) {
+export async function submitScore({ key, score, correct, name, avatar, color, photo }) {
   key = lbKey(key);
   score = Math.round(Number(score) || 0);
   if (!key || score <= 0 || score > LB_MAX) return { sent: false, best: 0 };
@@ -137,6 +188,7 @@ export async function submitScore({ key, score, correct, name, avatar, color }) 
   const content = JSON.stringify({
     v: 1, q: key, s: score, c: Math.max(0, Math.min(LB_QUESTIONS, Number(correct) | 0)),
     n: str(name, 24) || "Anonim", a: AVATARS.includes(avatar) ? avatar : "headphones", k: COLORS.includes(color) ? color : "coral",
+    ...((await tinyPhoto(photo)) ? { p: await tinyPhoto(photo) } : {}),
   });
   const e = sign(KIND, [["d", "jqscore:" + key], ["t", LB_TAG], ["client", "jinjagames.com/quiz"]], content);
   bests[key] = score;

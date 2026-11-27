@@ -121,6 +121,7 @@ export class Game {
     this.autoNext = true;
     this.history = []; // bu lobide biten quizler (en yeni sonda)
     this.used = {}; // havuz -> daha önce sorulan soruların özetleri (aynı sorular tekrar gelmesin)
+    this.sugg = []; // oyuncuların istekleri (oylar): { id, name, picture, emoji, kind, cat, dz, by: [pid] }
     this.question = null;
     this.timer = null;
     this.join(host.pid, host.profile);
@@ -135,6 +136,7 @@ export class Game {
     const g = Object.assign(Object.create(Game.prototype), data, { onChange, timer: null });
     g.history ??= [];
     g.used ??= {};
+    g.sugg = Array.isArray(g.sugg) ? g.sugg : [];
     for (const p of g.players) p.online = p.pid === g.hostId;
     if (g.phase === "preparing") g.prepare();
     g.schedule();
@@ -149,7 +151,13 @@ export class Game {
   join(pid, profile, key = "") {
     let p = this.players.find((x) => x.pid === pid);
     if (!p) {
-      if (this.players.length >= (this.solo ? 1 : MAX_PLAYERS)) throw Error("Lobi dolu.");
+      // lobi doluysa önce bağlantısı kopmuş (puanı en düşük) bir kaydın yeri açılır
+      if (this.players.length >= (this.solo ? 1 : MAX_PLAYERS)) {
+        const off = this.players.filter((x) => !x.online && x.pid !== this.hostId).sort((a, b) => (a.score || 0) - (b.score || 0))[0];
+        if (!off) throw Error("Lobi dolu.");
+        this.players = this.players.filter((x) => x !== off);
+        this.dropVotes(off.pid);
+      }
       p = { pid, score: 0, round: 0 };
       this.players.push(p);
     }
@@ -194,12 +202,44 @@ export class Game {
     const p = this.players.find((x) => x.pid === pid);
     if (!p) return;
     p.online = online;
-    if (!online && this.phase === "lobby" && pid !== this.hostId)
+    // Lobide bağlantısı kopan oyuncu listeden çıkar; ama bu lobide quiz oynandıysa kaydı (genel puanı) kalır,
+    // geri dönünce puanıyla devam eder. (Önceden kısa bir kopmada bile puan sıfırlanıyordu.)
+    if (!online && this.phase === "lobby" && pid !== this.hostId && !this.history.length && !(p.score > 0)) {
       this.players = this.players.filter((x) => x !== p);
+      this.dropVotes(pid);
+    }
     this.checkAllAnswered();
+  }
+  // ---- istekler: oyuncular kuruculara quiz önerir, diğerleri oy verir ----
+  dropVotes(pid) {
+    this.sugg = (this.sugg || []).map((s) => ({ ...s, by: s.by.filter((x) => x !== pid) })).filter((s) => s.by.length);
+  }
+  suggest(pid, s) {
+    if (this.phase !== "lobby") throw Error("Oyun sürerken istek gönderilemez.");
+    if (!this.players.some((x) => x.pid === pid)) return;
+    this.sugg ??= [];
+    const x = this.sugg.find((y) => y.id === s.id);
+    if (x?.by.includes(pid)) x.by = x.by.filter((y) => y !== pid); // ikinci basış oyu geri alır
+    else {
+      if (this.sugg.filter((y) => y.by.includes(pid)).length >= 3) throw Error("En fazla 3 isteğe oy verebilirsin; birini geri al.");
+      if (x) x.by.push(pid);
+      else {
+        if (this.sugg.length >= 12) throw Error("İstek listesi dolu. Kurucu birkaçını eklesin ya da silsin.");
+        this.sugg.push({ ...s, by: [pid] });
+      }
+    }
+    this.sugg = this.sugg.filter((y) => y.by.length);
+  }
+  /** Kuruculuk devri (yalnızca lobide): oyun durumu yeni kurucunun tarayıcısına taşınır. */
+  setHost(pid) {
+    if (this.phase !== "lobby") throw Error("Kuruculuk yalnızca lobideyken devredilebilir.");
+    const p = this.players.find((x) => x.pid === pid);
+    if (!p || !p.online) throw Error("Bu oyuncu şu an bağlı değil.");
+    this.hostId = pid;
   }
   kick(pid) {
     this.players = this.players.filter((x) => x.pid !== pid);
+    this.dropVotes(pid);
   }
 
   // ---- kuyruk ----
@@ -522,6 +562,14 @@ export class Game {
         needHost();
         if (this.phase !== "lobby") throw Error("Oyun başladı.");
         this.addSet(a);
+        if (a.qid) this.sugg = (this.sugg || []).filter((s) => s.id !== String(a.qid)); // eklenen istek listeden düşer
+        break;
+      case "suggest": // ağdan gelen istek main.js'te doğrulanıp quizin kurucudaki bilgisiyle buraya gelir
+        this.suggest(pid, a.s);
+        break;
+      case "suggDel":
+        needHost();
+        this.sugg = (this.sugg || []).filter((s) => s.id !== String(a.id));
         break;
       case "remove":
         needHost();
@@ -668,6 +716,7 @@ export class Game {
       index: this.index,
       rankAt: this.phase === "ranking" ? this.rankAt || null : null,
       history: this.history.map(({ id, name, art, picture, emoji, count, top, qid }) => ({ id, name, art, picture, emoji: emoji || "", count, top, qid: qid || "" })),
+      sugg: (this.sugg || []).map(({ id, name, picture, emoji, kind, cat, by }) => ({ id, name, picture: picture || "", emoji: emoji || "", kind: kind || "song", cat: cat || "", by: [...by] })),
       question:
         q && ["preparing", "question", "reveal"].includes(this.phase)
           ? {

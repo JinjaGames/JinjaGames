@@ -1,19 +1,20 @@
 import { PRESETS, MIXES, loadTracks, searchArtists, customLists, saveCustom, removeCustom, fold, cdn, realPic, loadPresetPictures } from "./music.js?v=5";
 import { sfx, sfxEnabled, setSfx, setSfxVolume } from "./sfx.js?v=5";
 import { randomName } from "./names.js";
-import { fetchCommunity, loadFull, removeQuiz, hideQuiz, unhideQuiz, hiddenList } from "./community.js?v=10";
-import { Game, MAX_PLAYERS, RANK_PTS, OP_PTS } from "./engine.js?v=11";
-import { lbKey, loadBoard, peekBoard, submitScore, myBest, isMine, LB_TOP, LB_QUESTIONS } from "./board.js?v=6";
+import { fetchCommunity, loadFull, removeQuiz, hideQuiz, unhideQuiz, hiddenList } from "./community.js?v=11";
+import { Game, MAX_PLAYERS, RANK_PTS, OP_PTS } from "./engine.js?v=12";
+import { lbKey, loadBoard, peekBoard, submitScore, myBest, isMine, syncMine, LB_TOP, LB_QUESTIONS } from "./board.js?v=7";
+import { quizSlug, slugTable } from "./slug.js?v=1";
 import { maskName, isBadName } from "./badwords.js?v=1";
 import { RANK_QUIZZES, RANK_CATS, rankItems, fromYouTube } from "./rank.js?v=4";
 import { TRIVIA, TCATS, TART, EMOJIS, cleanItems, IMG, ANI_IMG, FLAG, flagUrl, cleanEmo } from "./trivia.js?v=4";
 import { ANIME_QUIZZES, ERAS, animeItems, animeOps } from "./anime.js?v=3";
 import { NUMCATS, fmtNum, farEnough } from "./numdata.js";
-import { hostRoom, guestRoom, newCode, validCode } from "./net.js?v=5";
-import { announceLobby, listLobbies } from "./lobbies.js?v=4";
-import { countPlay, loadPlays, plays, players, onPlays, playsLoaded } from "./plays.js?v=6";
+import { hostRoom, guestRoom, newCode, validCode } from "./net.js?v=7";
+import { announceLobby, listLobbies } from "./lobbies.js?v=5";
+import { countPlay, loadPlays, plays, players, onPlays, playsLoaded } from "./plays.js?v=7";
 import { dailyQuiz, dailyDate, dailyLeft, dailyLabel, dailyResult, saveDaily, dailyStreak } from "./daily.js?v=1";
-import { initI18n, LANG, applyLang } from "./i18n.js?v=10";
+import { initI18n, LANG, applyLang } from "./i18n.js?v=11";
 
 // ---------- yardımcılar ----------
 const $ = (s, r = document) => r.querySelector(s);
@@ -120,6 +121,15 @@ function avatar(p, size = "") {
   const av = AVATARS.includes(p.avatar) ? p.avatar : "headphones";
   return `<span class="av ${color} ${esc(size)}">${PHOTO.test(p.photo || "") ? `<img src="${esc(p.photo)}" alt="">` : ic(av)}</span>`;
 }
+// Açık / koyu tema: tercih hatırlanır; sayfa açılırken js/theme.js uygular (yanıp sönme olmasın).
+const isLight = () => document.documentElement.dataset.theme === "light";
+function setTheme(t) {
+  const light = t === "light";
+  if (light) document.documentElement.dataset.theme = "light";
+  else delete document.documentElement.dataset.theme;
+  store.set("jqTheme", light ? "light" : "dark");
+  $('meta[name="theme-color"]')?.setAttribute("content", light ? "#f6f3ee" : "#0d0d10");
+}
 let barHtml = "";
 function topbar() {
   const inRoom = mode && mode.role !== "solo" && screen !== "room"; // solo oyunda "Lobiye dön" yok
@@ -135,9 +145,11 @@ function topbar() {
     <div class="barEnd">
       ${screen === "home" && !mode ? `<button class="btn primary sm barCta" data-do="create">${ic("users")}Lobi kur</button>` : ""}
       ${inRoom ? `<button class="pill live" data-go="room">${ic("users")}<span>Lobiye dön</span></button>` : ""}
+      ${mode && mode.role !== "solo" && screen === "room" && chat.min ? `<button class="icon chatBtn emoBtn" data-emobtn title="Emoji gönder" aria-label="Emoji gönder">${ic("smile-plus")}</button>` : ""}
       ${mode && mode.role !== "solo" && screen === "room" && chat.min ? `<button class="icon chatBtn" data-chatopen title="Sohbeti aç" aria-label="Sohbeti aç${chat.unread ? ` (${chat.unread} yeni mesaj)` : ""}">${ic("message-circle")}${chat.unread ? `<small>${chat.unread}</small>` : ""}</button>` : ""}
       ${screen === "room" && mode ? `<label class="vol" title="Ses düzeyi">${ic("volume-2")}<input type="range" id="vol" min="0" max="100" step="1" value="${Math.round(volume() * 100)}" aria-label="Ses düzeyi"></label>` : ""}
       ${screen !== "room" && hiddenList().length ? `<button class="icon hidBtn" data-sheet="hidden" title="Gizlenen quizler (${hiddenList().length})" aria-label="Gizlenen quizler">${ic("eye-off")}<small>${hiddenList().length}</small></button>` : ""}
+      <button class="langBtn themeBtn" data-theme-to="${isLight() ? "dark" : "light"}" title="${isLight() ? "Koyu tema" : "Açık tema"}" aria-label="${isLight() ? "Koyu temaya geç" : "Açık temaya geç"}">${ic(isLight() ? "moon" : "sun")}</button>
       <button class="langBtn" data-lang="${LANG === "en" ? "tr" : "en"}" title="${LANG === "en" ? "Türkçe" : "English"}" aria-label="${LANG === "en" ? "Türkçe arayüz" : "English interface"}" data-noi18n>${LANG === "en" ? "TR" : "EN"}</button>
       <button class="meBtn" data-sheet="profile" aria-label="Profili düzenle">${avatar(profile || {})}<span data-noi18n>${esc(profile?.name || "Profil")}</span></button>
     </div>`;
@@ -227,6 +239,7 @@ function prime(url) {
 }
 function stopClip() {
   clearTimeout(player.stopT);
+  player.endAt = 0;
   try { rsrc?.stop(); } catch {}
   rsrc = null;
   if (player.playing) audio.pause();
@@ -351,6 +364,7 @@ async function listen(auto = false) {
   const played = Math.max(0, Math.min(0.5, audio.currentTime - q.offset)) * 1000;
   player.startedAt = performance.now() - played;
   player.clip = q.clip * 1000;
+  player.endAt = num(q.offset) + num(q.clip); // sekme arka plandayken zamanlayıcılar gecikir; ses konumundan da durdurulur
   document.body.classList.add("playing");
   player.stopT = setTimeout(() => {
     stopClip();
@@ -358,6 +372,16 @@ async function listen(auto = false) {
   }, q.clip * 1000 - played);
   paint();
 }
+audio.addEventListener("timeupdate", () => {
+  if (player.playing && player.endAt && audio.currentTime >= player.endAt) { stopClip(); paint(); }
+});
+// Sekme arka plandayken (başka sekme, küçültülmüş pencere) ekran çizimi durur; ama soru açılınca kesit yine
+// kendiliğinden çalmalı, süre ve geçişler işlemeli. Bu yüzden gizliyken de düzenli aralıkla işlenir.
+setInterval(() => {
+  if (!document.hidden || screen !== "room") return;
+  paint();
+  ytPaint();
+}, 250);
 
 // ---------- saat ----------
 const hostNow = () => Date.now() + (mode?.role === "guest" ? mode.net.offset : 0);
@@ -384,12 +408,13 @@ function unseal(str) {
 function persist() {
   if (!mode || mode.role === "solo") return;
   try {
-    store.set("jqSession", { role: mode.role, code: mode.code, game: mode.role === "host" ? seal(mode.game) : null, vis: mode.vis || "private", pw: mode.pw || "" }, sessionStorage);
+    store.set("jqSession", { role: mode.role, code: mode.code, game: mode.role === "host" ? seal(mode.game) : null, vis: mode.vis || "private", pw: mode.pw || "", ad: !!mode.adopted }, sessionStorage);
   } catch {}
 }
 function onGame(game) {
   if (!mode || mode.game !== game) return; // lobiden çıkıldıktan sonra gelen olaylar
-  view = game.view(pid);
+  // Kuruculuğu devralınan lobide oyun durumu başkasının tarayıcısından geldi: ekrana oyuncularınki gibi süzülerek çizilir.
+  view = mode.adopted ? cleanView(game.view(pid)) : game.view(pid);
   mode.net?.sendState((p) => game.view(p));
   persist();
   // daha önce sorulan sorular bu tarayıcıda hatırlanır (aynı quiz yeniden açılınca aynı sorular gelmesin)
@@ -398,7 +423,7 @@ function onGame(game) {
   lobbyAnnounce();
   render();
 }
-function startHost({ solo = false, restore = null, vis = "private", pw = "" } = {}) {
+function startHost({ solo = false, restore = null, vis = "private", pw = "", adopted = false } = {}) {
   if (!profile) return openSheet("profile", { then: () => startHost({ solo }) });
   const code = restore?.code || newCode();
   const game = restore
@@ -406,7 +431,7 @@ function startHost({ solo = false, restore = null, vis = "private", pw = "" } = 
     : new Game({ code, solo, host: { pid, profile }, onChange: onGame });
   if (!restore) game.used = store.get("jqSeen", {});
   if (chat.code !== code) chatReset(solo ? "" : code);
-  mode = { role: solo ? "solo" : "host", game, code, vis: solo ? "private" : ["public", "locked"].includes(vis) ? vis : "private", pw: String(pw || "").slice(0, 20) };
+  mode = { role: solo ? "solo" : "host", game, code, vis: solo ? "private" : ["public", "locked"].includes(vis) ? vis : "private", pw: String(pw || "").slice(0, 20), adopted: !!adopted };
   if (!solo) attachHost();
   screen = "room";
   onGame(game);
@@ -436,6 +461,9 @@ function attachHost() {
           game.join(p, prof, key);
           game.emit();
           if (!known && game.phase === "lobby") toast(`${prof?.name || "Bir oyuncu"} lobiye katıldı.`);
+          // sohbet lobi kapanana kadar sürer: katılan / geri dönen oyuncuya son mesajlar da gider
+          const hist = chat.list.slice(-CHAT_MAX);
+          if (hist.length) setTimeout(() => mode?.net?.chatTo?.(p, hist), 400);
           return null;
         } catch (e) {
           return e.message;
@@ -449,8 +477,9 @@ function attachHost() {
           game.emit();
         } catch {}
       },
-      onAction: (p, a) => game.handle(p, a),
+      onAction: (p, a) => (a?.type === "suggest" ? hostSuggest(p, a) : game.handle(p, a)),
       onChat: (p, text) => hostChat(p, text),
+      onEmo: (p, e) => hostEmo(p, e),
       onLeave(p) {
         game.setOnline(p, false);
         game.emit();
@@ -459,27 +488,38 @@ function attachHost() {
       },
     });
 }
+// Sekmeye geri dönüldü. Eskiden kurucu her dönüşte bağlantıyı kapatıp yeniden kuruyordu; bu da lobideki herkesi
+// bir anlığına düşürüyor, bazen lobiyi dağıtıyordu. Artık bağlantılar yaşıyorsa dokunulmaz (röle bağlantılarını
+// kütüphane kendisi yeniler); yalnızca hiçbir oyuncuyla bağlantı kalmadıysa (telefon uzun süre arka plandaysa) yeniden kurulur.
 let hiddenAt = 0;
 document.addEventListener("visibilitychange", () => {
   if (document.hidden) { hiddenAt = Date.now(); return; }
-  if (!mode || mode.role === "solo" || !hiddenAt || Date.now() - hiddenAt < 2500) return;
+  // arka plandayken çalamayan kesit: öne gelince hemen çal
+  const q = view?.question;
+  if (screen === "room" && view?.phase === "question" && q && autoPlayedFor === q.id && !q.mine && !player.playing && !player.loading && playsUsed(q.id) === 0 && hostNow() < q.end) listen(true);
+  if (!mode || mode.role === "solo" || !hiddenAt) return;
+  const away = Date.now() - hiddenAt;
   hiddenAt = 0;
+  if (away < 2500) return;
   try {
     if (mode.role === "host") {
-      mode.net?.close({ quiet: true });
-      attachHost();
-    } else if (mode.role === "guest" && !mode.net?.connected) {
-      startGuest(mode.code);
+      const others = mode.game.players.some((p) => p.pid !== pid && p.online);
+      if (others && mode.net && mode.net.live() === 0 && away > 8000) {
+        mode.net.close({ quiet: true });
+        attachHost();
+      } else mode.net?.sendState((p) => mode.game.view(p));
+    } else if (mode.role === "guest" && !mode.connecting && !mode.net?.alive()) {
+      startGuest(mode.code, { pw: mode.pw });
     }
   } catch {}
 });
-function startGuest(code, { fromList = false, pw = "" } = {}) {
+function startGuest(code, { fromList = false, pw = "", keepChat = false, moving = false } = {}) {
   if (!profile) return openSheet("profile", { then: () => startGuest(code, { fromList, pw }) });
   pwAsk = null;
   const same = mode?.role === "guest" && mode.code === code;
-  leaveRoom(true, same);
+  leaveRoom(true, same || keepChat);
   if (chat.code !== code) chatReset(code);
-  mode = { role: "guest", code, connecting: true, since: Date.now(), fromList, pw: String(pw || "").slice(0, 20) };
+  mode = { role: "guest", code, connecting: true, since: Date.now(), fromList, moving, pw: String(pw || "").slice(0, 20) };
   view = null;
   screen = "room";
   mode.net = guestRoom(code, pid, profile, mode.pw, {
@@ -489,6 +529,7 @@ function startGuest(code, { fromList = false, pw = "" } = {}) {
       const first = mode.connecting;
       mode.connecting = false;
       mode.lost = false;
+      mode.moving = false;
       const was = view?.phase;
       view = cleanView(s);
       // Açık lobi listesinden katıldı ama oyun o arada başlamış
@@ -516,10 +557,24 @@ function startGuest(code, { fromList = false, pw = "" } = {}) {
     onHostBack() {
       if (mode?.role !== "guest") return;
       mode.lost = false;
+      if (mode.moving) { mode.moving = false; return toast("Yeni kurucuya bağlandın."); }
       toast("Kurucu geri döndü.");
     },
     onChat(m) {
       if (mode?.role === "guest" && chat.code === code) chatAdd(m);
+    },
+    onEmo(m) {
+      if (mode?.role === "guest" && mode.code === code) emoShow(m);
+    },
+    onMoving() {
+      if (mode?.role !== "guest" || mode.code !== code) return;
+      mode.moving = true;
+      lastSig = "";
+      render();
+    },
+    onTakeover(m) {
+      if (mode?.role !== "guest" || mode.code !== code) return;
+      takeOver(m, code);
     },
   });
   persist();
@@ -533,13 +588,17 @@ const CHAT_MAX = 10;
 const chat = { code: "", list: [], exp: false, min: store.get("jqChatMin", false), unread: 0, rate: new Map() };
 const chatClean = (t) => String(t ?? "").replace(/[\u0000-\u001f\u007f​-‏‪-‮⁦-⁩]/g, " ").replace(/\s+/g, " ").trim().slice(0, 200);
 const chatMask = (t) => t.replace(/\S+/g, (w) => (isBadName(w) ? "*".repeat(Math.min(8, Math.max(3, [...w].length))) : w));
+// Sohbet bu sekmede (oturum deposunda) da tutulur: sayfa yenilenince ya da bağlantı yeniden kurulunca kaybolmaz.
+// Lobiden çıkınca silinir.
 function chatReset(code = "") {
+  const keep = code ? store.get("jqChat", null, sessionStorage) : null;
   Object.assign(chat, { code, list: [] });
-  if (!code) chat.exp = false;
+  if (!code) { chat.exp = false; store.del("jqChat", sessionStorage); }
   chat.rate.clear();
+  if (keep?.code === code && Array.isArray(keep.list)) for (const m of keep.list.slice(-CHAT_MAX)) chatAdd(m, true);
   chatDraw();
 }
-function chatAdd(m) {
+function chatAdd(m, quiet = false) {
   if (!m || typeof m !== "object") return;
   const text = chatMask(chatClean(m.text));
   if (!text) return;
@@ -553,6 +612,8 @@ function chatAdd(m) {
   };
   if (chat.list.some((x) => x.id === msg.id)) return;
   chat.list = [...chat.list, msg].slice(-CHAT_MAX);
+  if (chat.code) store.set("jqChat", { code: chat.code, list: chat.list }, sessionStorage);
+  if (quiet) return;
   if (msg.pid !== pid) {
     sfx("pick");
     if (chat.min) { chat.unread = Math.min(99, chat.unread + 1); topbar(); }
@@ -594,7 +655,7 @@ function chatBuild() {
   chatEl.setAttribute("aria-label", "Lobi sohbeti");
   chatEl.innerHTML = `<header class="chatHead"><span class="chatTitle"><b>Sohbet</b></span><small>Geçici · son 10 mesaj</small><button type="button" class="icon sm chatExp" aria-label="Sohbeti genişlet ya da daralt">${ic("chevron-down")}</button><button type="button" class="icon sm chatMin" aria-label="Sohbeti kapat" title="Sohbeti kapat">${ic("x")}</button></header>
   <ol class="chatList" id="chatList" aria-live="polite"></ol>
-  <form class="chatForm" id="chatForm" autocomplete="off"><button type="button" class="icon sm chatMin chatMinM" aria-label="Sohbeti kapat" title="Sohbeti kapat">${ic("x")}</button><input id="chatIn" maxlength="200" placeholder="Mesaj yaz…" enterkeyhint="send" aria-label="Mesaj yaz"><button class="btn primary" type="submit" aria-label="Gönder">${ic("send")}</button></form>`;
+  <form class="chatForm" id="chatForm" autocomplete="off"><button type="button" class="icon sm chatMin chatMinM" aria-label="Sohbeti kapat" title="Sohbeti kapat">${ic("x")}</button><button type="button" class="icon sm emoBtn" aria-label="Emoji gönder" title="Emoji gönder">${ic("smile-plus")}</button><input id="chatIn" maxlength="200" placeholder="Mesaj yaz…" enterkeyhint="send" aria-label="Mesaj yaz"><button class="btn primary" type="submit" aria-label="Gönder">${ic("send")}</button></form>`;
   if (!chatEl.hidden) chatDraw();
 }
 chatBuild();
@@ -610,6 +671,8 @@ function chatMinimize(min) {
   if (!chat.min && !chatMobile()) $("#chatIn")?.focus();
 }
 chatEl.addEventListener("click", (e) => {
+  const eb = e.target.closest(".emoBtn");
+  if (eb) return emoOpen(eb);
   if (e.target.closest(".chatMin")) return chatMinimize(true);
   if (e.target.closest(".chatExp")) { chat.exp = !chat.exp; return chatDraw(); }
   if (e.target.closest(".chatList") && chatMobile() && !chat.exp) { chat.exp = true; chatDraw(); }
@@ -632,6 +695,173 @@ function chatDraw() {
     ? chat.list.map((m) => `<li class="${m.pid === pid ? "me" : ""}" data-noi18n>${avatar(view?.players?.find((p) => p.pid === m.pid) || m, "xs")}<span class="chatMsg"><b>${esc(maskName(m.name))}</b> <span>${esc(m.text)}</span></span></li>`).join("")
     : `<li class="chatEmpty">Henüz mesaj yok. Selam ver! 👋</li>`;
   list.scrollTop = list.scrollHeight;
+}
+
+// ---------- emoji tepkileri: lobide ve oyunda herkes görür; hiçbir yere yazılmaz ----------
+const EMOS = ["😂", "🔥", "👏", "😮", "😭", "🤔", "❤️", "👍"];
+const emoLayer = document.createElement("div");
+emoLayer.className = "emoLayer";
+emoLayer.setAttribute("aria-hidden", "true");
+const emoTray = document.createElement("div");
+emoTray.className = "emoTray";
+emoTray.hidden = true;
+emoTray.setAttribute("role", "group");
+emoTray.setAttribute("aria-label", "Emoji gönder");
+emoTray.innerHTML = EMOS.map((e, i) => `<button type="button" data-emo="${i}" aria-label="${e}">${e}</button>`).join("");
+document.body.append(emoLayer, emoTray);
+function emoOpen(btn) {
+  if (!emoTray.hidden) return emoClose();
+  emoTray.hidden = false;
+  const r = btn.getBoundingClientRect();
+  const w = emoTray.offsetWidth, h = emoTray.offsetHeight;
+  emoTray.style.left = `${Math.round(Math.min(innerWidth - w - 8, Math.max(8, r.left + r.width / 2 - w / 2)))}px`;
+  emoTray.style.top = `${Math.round(r.top > h + 16 ? r.top - h - 8 : r.bottom + 8)}px`;
+}
+function emoClose() { emoTray.hidden = true; }
+emoTray.addEventListener("click", (e) => {
+  const b = e.target.closest("[data-emo]");
+  if (b) emoSend(Number(b.dataset.emo));
+});
+document.addEventListener("pointerdown", (e) => { if (!emoTray.hidden && !e.target.closest(".emoTray, .emoBtn")) emoClose(); }, true);
+addEventListener("keydown", (e) => { if (e.key === "Escape") emoClose(); });
+const emoRate = new Map();
+// Kurucu: tepkiyi doğrular, hızını sınırlar (4 sn'de en çok 6), herkese yollar.
+function hostEmo(from, e) {
+  if (mode?.role !== "host") return;
+  const i = Number(e);
+  if (!Number.isInteger(i) || i < 0 || i >= EMOS.length || !mode.game.players.some((p) => p.pid === from)) return;
+  const now = Date.now();
+  const r = (emoRate.get(from) || []).filter((t) => now - t < 4000);
+  if (r.length >= 6) return false;
+  r.push(now);
+  emoRate.set(from, r);
+  const m = { pid: from, e: i };
+  emoShow(m);
+  mode.net?.emo(m);
+  return true;
+}
+function emoSend(i) {
+  if (!mode || mode.role === "solo") return;
+  if (mode.role === "host") { if (hostEmo(pid, i) === false) toast("Biraz yavaş!", "bad"); return; }
+  try { mode.net.emo(i); } catch (e) { fail(e); }
+}
+function emoShow(m) {
+  const i = Number(m?.e);
+  if (!Number.isInteger(i) || !EMOS[i] || document.hidden) return;
+  const p = view?.players?.find((x) => x.pid === String(m.pid || ""));
+  const el = document.createElement("div");
+  el.className = "emoFly";
+  el.style.setProperty("--x", `${Math.round(Math.random() * 110)}px`);
+  el.style.setProperty("--r", `${Math.round(Math.random() * 24 - 12)}deg`);
+  el.innerHTML = `<span class="emoBig">${EMOS[i]}</span>${p ? `<span class="emoWho" data-noi18n>${avatar(p, "xs")}<b>${esc(maskName(p.name))}</b></span>` : ""}`;
+  emoLayer.append(el);
+  while (emoLayer.children.length > 14) emoLayer.firstChild.remove();
+  setTimeout(() => el.remove(), 2800);
+}
+
+// ---------- istekler: oyuncular quiz önerir, kurucu ve herkes görür, oy verir ----------
+// Oyuncu yalnızca quizin kimliğini yollar; ad ve görsel kurucunun kendi listesinden alınır (sahte istek olmaz).
+function hostSuggest(from, a) {
+  const g = mode?.game;
+  if (mode?.role !== "host" || !g) return;
+  const id = String(a?.id ?? "").slice(0, 80);
+  let s = g.sugg?.find((x) => x.id === id);
+  if (!s && /^dz\d{1,12}$/.test(id)) {
+    const ar = a.artist || {};
+    const name = chatClean(ar.name).slice(0, 60);
+    if (!name || String(ar.id) !== id.slice(2)) throw Error("Geçersiz istek.");
+    const pic = realPic(cdn(ar.picture)) ? cdn(ar.picture) : "";
+    s = { id, name, picture: pic, emoji: "", kind: "song", cat: "", dz: { id: Number(id.slice(2)), name, picture: pic } };
+  } else if (!s) {
+    const l = allLists().find((x) => String(x.id) === id);
+    if (!l || l.genre === "Senin" || String(l.id).startsWith("my")) throw Error("Bu quiz kurucuda bulunamadı. Başka bir quiz seç.");
+    s = { id: String(l.id), name: String(l.name || "Quiz").slice(0, 80), picture: realPic(l.picture) ? l.picture : "", emoji: EMOJIS.includes(l.emoji) ? l.emoji : "", kind: l.kind || "song", cat: String(l.cat || l.rcat || l.genre || "").slice(0, 30) };
+  }
+  const before = s.by?.length || 0;
+  const { by, ...info } = s;
+  g.handle(from, { type: "suggest", s: info });
+  const after = g.sugg?.find((x) => x.id === id)?.by.length || 0;
+  if (after > before && from !== pid) {
+    const p = g.players.find((x) => x.pid === from);
+    sfx("pick");
+    toast(`${maskName(p?.name || "Bir oyuncu")} istiyor: ${info.name}`);
+  }
+}
+function suggHtml(v, host) {
+  const list = [...(v.sugg || [])].sort((a, b) => b.by.length - a.by.length);
+  if (!list.length) return "";
+  const pm = playerMap();
+  return `<div class="block suggBlock">
+    <div class="blockHead"><h2>İstekler <small class="count">${list.length}</small></h2></div>
+    ${host ? `<p class="muted small suggNote">Oyuncuların görmek istediği quizler. “Ekle” ile ayarlarını seçip sıraya koyabilirsin.</p>` : ""}
+    <ol class="sugg">${list.map((s) => {
+      const mine = s.by.includes(v.me);
+      const who = s.by.map((id) => pm.get(id)).filter(Boolean);
+      return `<li>${cover(s, "qImg")}<span class="qInfo"><b>${esc(s.name)}</b><small>${kindName(s.kind)}${s.cat && s.cat !== "Topluluk" ? ` · ${esc(s.cat)}` : ""}</small><span class="suggWho" data-noi18n>${who.slice(0, 5).map((p) => avatar(p, "xs")).join("")}</span></span>
+        <span class="qBtns">${host
+          ? `<span class="voteN" title="${who.length} oy">${ic("thumbs-up")}${who.length}</span><button class="btn primary sm" data-suggadd="${esc(s.id)}">${ic("list-plus")}Ekle</button><button class="icon" data-suggdel="${esc(s.id)}" aria-label="İsteği kaldır" title="İsteği kaldır">${ic("x")}</button>`
+          : `<button class="voteBtn" data-vote="${esc(s.id)}" aria-pressed="${mine}" title="${mine ? "Oyunu geri al" : "Ben de istiyorum"}">${ic("thumbs-up")}<b>${who.length}</b></button>`}</span></li>`;
+    }).join("")}</ol>
+  </div>`;
+}
+
+// ---------- kuruculuk devri (lobide, oyun başlamadan) ----------
+// Oyun kurucunun tarayıcısında döner; devredilince bütün durum (sıra, puanlar, istekler) yeni kurucuya gönderilir,
+// o kendi tarayıcısında lobiyi aynı kodla açar. Eski kurucu oyuncu olarak geri katılır; sohbet sürer.
+function transferHost(to) {
+  if (mode?.role !== "host" || !mode.game) return;
+  const g = mode.game;
+  const p = g.players.find((x) => x.pid === to);
+  const old = g.hostId;
+  try { g.setHost(to); } catch (e) { return fail(e); }
+  const data = JSON.parse(JSON.stringify(g));
+  g.hostId = old;
+  const { code, net, vis, pw } = mode;
+  net.handoff(to, { g: data, vis, pw: pw || "" });
+  clearTimeout(g.timer);
+  lobby.said = false; // yeni kurucu lobiyi kendisi duyurur; "kapandı" denmesin
+  clearTimeout(lobby.t);
+  mode.net = null;
+  mode.game = null;
+  toast(`Kuruculuk ${maskName(p?.name || "oyuncuya")} devredildi. Lobide oyuncu olarak devam ediyorsun.`);
+  setTimeout(() => {
+    net.close({ quiet: true });
+    startGuest(code, { keepChat: true, moving: true, pw: pw || "" });
+  }, 700);
+}
+// Gelen oyun durumu düz veriye çevrilir (tür ve boyut sınırı; nesne prototipine dokunan anahtarlar atılır).
+function cleanGame(x, d = 0) {
+  if (d > 14) return null;
+  if (Array.isArray(x)) return x.slice(0, 5000).map((y) => cleanGame(y, d + 1));
+  if (x && typeof x === "object") {
+    const o = {};
+    for (const [k, v] of Object.entries(x).slice(0, 500)) {
+      if (k === "__proto__" || k === "constructor" || k === "prototype") continue;
+      o[k.slice(0, 60)] = cleanGame(v, d + 1);
+    }
+    return o;
+  }
+  if (typeof x === "string") return x.slice(0, 5000);
+  if (typeof x === "number") return Number.isFinite(x) ? x : 0;
+  return typeof x === "boolean" || x === null ? x : null;
+}
+function takeOver(m, code) {
+  const data = cleanGame(m?.g);
+  if (!data || data.code !== code || data.hostId !== pid || data.phase !== "lobby" || !Array.isArray(data.players) || !Array.isArray(data.queue) || !data.players.some((p) => p?.pid === pid)) return;
+  data.players = data.players.filter((p) => p && /^[a-z0-9]{4,16}$/.test(String(p.pid)));
+  const vis = ["public", "locked"].includes(m.vis) ? m.vis : "private";
+  const pw = typeof m.pw === "string" ? m.pw.slice(0, 20) : "";
+  mode.net?.close();
+  mode = null;
+  view = null;
+  try {
+    startHost({ restore: data, vis, pw, adopted: true });
+  } catch (e) {
+    fail(e);
+    return leaveRoom();
+  }
+  sfx("go");
+  toast("Artık lobinin kurucususun: quiz ekleyip oyunu başlatabilirsin.");
 }
 
 // ---------- açık lobiler: kurucu, lobisi herkese açıksa ve oyun başlamadıysa ana sayfada duyurur ----------
@@ -700,7 +930,7 @@ function leaveRoom(silent = false, keepChat = false) {
   if (mode?.role === "host" && lobby.said) { lobby.said = false; announceLobby(mode.code, { open: false }); }
   clearTimeout(lobby.t);
   mode?.net?.close();
-  if (!keepChat) chatReset();
+  if (!keepChat && mode) chatReset(); // sayfa açılırken (henüz lobi yokken) kayıtlı sohbet silinmesin
   mode = null;
   view = null;
   store.del("jqSession", sessionStorage);
@@ -712,15 +942,17 @@ function leaveRoom(silent = false, keepChat = false) {
 }
 async function act(a) {
   try {
-    if (!mode) return;
+    if (!mode) return false;
     if (mode.role === "guest") await mode.net.act(a);
     else mode.game.handle(pid, a);
+    return true;
   } catch (e) {
     fail(e);
+    return false;
   }
 }
 function inviteLink() {
-  const u = new URL(location.href);
+  const u = new URL(BASE, location.href);
   u.search = "";
   u.hash = "";
   u.searchParams.set("room", mode.code);
@@ -777,6 +1009,8 @@ function sfxTrack() {
 function render() {
   topbar();
   chatVis();
+  document.body.dataset.phase = screen === "room" && mode && view ? view.phase : "";
+  if (screen !== "detail" && location.pathname !== BASE) history.replaceState(history.state, "", BASE + location.search + location.hash);
   if (screen === "pw" && pwAsk && !mode) return renderPw();
   if (screen === "room" && mode) { const out = renderRoom(); sfxTrack(); return out; }
   if (screen === "detail" && sheetCtx?.list) return renderDetail();
@@ -1267,9 +1501,9 @@ function renderRoom() {
   if (mode.connecting || !view) {
     const long = Date.now() - mode.since > 15000;
     app.innerHTML = `<section class="center">
-      <div class="pulse">${ic("radio")}</div>
-      <h1>Lobiye bağlanılıyor</h1>
-      <p class="muted">Kod <b class="mono">${esc(mode.code)}</b> · Kurucu aranıyor…</p>
+      <div class="pulse">${ic(mode.moving ? "crown" : "radio")}</div>
+      <h1>${mode.moving ? "Kurucu değişiyor" : "Lobiye bağlanılıyor"}</h1>
+      <p class="muted">Kod <b class="mono">${esc(mode.code)}</b> · ${mode.moving ? "Yeni kurucuya bağlanılıyor…" : "Kurucu aranıyor…"}</p>
       ${long ? `<p class="hint">Uzun sürüyorsa kodu kontrol et ve kurucunun sayfası açık mı sor. Bazı okul/iş ağları doğrudan bağlantıyı engelleyebilir.</p>` : ""}
       <button class="btn ghost" data-do="leave">Vazgeç</button>
     </section>`;
@@ -1299,8 +1533,10 @@ function renderRoom() {
   app.dataset.phase = v.phase;
   if (v.phase === "lobby") {
     const restore = keepInputs(["pickQ", "lobPw"]);
+    const pbY = $("#pickBody")?.scrollTop || 0;
     app.innerHTML = lobbyHtml(v);
     restore();
+    if (pbY && $("#pickBody")) $("#pickBody").scrollTop = pbY;
     if (lobSel && sheetCtx?.kind === "inline" && sheetCtx.tracks && $("#trackList")) drawTracks();
     keepVisible('.pickTabs [aria-selected="true"]');
   }
@@ -1323,17 +1559,20 @@ const isHost = () => view && view.host === view.me;
 const playerMap = () => new Map(view.players.map((p) => [p.pid, p]));
 
 function miniHtml(v) {
+  if (v.solo) return "";
   const q = v.question;
-  return v.players
-    .filter((p) => p.online)
+  const on = v.players.filter((p) => p.online);
+  const MAX = 4;
+  return on
+    .slice(0, MAX)
     .map((p) => `<span class="dotAv ${q?.answered?.includes(p.pid) ? "done" : ""}" title="${esc(p.name)}">${avatar(p, "xs")}</span>`)
-    .join("");
+    .join("") + (on.length > MAX ? `<span class="dotMore">+${on.length - MAX}</span>` : "");
 }
 const ansCountText = (v) => (v.solo ? "" : `${num(v.question?.answered?.length)}/${v.players.filter((p) => p.online).length} cevapladı`);
 
 function vchip(p, q, reveal, me) {
   const r = reveal ? q.reveal?.results?.[p.pid] : null;
-  return `<span class="vchip ${p.pid === me ? "me" : ""}">${avatar(p, "xs")}<b data-noi18n>${esc(p.name)}</b>${r ? `<em class="${r.correct ? "good" : ""}">+${num(r.points)}</em>` : ""}</span>`;
+  return `<span class="vchip ${p.pid === me ? "me" : ""}${r ? (r.correct ? " ok" : " no") : ""}" title="${esc(maskName(p.name))}">${avatar(p, "xs")}<b data-noi18n>${esc(maskName(p.name))}</b>${r ? `<em class="${r.correct ? "good" : ""}">+${num(r.points)}</em>` : ""}</span>`;
 }
 
 function lobbyHtml(v) {
@@ -1380,7 +1619,7 @@ function lobbyHtml(v) {
         .map(
           (p, i) => `<li class="${p.online ? "" : "off"} ${p.pid === v.me ? "me" : ""}" style="--i:${i}">${v.history?.length ? `<span class="rank r${i + 1}">${i + 1}</span>` : ""}${avatar(p)}<b><bdi data-noi18n>${esc(p.name)}</bdi>${p.pid === v.me ? " <small>(sen)</small>" : ""}</b>
           ${v.history?.length ? `<span class="pscore" data-count="${num(p.score)}">${num(p.score)}</span>` : ""}
-          ${p.pid === v.host ? `<span class="crown" title="Kurucu">${ic("crown")}</span>` : host ? `<button class="icon sm" data-kick="${esc(p.pid)}" aria-label="${esc(p.name)} lobiden çıkar">${ic("x")}</button>` : ""}</li>`,
+          ${p.pid === v.host ? `<span class="crown" title="Kurucu">${ic("crown")}</span>` : host ? `<span class="pBtns">${p.online ? `<button class="icon sm" data-promote="${esc(p.pid)}" aria-label="${esc(p.name)} kurucu olsun" title="Kurucu yap">${ic("crown")}</button>` : ""}<button class="icon sm" data-kick="${esc(p.pid)}" aria-label="${esc(p.name)} lobiden çıkar" title="Lobiden çıkar">${ic("x")}</button></span>` : ""}</li>`,
         )
         .join("")}</ul>
       ${v.players.length < 2 ? `<p class="hint">Bağlantıyı gönder; açan herkes buraya düşer.</p>` : ""}
@@ -1407,10 +1646,11 @@ function lobbyHtml(v) {
           </li>`,
               )
               .join("")}</ol>`
-          : `<p class="emptyQueue">${ic("list-plus")}<span>${host ? "Aşağıdan bir quiz seç; sıraya eklenir." : "Kurucu henüz quiz eklemedi"}</span></p>`
+          : `<p class="emptyQueue">${ic("list-plus")}<span>${host ? "Aşağıdan bir quiz seç; sıraya eklenir." : "Kurucu henüz quiz eklemedi. Aşağıdan istediğin quizi öner."}</span></p>`
       }
     </div>
-    ${host ? lobPickHtml() : ""}
+    ${solo ? "" : suggHtml(v, host)}
+    ${host || (!solo && mode.role === "guest") ? lobPickHtml() : ""}
     ${historyHtml(v, host)}
     <div class="block settings">
       <div class="setRow"><span>Cevap süresi</span>
@@ -1435,15 +1675,17 @@ let lobSel = false;
 const inLobbyPick = () => screen === "room" && !!mode && mode.role !== "solo" && isHost() && view?.phase === "lobby";
 function lobPickHtml() {
   const tabs = pickTabs();
-  if (!tabs.some((t) => t[0] === pick.tab)) Object.assign(pick, { tab: "Müzik", cat: "" });
+  if (!tabs.some((t) => t[0] === pick.tab)) Object.assign(pick, { tab: "Hepsi", cat: "" });
   const subs = SUBS[pick.tab];
-  const music = pick.tab === "Müzik";
+  const music = pick.tab === "Müzik" || pick.tab === "Hepsi";
+  const guest = mode?.role === "guest";
   return `<div class="block lobPick" id="lobPick">
-    <div class="blockHead"><h2>Quiz ekle</h2></div>
+    <div class="blockHead"><h2>${guest ? "Quiz öner" : "Quiz ekle"}</h2></div>
+    ${guest ? `<p class="muted small pickHint">${ic("thumbs-up")}<span>Oynamak istediğin quize dokun; kurucuya ve herkese istek olarak gider. Başkasının isteğine dokunursan oy vermiş olursun.</span></p>` : ""}
     ${lobSelHtml()}
     <nav class="pickTabs" role="tablist" aria-label="Quiz türleri">${pickTabsHtml(tabs)}</nav>
     ${subs ? `<div class="seg chips subChips">${["", ...subs].map((c) => `<button data-psub="${esc(c)}" aria-pressed="${pick.cat === c}">${esc(c || "Hepsi")}</button>`).join("")}</div>` : ""}
-    <form class="search" id="pickSearch" role="search" autocomplete="off">${ic("search")}<input id="pickQ" type="search" value="${esc(pick.q)}" placeholder="${music ? "Quiz ara ya da sanatçı bul…" : `${esc(pick.tab)} quizlerinde ara…`}" aria-label="Quiz ara">${music ? `<button class="btn soft" type="submit" title="Deezer'da sanatçı ara">Sanatçı bul</button>` : ""}</form>
+    <form class="search" id="pickSearch" role="search" autocomplete="off">${ic("search")}<input id="pickQ" type="search" value="${esc(pick.q)}" placeholder="${pick.tab === "Hepsi" ? "Tüm quizlerde ara ya da sanatçı bul…" : music ? "Quiz ara ya da sanatçı bul…" : `${esc(pick.tab)} quizlerinde ara…`}" aria-label="Quiz ara">${music ? `<button class="btn soft" type="submit" title="Deezer'da sanatçı ara">Sanatçı bul</button>` : ""}</form>
     <div id="pickResults">${music ? resultsHtml() : ""}</div>
     <div id="pickBody">${pickBodyHtml()}</div>
   </div>`;
@@ -1592,7 +1834,7 @@ function gameHtml(v) {
           .filter(Boolean);
         return `<button class="ans ${cls}" data-ans="${i}" ${reveal || mine ? "disabled" : ""}>
           <kbd>${"ABCD"[i] || i + 1}</kbd><span class="ansText">${esc(o)}</span>
-          ${voters.length ? `<span class="voters">${voters.map((p) => vchip(p, q, reveal, v.me)).join("")}</span>` : ""}
+          ${voters.length ? `<span class="voters${voters.length > 2 ? " many" : ""}">${voters.slice(0, 5).map((p) => vchip(p, q, reveal, v.me)).join("")}${voters.length > 5 ? `<span class="vmore">+${voters.length - 5}</span>` : ""}</span>` : ""}
         </button>`;
       })
       .join("")}</div>`;
@@ -1966,17 +2208,21 @@ const lbOf = (l) => (l && l.kind !== "rank" && l.genre !== "Senin" ? lbKey(l.id)
 function boardRows(rows, key) {
   const meAt = rows.findIndex(isMine);
   const best = myBest(key);
-  const mine = meAt >= LB_TOP ? rows[meAt] : meAt < 0 && best > 0 ? { s: best, n: profile?.name || "Sen", a: profile?.avatar, k: profile?.color, me: 1 } : null;
+  const mine = meAt >= LB_TOP ? rows[meAt] : meAt < 0 && best > 0 ? { s: best, n: profile?.name || "Sen", a: profile?.avatar, k: profile?.color, p: profile?.photo, me: 1 } : null;
   if (!rows.length && !mine) return `<p class="lbEmpty">${ic("trophy")}<span>Henüz kimse yok. Puanlı modda bir oyun bitir, ilk sen ol!</span></p>`;
   const row = (r, i) =>
-    `<li class="${r.me || isMine(r) ? "me" : ""}${i >= 0 && i < 3 ? ` t${i + 1}` : ""}"><span class="lbN">${i >= 0 ? i + 1 : "–"}</span>${avatar({ avatar: r.a, color: r.k }, "xs")}<b data-noi18n>${esc(maskName(r.n))}</b>${r.me || isMine(r) ? `<em>Sen</em>` : ""}<span class="lbS">${num(r.s)}</span></li>`;
+    `<li class="${r.me || isMine(r) ? "me" : ""}${i >= 0 && i < 3 ? ` t${i + 1}` : ""}"><span class="lbN">${i >= 0 ? i + 1 : "–"}</span>${avatar({ avatar: r.a, color: r.k, photo: r.p }, "xs")}<b data-noi18n>${esc(maskName(r.n))}</b>${r.me || isMine(r) ? `<em>Sen</em>` : ""}<span class="lbS">${num(r.s)}</span></li>`;
   return `<ol class="lbList">${rows.slice(0, LB_TOP).map(row).join("")}${mine ? `<li class="lbGap" aria-hidden="true"><i></i><i></i><i></i></li>${row(mine, -1)}` : ""}</ol>`;
 }
 // note: güvenli HTML olmalı (yalnızca sayılar ve sabit metin)
 function boardHtml(key, { title = "Puan sıralaması", note = "" } = {}) {
   if (!key) return "";
   const rows = peekBoard(key);
-  loadBoard(key).then(() => fillBoards(key), () => fillBoards(key, true));
+  loadBoard(key).then(() => {
+    fillBoards(key);
+    // sıralamadaki kendi satırım eski profilimle (ör. fotoğrafsız) kalmışsa güncelle
+    if (profile) syncMine(key, profile).then((ch) => ch && fillBoards(key)).catch(() => {});
+  }, () => fillBoards(key, true));
   return `<section class="lb" data-lb="${esc(key)}">
     <header class="lbHead"><h3>${ic("trophy")}<span>${esc(title)}</span></h3><small>İlk ${LB_TOP}</small></header>
     ${note ? `<p class="lbNote">${note}</p>` : ""}
@@ -2008,7 +2254,7 @@ function lbResult(v, set) {
     const sc = num(me.lbr);
     if (lbDone.sig !== sig) {
       lbDone = { sig, prev: myBest(key) };
-      if (sc > lbDone.prev) submitScore({ key, score: sc, correct: num(me.hits), name: me.name, avatar: me.avatar, color: me.color }).then(() => fillBoards(key)).catch(() => {});
+      if (sc > lbDone.prev) submitScore({ key, score: sc, correct: num(me.hits), name: me.name, avatar: me.avatar, color: me.color, photo: me.pid === pid ? profile?.photo || me.photo : me.photo }).then(() => fillBoards(key)).catch(() => {});
     }
     const prev = lbDone.prev;
     note = sc > prev
@@ -2307,6 +2553,11 @@ function openSheet(kind, ctx = {}) {
       <p class="muted">${host ? (others ? "Şu an bir lobinin kurucususun. Devam edersen lobi herkes için kapanır." : "Şu an açık bir lobin var. Devam edersen lobi kapanır.") : "Şu an bir lobidesin. Devam edersen lobiden ayrılırsın; puanın lobide kalır."}</p>
       <div class="sheetFoot"><button class="btn ghost" data-close autofocus>Vazgeç</button><button class="btn danger" data-do="switchGo">${ic("door-open")}Ayrıl ve devam et</button></div>`;
   }
+  if (kind === "visAsk") {
+    sheetBody.innerHTML = `<div class="sheetHead"><h2>Lobi herkese açılsın mı?</h2><button class="icon" data-close aria-label="Kapat">${ic("x")}</button></div>
+      <p class="muted">Lobin ana sayfadaki “Açık lobiler” listesinde görünür; kodu bilmeyen herkes de katılabilir. Oyun başlayınca listeden düşer, istediğin zaman yeniden özel yapabilirsin.</p>
+      <div class="sheetFoot"><button class="btn ghost" data-close autofocus>Vazgeç</button><button class="btn primary" data-do="visGo">${ic("globe")}Herkese aç</button></div>`;
+  }
   if (kind === "resetAsk") {
     sheetBody.innerHTML = `<div class="sheetHead"><h2>Puanlar sıfırlansın mı?</h2><button class="icon" data-close aria-label="Kapat">${ic("x")}</button></div>
       <p class="muted">Herkesin genel puanı ve oynanan quizler listesi temizlenir. Bu işlem geri alınamaz.</p>
@@ -2332,9 +2583,29 @@ function openSheet(kind, ctx = {}) {
   }
   if (!sheet.open) sheet.showModal();
 }
+function setVis(v) {
+  if (mode?.role !== "host") return;
+  mode.vis = ["public", "locked"].includes(v) ? v : "private";
+  if (mode.vis === "locked" && !mode.pw) mode.pw = String(Math.floor(1000 + Math.random() * 9000));
+  persist();
+  lastSig = "";
+  if (mode.vis === "public") toast("Lobin artık ana sayfadaki “Açık lobiler”de görünüyor.");
+  if (mode.vis === "locked") toast(`Lobin listede kilitli görünüyor. Şifre: ${mode.pw} (değiştirebilirsin)`);
+  if (mode.vis === "private") toast("Lobin artık özel: yalnızca kodu ya da bağlantıyı bilenler katılabilir.");
+  lobbyAnnounce(true);
+  render();
+}
 // Onay paneli: quiz gizleme, listeden kaldırma, yayından kaldırma
 function rmSheet() {
   const { act, id } = sheetCtx;
+  if (act === "promote") {
+    const p = view?.players?.find((x) => x.pid === id);
+    if (!p) return closeSheet();
+    sheetBody.innerHTML = `<div class="sheetHead rmHead">${avatar(p, "lg")}<div><small class="kicker" data-noi18n>${esc(p.name)}</small><h2>Kurucu yapılsın mı?</h2></div><button class="icon" data-close aria-label="Kapat">${ic("x")}</button></div>
+      <p class="muted">Lobiyi artık o yönetir: quiz ekler, oyunu başlatır. Sen oyuncu olarak lobide kalırsın; quiz sırası, puanlar ve sohbet olduğu gibi sürer.</p>
+      <div class="sheetFoot"><button class="btn ghost" data-close autofocus>Vazgeç</button><button class="btn primary" data-do="rmConfirm">${ic("crown")}Kurucu yap</button></div>`;
+    return;
+  }
   if (act === "kick") {
     const p = view?.players?.find((x) => x.pid === id);
     if (!p) return closeSheet();
@@ -2370,6 +2641,8 @@ async function rmConfirm() {
     if (mode?.role !== "host" || !view?.players?.some((x) => x.pid === id)) return;
     mode.net.kick(id);
     return act({ type: "kick", pid: id });
+  } else if (what === "promote") {
+    return transferHost(id);
   } else if (what === "unpublish") {
     const l = ui.community?.find((x) => x.id === id && x.mine);
     if (!l) return;
@@ -2472,11 +2745,20 @@ async function loadCommunity() {
 }
 
 // ---------- lobide "Quiz ekle" penceresi: ana sayfadaki türlere ayrılmış (Sayı Quizi hariç; o tek kişilik) ----------
-const pick = { tab: "Müzik", cat: "", q: "" };
-const pickTabs = () => TABS.filter((t) => t[0] !== "Keşfet" && t[0] !== "Sayı" && (t[0] !== "Senin" || customLists().length));
+const pick = { tab: "Hepsi", cat: "", q: "" };
+// "Hepsi": bütün türler alt alta (her türün ilk birkaç quizi; arama hepsinde). Oyuncular kendi kayıtlı listelerini
+// öneremez (kurucuda yoklar), o yüzden "Senin" yalnızca kurucuya görünür.
+const pickTabs = () => [["Hepsi", "layers"], ...TABS.filter((t) => t[0] !== "Keşfet" && t[0] !== "Sayı" && (t[0] !== "Senin" || (mode?.role !== "guest" && customLists().length)))];
 const CREATE_TUR = { Müzik: ["sarki", "şarkı"], Sıralama: ["siralama", "sıralama"], Tersten: ["tersten", "tersten şarkı"], Anime: ["opening", "anime opening"], Trivia: ["trivia", "trivia"] };
 function pickLists(tab = pick.tab, cat = pick.cat, q = fold(pick.q)) {
-  return allLists().filter((l) => inTab(l, tab, cat) && (!q || fold(l.name).includes(q) || fold(l.author || "").includes(q) || fold(l.cat || "").includes(q) || fold(l.rcat || "").includes(q)));
+  const tabs = tab === "Hepsi" ? pickTabs().slice(1).map((t) => t[0]) : [tab];
+  const c = tab === "Hepsi" ? "" : cat;
+  return allLists().filter((l) => tabs.some((t) => inTab(l, t, c)) && (!q || fold(l.name).includes(q) || fold(l.author || "").includes(q) || fold(l.cat || "").includes(q) || fold(l.rcat || "").includes(q)));
+}
+function pickItem(l) {
+  const guest = mode?.role === "guest";
+  const s = view?.sugg?.find((x) => x.id === String(l.id));
+  return `<button class="pickItem${s?.by.includes(view.me) ? " voted" : ""}" ${guest ? "data-sugg" : "data-list"}="${esc(l.id)}"><span class="pArt">${cover(l, "pImg")}${playsTag(l, "plays pPlays")}${s ? `<span class="pVotes" title="${s.by.length} oy">${ic("thumbs-up")}${s.by.length}</span>` : ""}</span><b>${esc(l.name)}</b><small>${cardSub(l)}</small></button>`;
 }
 function pickerSheet() {
   const tabs = pickTabs();
@@ -2497,14 +2779,26 @@ function pickTabsHtml(tabs = pickTabs()) {
   return tabs.map(([name, icon]) => { const n = pickLists(name, "", "").length; return `<button role="tab" aria-selected="${pick.tab === name}" data-ptab="${esc(name)}">${ic(icon)}<span>${esc(name)}</span>${n ? `<small>${n}</small>` : ""}</button>`; }).join("");
 }
 function pickBodyHtml() {
+  const guest = mode?.role === "guest";
+  if (pick.tab === "Hepsi") {
+    const q = fold(pick.q);
+    const lim = q ? 48 : 8;
+    const secs = pickTabs().slice(1).map(([name, icon]) => {
+      const ls = pickLists(name, "", q);
+      if (!ls.length) return "";
+      return `<section class="pickSec"><div class="pickSecHead"><h3>${ic(icon)}<span>${esc(name)}</span><small>${ls.length}</small></h3>${ls.length > lim ? `<button class="btn ghost sm" data-ptab="${esc(name)}">Tümünü gör</button>` : ""}</div><div class="pickGrid">${ls.slice(0, lim).map(pickItem).join("")}</div></section>`;
+    }).join("");
+    const make = guest ? "" : `<button class="pickMakeRow" data-do="pickCreate"><span class="pmIc">${ic("plus")}</span><span><b>Yeni quiz oluştur</b><small>Lobiden çıkmadan; kaydedince sıraya eklemeye hazır açılır</small></span></button>`;
+    return `${make}${secs || `<p class="muted pickNote">${q ? "Aramana uyan quiz yok." : "Quizler yükleniyor…"}</p>`}`;
+  }
   const lists = pickLists();
   const t = CREATE_TUR[pick.tab];
-  const make = `<button class="pickItem pickMake" data-do="pickCreate"><span class="pImg">${ic("plus")}</span><b>Yeni ${t ? `${t[1]} quizi` : "quiz"} oluştur</b><small>Kaydedince buraya gelir</small></button>`;
+  const make = guest ? "" : `<button class="pickItem pickMake" data-do="pickCreate"><span class="pImg">${ic("plus")}</span><b>Yeni ${t ? `${t[1]} quizi` : "quiz"} oluştur</b><small>Lobiden çıkmadan oluştur</small></button>`;
   const wait = pick.tab === "Topluluk" && ui.community === null;
   const note = wait ? `<p class="muted pickNote">${spinner()} Topluluk quizleri yükleniyor…</p>`
     : lists.length ? ""
     : `<p class="muted pickNote">${pick.q ? "Aramana uyan quiz yok." : pick.tab === "Topluluk" && ui.communityErr ? "Topluluk quizlerine şu an ulaşılamadı." : "Bu türde henüz quiz yok; ilkini sen oluştur."}</p>`;
-  return `<div class="pickGrid">${make}${lists.map((l) => `<button class="pickItem" data-list="${esc(l.id)}"><span class="pArt">${cover(l, "pImg")}${playsTag(l, "plays pPlays")}</span><b>${esc(l.name)}</b><small>${cardSub(l)}</small></button>`).join("")}</div>${note}`;
+  return `<div class="pickGrid">${make}${lists.map(pickItem).join("")}</div>${note}`;
 }
 function drawPick() {
   const b = $("#pickBody");
@@ -2513,13 +2807,31 @@ function drawPick() {
   const t = $(".pickTabs");
   if (t) { const x = t.scrollLeft; t.innerHTML = pickTabsHtml(); t.scrollLeft = x; }
 }
-// Quiz oluşturma sayfası yeni sekmede açılır (lobi bağlantısı kopmasın); kaydedilince "storage" olayıyla buraya döner.
+// Lobideyken quiz oluşturma sayfası lobinin üstünde, aynı sayfada açılır: kurucu başka sekmeye geçmez, sayfası
+// arka plana düşmez, lobi dağılmaz (eskiden yeni sekmede açılıyordu; tarayıcı arka plandaki lobiyi yavaşlatıyordu).
+// Kaydedince pencere kapanır, quiz sıraya eklemeye hazır açılır.
+const crDlg = document.createElement("dialog");
+crDlg.className = "crDlg";
+crDlg.setAttribute("aria-label", "Quiz oluştur");
+document.body.append(crDlg);
 function pickCreate() {
   const t = CREATE_TUR[pick.tab];
-  const w = window.open(`create/?lobi=1${t ? `&tur=${t[0]}` : ""}`, "_blank");
-  if (!w) return toast("Yeni sekme açılamadı. Tarayıcının açılır pencere engelini kaldırıp tekrar dene.", "bad");
-  toast("Quizini yeni sekmede oluştur; kaydedince burada sıraya eklemeye hazır açılır.");
+  if (mode?.role !== "host") { location.href = `create/${t ? `?tur=${t[0]}` : ""}`; return; }
+  crDlg.innerHTML = `<iframe src="create/?lobi=1&gomulu=1${t ? `&tur=${t[0]}` : ""}" title="Quiz oluştur"></iframe>`;
+  crDlg.showModal();
+  document.body.classList.add("crOpen");
 }
+const closeCreator = () => crDlg.open && crDlg.close();
+crDlg.addEventListener("close", () => { crDlg.innerHTML = ""; document.body.classList.remove("crOpen"); });
+// Esc: sayfa içinde kaydedilmemiş bir şey varsa oluşturma sayfası önce sorar
+crDlg.addEventListener("cancel", (e) => { e.preventDefault(); crDlg.querySelector("iframe")?.contentWindow?.postMessage({ jq: "askClose" }, location.origin); });
+addEventListener("message", (e) => {
+  const f = crDlg.querySelector("iframe");
+  if (e.origin !== location.origin || !f || e.source !== f.contentWindow) return;
+  const m = e.data || {};
+  if (m.jq === "close") return closeCreator();
+  if (m.jq === "saved" && m.q) { closeCreator(); lobbyNew({ at: Date.now(), q: m.q }); }
+});
 addEventListener("storage", (e) => {
   if (e.key !== "jqLobbyNew" || !e.newValue) return;
   try { lobbyNew(JSON.parse(e.newValue)); } catch {}
@@ -2641,17 +2953,17 @@ function lbNeed(l) {
 function modeChoice(l, inSheet = false) {
   const trivia = l.kind === "trivia";
   const ranked = !!lbOf(l) && !(l.daily && dailyResult(l.daily));
-  if (!ranked && !(trivia && !inSheet)) return "";
+  if (!ranked && !(trivia && !inSheet && !l.daily)) return "";
   const g = sheetCtx.gmode;
   const best = bests()[l.id] || {};
   const song = !ITEM_KINDS.includes(l.kind);
   const need = lbNeed(l);
   const b = (v, icon, title, sub, cls = "") => `<button data-v="${v}" aria-pressed="${g === v}"${cls ? ` class="${cls}"` : ""}>${ic(icon)}<span><b>${title}</b><small>${sub}</small></span></button>`;
   return `<div class="dtLabel">Oyun modu</div>
-    <div class="dtChoice modes${trivia && !inSheet && ranked ? " three" : ""}" data-opt="gmode">
+    <div class="dtChoice modes${trivia && !inSheet && ranked && !l.daily ? " three" : ""}" data-opt="gmode">
       ${ranked ? b("ranked", "trophy", "Puanlı", `${need} soru · sıralamaya girer`) : ""}
       ${b("normal", "shuffle", "Serbest", song ? "Soru sayısını ve şarkıları sen seç" : "Soru sayısını sen seç")}
-      ${trivia && !inSheet ? b("survival", "heart", "Hayatta Kalma", `İlk yanlışta oyun biter${best.streak ? ` · rekorun ${num(best.streak)}` : ""}`, "onlySolo") : ""}
+      ${trivia && !inSheet && !l.daily ? b("survival", "heart", "Hayatta Kalma", `İlk yanlışta oyun biter${best.streak ? ` · rekorun ${num(best.streak)}` : ""}`, "onlySolo") : ""}
     </div>
     ${ranked ? `<p class="rankedNote">${ic("trophy")}<span><b>${need} soru</b>${song ? ", tüm şarkılardan karışık" : ""}. Sonucun bu quizin puan sıralamasına yazılır; rekor kırarsan eski puanının yerine geçer.</span></p>` : ""}`;
 }
@@ -2693,6 +3005,7 @@ function renderDetail() {
         ${modeChoice(l)}
         <div class="dtOpts">${optsHtml(l)}</div>
         <button class="btn primary xl wide dtStart" data-do="detailGo" ${ik ? "" : "disabled data-needtracks=1"}>${ic("sparkles")}Başla</button>
+        ${slugOf(l) ? `<button class="btn ghost wide dtShare" data-do="shareQuiz">${ic("copy")}Quizin bağlantısını kopyala <small data-noi18n>${esc(location.host + BASE + slugOf(l))}</small></button>` : ""}
         ${(l.genre === "Topluluk" && l.mine) || (l.genre === "Senin" && (l.tracks?.length || l.items?.length) && !String(l.id).startsWith("dz")) ? `<button class="btn ghost wide dtEdit" data-do="editQuiz">${ic("sliders-horizontal")}Quizi düzenle <small>ad, yazar, sorular, tür</small></button>` : ""}
         ${b.score || b.streak ? `<div class="dtRec">${ic("trophy")}<span>Rekorların: ${b.score ? `<b>${num(b.score)}</b> puan` : ""}${b.score && b.streak ? " · " : ""}${b.streak ? `<b>${num(b.streak)}</b> soruluk seri` : ""}</span></div>` : ""}
       </div>
@@ -2765,10 +3078,33 @@ async function loadRank(l) {
 // Detay ve Sayı Quizi ekranları geçmişe bir adım ekler; geri basılınca ana ekrana (kaldığın yere) dönülür.
 let homeY = 0;
 let afterBack = null;
-function pushScreen(state) {
+function pushScreen(state, url) {
   if (screen === "home") homeY = scrollY;
-  if (history.state?.jqScreen) history.replaceState(state, "");
-  else history.pushState(state, "");
+  if (history.state?.jqScreen) history.replaceState(state, "", url);
+  else history.pushState(state, "", url);
+}
+// ---------- quiz bağlantıları: jinjagames.com/quiz/<quizin-adı> ----------
+// (adresi js/slug.js üretir; site statik olduğu için bu adres 404.html üzerinden /quiz/?q=<ad> olarak gelir)
+const BASE = new URL("./", location.href).pathname; // sitenin /quiz/ klasörü
+let slugMemo = { sig: "", t: null };
+function slugs() {
+  const comm = [...(ui.community || [])].sort((a, b) => (a.at || 0) - (b.at || 0) || String(a.id).localeCompare(String(b.id)));
+  const lists = [daily(), ...PRESETS, ...MIXES, ...RANK_QUIZZES, ...ANIME_QUIZZES, ...TRIVIA, ...comm];
+  const sig = `${lists.length}|${lists[0].id}|${comm.length ? comm[comm.length - 1].id : ""}`;
+  if (slugMemo.sig !== sig) slugMemo = { sig, t: slugTable(lists) };
+  return slugMemo.t;
+}
+const slugOf = (l) => (l ? slugs().byId.get(String(l.id)) || "" : "");
+const quizUrl = (l) => (slugOf(l) ? new URL(BASE + slugOf(l), location.origin).href : "");
+async function openSlug(s, fresh = false) {
+  s = String(s || "").toLowerCase().replace(/[^a-z0-9-]/g, "").slice(0, 80);
+  if (!s) return;
+  let l = slugs().bySlug.get(s);
+  if (!l) { await communityP; l = slugs().bySlug.get(s); }
+  if (screen !== "home" || mode) return;
+  if (!l) return toast("Bu bağlantıdaki quiz bulunamadı; adı değişmiş ya da kaldırılmış olabilir.", "bad");
+  await openList(l.id);
+  if (fresh) toast("Quizin yayında! Bağlantısını kopyalayıp paylaşabilirsin.");
 }
 // Uygulama içindeki "geri" düğmeleri de tarayıcı geçmişiyle aynı yolu izler (çift geri basma olmasın).
 function backHome(after) {
@@ -2822,10 +3158,11 @@ function openListNow(id, fromHistory = false, revHint = false) {
   // Tersten mi normal mi: quizin kendisinden ya da açıldığı kategoriden (Tersten sekmesi / rafı) gelir; ayrıca sorulmaz.
   const tab = inLobbyPick() || (sheet.open && sheetCtx?.kind === "picker") ? pick.tab : ui.genre;
   const rev = l.rev || (l.mix && (revHint || tab === "Tersten")) ? 1 : 0;
-  const ctx = { list: l, count: last.count || 10, mode: last.mode || "choice", clip: rev ? 5 : last.clip || 3, rev, play: "solo", gmode: lbOf(l) && !(l.daily && dailyResult(l.daily)) ? "ranked" : "normal" };
+  // Cevap türü her zaman "Şıklı" başlar; isteyen "Yazarak"a çevirir.
+  const ctx = { list: l, count: last.count || 10, mode: "choice", clip: rev ? 5 : last.clip || 3, rev, play: "solo", gmode: lbOf(l) && !(l.daily && dailyResult(l.daily)) ? "ranked" : "normal" };
   // Lobide kurucu quiz eklerken pencere; ana sayfada tam detay sayfası
   if (mode && mode.role !== "solo" && isHost()) return showSetup(ctx);
-  if (!fromHistory) pushScreen({ jqScreen: "detail", id: String(l.id), rev });
+  if (!fromHistory) pushScreen({ jqScreen: "detail", id: String(l.id), rev }, slugOf(l) ? BASE + slugOf(l) : BASE);
   sheetCtx = ctx;
   screen = "detail";
   render();
@@ -2965,6 +3302,9 @@ async function doAction(a, el) {
     case "resetGo":
       closeSheet();
       return act({ type: "reset" });
+    case "visGo":
+      closeSheet();
+      return setVis("public");
     case "rkgo": {
       const q = view?.question;
       if (!q || q.mine || rkFilled(q) < (num(q.slots) || 5)) return;
@@ -3069,6 +3409,13 @@ async function doAction(a, el) {
       return rmConfirm();
     case "lobRefresh":
       return refreshLobbies(true);
+    case "shareQuiz": {
+      const l = sheetCtx.list;
+      const url = quizUrl(l);
+      if (!url) return;
+      if (navigator.share && matchMedia("(pointer:coarse)").matches) { try { await navigator.share({ title: `${l.name} · JinjaQuiz`, url }); return; } catch (e) { if (e?.name === "AbortError") return; } }
+      return copy(url, "Quizin bağlantısı kopyalandı.");
+    }
     case "editQuiz":
       location.href = "create/?edit=" + encodeURIComponent(sheetCtx.list?.id || "");
       return;
@@ -3145,12 +3492,18 @@ async function runSearch(q, target) {
 function pickHit(i) {
   const a = ui.results?.[i];
   if (!a) return;
+  // lobideki oyuncu: sanatçıyı kurucuya istek olarak öner
+  if (mode?.role === "guest" && screen === "room") {
+    ui.results = null;
+    if ($("#pickResults")) $("#pickResults").innerHTML = "";
+    return act({ type: "suggest", id: "dz" + a.id, artist: { id: a.id, name: a.name, picture: a.picture } }).then((ok) => ok && toast(`“${a.name}” kurucuya istek olarak gitti.`));
+  }
   const list = { id: "dz" + a.id, name: a.name, picture: a.picture, artists: [a.id], genre: "Senin" };
   saveCustom(list);
   ui.results = null;
   if (screen === "home" && !sheet.open) renderHome();
   const last = store.get("jqSetup", {});
-  showSetup({ list, count: last.count || 10, mode: last.mode || "choice", clip: last.clip || 3, gmode: "normal" });
+  showSetup({ list, count: last.count || 10, mode: "choice", clip: last.clip || 3, gmode: "normal" });
 }
 
 // Şıklar ve plak normal "click" ile işlenir: basıp parmağını / fareyi şıkkın dışına kaydırıp
@@ -3183,14 +3536,37 @@ document.addEventListener("click", async (e) => {
       });
     }
     if (d.vis && mode?.role === "host") {
-      mode.vis = ["public", "locked"].includes(d.vis) ? d.vis : "private";
-      if (mode.vis === "locked" && !mode.pw) mode.pw = String(Math.floor(1000 + Math.random() * 9000));
-      persist();
-      lastSig = "";
-      if (mode.vis === "public") toast("Lobin artık ana sayfadaki “Açık lobiler”de görünüyor.");
-      if (mode.vis === "locked") toast(`Lobin listede kilitli görünüyor. Şifre: ${mode.pw} (değiştirebilirsin)`);
-      lobbyAnnounce(true);
-      return render();
+      if (d.vis === mode.vis) return;
+      // herkese açmak geri alınabilir ama lobiyi yabancılara açar: önce sor
+      if (d.vis === "public") return openSheet("visAsk");
+      return setVis(d.vis);
+    }
+    if (d.themeTo) {
+      setTheme(d.themeTo);
+      barHtml = "";
+      return topbar();
+    }
+    if ("emobtn" in d) return emoOpen(b);
+    if (d.promote) return openSheet("rmConfirm", { act: "promote", id: d.promote });
+    if (d.sugg || d.vote) {
+      const id = d.sugg || d.vote;
+      if (mode?.role !== "guest") return;
+      const had = view?.sugg?.find((x) => x.id === id)?.by.includes(view.me);
+      if ((await act({ type: "suggest", id })) && d.sugg && !had) toast("İsteğin kurucuya ve herkese gitti.");
+      return;
+    }
+    if (d.suggdel) return act({ type: "suggDel", id: d.suggdel });
+    if (d.suggadd) {
+      const s = mode?.game?.sugg?.find((x) => x.id === d.suggadd);
+      if (!s) return;
+      if (s.dz) {
+        const list = { id: s.id, name: s.dz.name, picture: s.dz.picture, artists: [s.dz.id], genre: "Senin" };
+        saveCustom(list);
+        const last = store.get("jqSetup", {});
+        return showSetup({ list, count: last.count || 10, mode: "choice", clip: last.clip || 3, gmode: "normal" });
+      }
+      if (!allLists().some((x) => String(x.id) === s.id)) return toast("Bu quiz artık bulunamıyor.", "bad");
+      return openList(s.id);
     }
     if (d.lang) {
       applyLang(d.lang);
@@ -3216,8 +3592,10 @@ document.addEventListener("click", async (e) => {
     if (d.numcat) return startNumber(d.numcat);
     if (d.npick !== undefined) return numPick(Number(d.npick));
     if (d.ptab) {
-      Object.assign(pick, { tab: d.ptab, cat: "", q: "" });
-      ui.results = null;
+      // arama kutusundaki yazı sekme değişince de geçerli kalır (yeni sekmede de o aranır)
+      Object.assign(pick, { tab: d.ptab, cat: "" });
+      if (d.ptab !== "Müzik" && d.ptab !== "Hepsi") ui.results = null;
+      if (b.closest("#pickBody")) $("#lobPick")?.scrollIntoView({ behavior: "smooth", block: "start" });
       if (d.ptab === "Topluluk" && (ui.communityErr || ui.community?.length === 0)) (ui.community = null), loadCommunity();
       if ($("#lobPick")) { lastSig = ""; return render(); }
       pickerSheet();
@@ -3464,6 +3842,7 @@ window.addEventListener("beforeunload", (e) => {
 window.addEventListener("pagehide", () => mode?.net?.close({ quiet: true }));
 
 // ---------- açılış ----------
+let communityP = null;
 function boot() {
   const tab = new URLSearchParams(location.search).get("tab");
   if (tab === "topluluk") ui.genre = "Topluluk";
@@ -3471,7 +3850,10 @@ function boot() {
   if (tab === "trivia") ui.genre = "Trivia";
   if (tab === "senin" && customLists().length) ui.genre = "Senin";
   if (tab) history.replaceState(null, "", location.pathname);
-  loadCommunity();
+  const qSlug = new URLSearchParams(location.search).get("q");
+  const qNew = new URLSearchParams(location.search).has("yeni");
+  if (qSlug) history.replaceState(null, "", BASE);
+  communityP = loadCommunity();
   loadPlays();
   refreshLobbies();
   loadPresetPictures().then((changed) => {
@@ -3481,7 +3863,7 @@ function boot() {
   const invite = ((new URLSearchParams(location.search).get("room") || new URLSearchParams(location.search).get("oda")) || "").toUpperCase();
   if (saved?.role === "host" && saved.game) {
     try {
-      startHost({ restore: typeof saved.game === "string" ? unseal(saved.game) : saved.game, vis: saved.vis || (saved.pub ? "public" : "private"), pw: saved.pw || "" });
+      startHost({ restore: typeof saved.game === "string" ? unseal(saved.game) : saved.game, vis: saved.vis || (saved.pub ? "public" : "private"), pw: saved.pw || "", adopted: !!saved.ad });
       // oluşturma sayfası aynı sekmede açıldıysa: kaydedilen quiz lobiye dönünce açılır
       const back = store.get("jqLobbyBack", null, sessionStorage);
       store.del("jqLobbyBack", sessionStorage);
@@ -3493,6 +3875,7 @@ function boot() {
   }
   if (saved?.role === "guest" && validCode(saved.code) && profile) return startGuest(saved.code, { pw: saved.pw || "" });
   render();
+  if (qSlug && !validCode(invite)) openSlug(qSlug, qNew);
   if (validCode(invite)) {
     // şifreli lobinin davet bağlantısı şifreyi de taşır (s=); adres çubuğunda kalmasın
     const ipw = (new URLSearchParams(location.search).get("s") || "").slice(0, 20);

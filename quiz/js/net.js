@@ -54,7 +54,10 @@ const STALE = 75000; // bu kadar süre hiç ses vermeyen oyuncu (telefonu arka p
 
 // Kurucu: oyuncuların komutlarını alır, her birine kendi durumunu yollar.
 // claim(pid, key): bu oyuncu katılabilir mi; { old } aynı cihazın lobideki eski kimliği, { err } ret sebebi.
-export function hostRoom(code, { onHello, onAction, onLeave, onBack, claim, onChat }) {
+// Canlı (bağlı) WebRTC bağlantısı sayısı
+const liveConns = (room) => { try { return Object.values(room.getPeers() || {}).filter((c) => c?.connectionState === "connected").length; } catch { return 0; } };
+
+export function hostRoom(code, { onHello, onAction, onLeave, onBack, claim, onChat, onEmo }) {
   const { room, send, onMessage } = open(code);
   const peers = new Map(); // peerId -> pid
   const seen = new Map(); // peerId -> son mesaj zamanı
@@ -112,6 +115,7 @@ export function hostRoom(code, { onHello, onAction, onLeave, onBack, claim, onCh
     const pid = peers.get(peerId);
     if (!pid) return;
     if (m.t === "chat") return onChat?.(pid, m.x);
+    if (m.t === "emo") return onEmo?.(pid, m.e);
     if (m.t === "act") {
       let error = null;
       try {
@@ -151,6 +155,19 @@ export function hostRoom(code, { onHello, onAction, onLeave, onBack, claim, onCh
     chat(msg) {
       for (const peerId of peers.keys()) send({ t: "chat", m: msg }, { target: peerId });
     },
+    // Lobiye katılan ya da geri dönen oyuncuya son sohbet mesajları
+    chatTo(pid, list) {
+      for (const [peerId, p] of peers) if (p === pid) for (const m of list) send({ t: "chat", m }, { target: peerId });
+    },
+    // Emoji tepkisi: herkese gider, ekranda birkaç saniye uçar.
+    emo(msg) {
+      for (const peerId of peers.keys()) send({ t: "emo", m: msg }, { target: peerId });
+    },
+    /** Kuruculuk devri: oyun durumu yeni kurucuya, "kurucu değişiyor" bilgisi diğerlerine gider. */
+    handoff(pid, data) {
+      for (const [peerId, p] of peers) send(p === pid ? { t: "takeover", ...data } : { t: "moving" }, { target: peerId });
+    },
+    live: () => liveConns(room),
     kick(pid) {
       for (const [peerId, p] of peers)
         if (p === pid) {
@@ -170,7 +187,7 @@ export function hostRoom(code, { onHello, onAction, onLeave, onBack, claim, onCh
 }
 
 // Oyuncu: kurucuyu bulur, saatini eşitler, komut gönderir.
-export function guestRoom(code, pid, profile, pw, { onState, onDenied, onHostLost, onHostBack, onChat }) {
+export function guestRoom(code, pid, profile, pw, { onState, onDenied, onHostLost, onHostBack, onChat, onEmo, onTakeover, onMoving }) {
   const { room, send, onMessage } = open(code);
   let hostPeer = null;
   let offset = 0;
@@ -223,6 +240,12 @@ export function guestRoom(code, pid, profile, pw, { onState, onDenied, onHostLos
       }
     } else if (m.t === "chat") {
       onChat?.(m.m);
+    } else if (m.t === "emo") {
+      onEmo?.(m.m);
+    } else if (m.t === "takeover") {
+      onTakeover?.(m);
+    } else if (m.t === "moving") {
+      onMoving?.();
     } else if (m.t === "denied") {
       onDenied(m.reason, !!m.pw);
     } else if (m.t === "bye") {
@@ -241,8 +264,9 @@ export function guestRoom(code, pid, profile, pw, { onState, onDenied, onHostLos
     hostCands.clear();
     hostPeer = null;
     onHostLost?.();
-    // Kurucu sayfayı yenilediyse birkaç saniyede döner; dönmezse lobi kapanmış sayılır.
-    lostTimer = setTimeout(() => onDenied("Kurucu ayrıldı, lobi kapandı."), 20000);
+    // Kurucu sayfayı yenilediyse ya da telefonu bir an arka plana düştüyse birkaç saniyede döner; uzun süre
+    // dönmezse lobi kapanmış sayılır. (Kuruculuk devredilirken yeni kurucu da bu sürede bağlanır.)
+    lostTimer = setTimeout(() => onDenied("Kurucu ayrıldı, lobi kapandı."), 45000);
   };
   const resync = setInterval(sync, 15000);
   return {
@@ -251,6 +275,15 @@ export function guestRoom(code, pid, profile, pw, { onState, onDenied, onHostLos
     },
     get connected() {
       return !!hostPeer;
+    },
+    /** Kurucuyla bağlantı gerçekten açık mı? (Telefon arka plandan dönünce kontrol edilir.) */
+    alive() {
+      if (!hostPeer) return false;
+      try { const c = room.getPeers()?.[hostPeer]; return !c || ["connected", "connecting", "new"].includes(c.connectionState); } catch { return true; }
+    },
+    emo(e) {
+      if (!hostPeer) throw Error("Kurucuya bağlı değilsin.");
+      send({ t: "emo", e }, { target: hostPeer });
     },
     chat(text) {
       if (!hostPeer) throw Error("Kurucuya bağlı değilsin.");

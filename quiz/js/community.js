@@ -5,7 +5,10 @@
 import { schnorr, sha256, bytesToHex, hexToBytes } from "../vendor/nostr-sign.js";
 import { cdn } from "./music.js?v=5";
 import { cleanItems, cleanCat, cleanEmoji, T_MIN, T_MAX } from "./trivia.js?v=4";
-import { cleanRank, cleanOps } from "./engine.js?v=11";
+import { cleanRank, cleanOps } from "./engine.js?v=12";
+import { isBadName, maskName } from "./badwords.js?v=1";
+// Önceden yayınlanmış quizlerde uygunsuz ad / açıklama / yazar ekranda gizlenir (kayda dokunulmaz).
+const tidy = (q) => (isBadName(q.name) || isBadName(q.desc) || isBadName(q.author) ? { ...q, name: maskName(q.name), desc: isBadName(q.desc) ? "" : q.desc, author: maskName(q.author) } : q);
 
 export const OP_MIN = 4; // anime opening quizinde en az (şıklar diğer openinglerden oluşur)
 
@@ -214,7 +217,7 @@ export async function fetchCommunity({ limit = 300, ms = 6000 } = {}) {
   const bl = await blocked();
   const out = [];
   for (const { q } of best.values()) {
-    if (q && !q.del && !hidden.has(q.id) && !bl.quizzes.has(q.id) && !bl.pubkeys.has(q.pubkey)) out.push(q);
+    if (q && !q.del && !hidden.has(q.id) && !bl.quizzes.has(q.id) && !bl.pubkeys.has(q.pubkey)) out.push(tidy(q));
   }
   return out.sort((a, b) => b.at - a.at);
 }
