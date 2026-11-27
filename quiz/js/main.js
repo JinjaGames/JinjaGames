@@ -13,7 +13,7 @@ import { hostRoom, guestRoom, newCode, validCode } from "./net.js?v=4";
 import { announceLobby, listLobbies } from "./lobbies.js?v=4";
 import { countPlay, loadPlays, plays, players, onPlays, playsLoaded } from "./plays.js?v=4";
 import { dailyQuiz, dailyDate, dailyLeft, dailyLabel, dailyResult, saveDaily, dailyStreak } from "./daily.js?v=1";
-import { initI18n, LANG, applyLang } from "./i18n.js?v=2";
+import { initI18n, LANG, applyLang } from "./i18n.js?v=3";
 
 // ---------- yardımcılar ----------
 const $ = (s, r = document) => r.querySelector(s);
@@ -804,6 +804,8 @@ function drawLobbies() {
   const el = $("#lobbies");
   if (el) el.outerHTML = lobbiesHtml();
 }
+// Ana sayfada ilk birkaç lobi görünür; fazlası "Tüm lobileri gör" ile açılır.
+const LOBBY_SHOW = 4;
 function lobbiesHtml() {
   const ls = ui.lobbies;
   const card = (l) => `<button class="lbyCard" data-joinlobby="${esc(l.code)}" aria-label="${esc(l.host.name)} lobisine katıl">
@@ -815,7 +817,8 @@ function lobbiesHtml() {
   const body = ls === null
     ? `<div class="lbyRow" aria-busy="true">${Array.from({ length: 2 }, () => `<div class="lbyCard sk"></div>`).join("")}</div>`
     : ls.length
-    ? `<div class="lbyRow">${ls.map(card).join("")}</div>`
+    ? `<div class="lbyRow${ui.lobAll ? " all" : ""}">${(ui.lobAll ? ls : ls.slice(0, LOBBY_SHOW)).map(card).join("")}</div>
+      ${ls.length > LOBBY_SHOW ? `<button class="btn soft wide lbyMore" data-do="lobAll">${ui.lobAll ? `${ic("chevron-down", "up")}Daha az göster` : `${ic("chevron-down")}Tüm lobileri gör (${ls.length})`}</button>` : ""}`
     : `<div class="lbyEmpty"><span class="lbyRadar" aria-hidden="true">${ic("globe")}</span><div><b>Şu an açık lobi yok</b><p class="muted">İlk açık lobiyi sen kur; herkes buradan tek dokunuşla katılabilir.</p>
         <div class="lbyBtns"><button class="btn primary sm" data-do="create">${ic("users")}Lobi kur</button><button class="btn soft sm" data-do="focusJoin">${ic("log-in")}Kodla katıl</button></div></div></div>`;
   return `<section class="hm-lobbies" id="lobbies" aria-label="Açık lobiler">
@@ -825,12 +828,10 @@ function lobbiesHtml() {
 }
 // Ana sayfada öne çıkan "kendi quizini oluştur" kartı
 function createCardHtml() {
-  const kinds = [["sarki", "music", "Şarkı"], ["tersten", "rewind", "Tersten"], ["trivia", "circle-help", "Trivia"], ["siralama", "list-ordered", "Sıralama"], ["opening", "tv", "Anime opening"]];
   return `<section class="hm-create" id="create" aria-label="Quiz oluştur">
     <span class="kicker">${ic("sparkles")} Kendi quizin</span>
     <h2>Kendi quizini yap, herkes oynasın.</h2>
     <p class="muted">Türünü seç, birkaç dakikada kur. Herkese açık yayınlarsan Topluluk'ta herkes görür.</p>
-    <div class="mkKinds">${kinds.map(([t, icon, name]) => `<a href="create/?tur=${t}">${ic(icon)}${name}</a>`).join("")}</div>
     <a class="btn primary wide" href="create/">${ic("plus")}Quiz oluştur</a>
   </section>`;
 }
@@ -2924,6 +2925,11 @@ async function doAction(a, el) {
       if (navigator.share) { try { await navigator.share({ text }); return; } catch (e) { if (e?.name === "AbortError") return; } }
       return copy(text, "Sonucun kopyalandı; istediğin yere yapıştır.");
     }
+    case "lobAll":
+      ui.lobAll = !ui.lobAll;
+      drawLobbies();
+      if (!ui.lobAll) $("#lobbies")?.scrollIntoView({ behavior: "smooth", block: "start" });
+      return;
     case "focusJoin": {
       scrollTo({ top: 0, behavior: "smooth" });
       return setTimeout(() => $("#joinCode")?.focus(), 350);

@@ -64,7 +64,7 @@ const D = {
   "Edebiyat & Sanat": "Literature & Art", "Yemek": "Food", "Teknoloji": "Technology", "Eğlence": "Fun", "Rap": "Rap", "Pop": "Pop", "Rock": "Rock",
   // açık lobiler ve yeni ana sayfa
   "Canlı": "Live", "Şifreli lobi": "Locked lobby", "Şu an açık lobi yok": "No open lobbies right now", "İlk açık lobiyi sen kur; herkes buradan tek dokunuşla katılabilir.": "Create the first open lobby; anyone can join from here in one tap.",
-  "Kodla katıl": "Join with code", "Quiz oluştur": "Create quiz", "Türünü seç, birkaç dakikada kur. Herkese açık yayınlarsan Topluluk'ta herkes görür.": "Pick a type and build it in minutes. Publish it and everyone sees it under Community.",
+  "Kodla katıl": "Join with code", "Daha az göster": "Show less", "Quiz oluştur": "Create quiz", "Türünü seç, birkaç dakikada kur. Herkese açık yayınlarsan Topluluk'ta herkes görür.": "Pick a type and build it in minutes. Publish it and everyone sees it under Community.",
   "Anime opening": "Anime opening", "Bölümler": "Sections", "Kategoriler": "Categories", "bugün oynayan": "played today", "Tekrar oyna": "Play again", "Puanın değişmez": "Your score won't change",
   "Sohbeti aç": "Open chat", "Sohbeti kapat": "Close chat", "Geçici · son 10 mesaj": "Temporary · last 10 messages",
   "Açık lobiler": "Open lobbies", "Listeyi yenile": "Refresh list", "Yenile": "Refresh", "Quiz seçiliyor": "Picking a quiz", "Şifreli": "Locked", "Şifreyle katıl": "Join with password",
@@ -247,6 +247,7 @@ const RX = [
   [/^(\d+) (\S+) (\S+)$/, (m, d, mo, day) => (MONTHS[mo] && DAYS[day] ? `${DAYS[day]}, ${d} ${MONTHS[mo]}` : null)],
   [/^Simge (.+)$/, "Icon $1"],
   [/^(\d+)\/(\d+) oyuncu$/, "$1/$2 players"],
+  [/^Tüm lobileri gör \((\d+)\)$/, "See all lobbies ($1)"],
   [/^Sohbeti aç \((\d+) yeni mesaj\)$/, "Open chat ($1 new messages)"],
   [/^Trivia · (.+)$/, (_, c) => `Trivia · ${tr1(c) || c}`],
   [/^(.+) için YouTube'daki gerçek en çok izlenen şarkılar hazırlanıyor\. Liste her gün güncellenir; en geç 1–2 gün içinde oynanabilir\.$/, "$1's real most-watched songs on YouTube are being prepared. The list updates daily; it'll be playable within 1–2 days."],

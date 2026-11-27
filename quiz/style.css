@@ -3632,3 +3632,51 @@ body.loadingQuiz, body.loadingQuiz * { cursor: progress !important; }
 .qcard.tools .qcardTag { max-width: calc(100% - 60px); }
 .qcard.tools:has(.cardTools .icon + .icon) .qcardTag { max-width: calc(100% - 96px); }
 @media (max-width: 560px) { .qcard.tools .qcardTag { max-width: calc(100% - 48px); } .qcard.tools:has(.cardTools .icon + .icon) .qcardTag { max-width: calc(100% - 80px); } }
+/* --- parlamalar: SVG çemberine değil SVG'nin kendisine (tarayıcı çemberdeki filtreyi kareye kırpıyordu) --- */
+.hm-ring .arc, .cdRing .cdArc { filter: none; }
+.hm-ring svg { filter: drop-shadow(0 0 6px #ff5b3a99); }
+.cdRing svg { filter: drop-shadow(0 0 5px color-mix(in srgb, var(--cd) 70%, transparent)); }
+/* --- açık lobiler: fazlası açılınca liste kendi içinde kayar --- */
+.lbyRow.all { max-height: 560px; overflow-y: auto; overscroll-behavior: contain; padding-right: 4px; }
+.lbyMore { justify-content: center; }
+/* --- günün quizi: dar ekranda ve yakınlaştırınca sayılar taşmasın --- */
+.dlyStats { grid-template-columns: repeat(auto-fit, minmax(96px, 1fr)); }
+.dlyStat { min-width: 0; padding: 10px 12px; }
+.dlyStat b { font-size: clamp(18px, 2.2vw, 26px); white-space: nowrap; }
+.dlyStat small { white-space: normal; overflow: visible; text-overflow: clip; line-height: 1.2; }
+@media (max-width: 1100px) { .hm-daily { grid-template-columns: 1fr; } }
+/* --- çok dar ekran / çok yakınlaştırma: üst çubuk sığsın --- */
+@media (max-width: 380px) {
+  .bar { gap: 6px; padding-inline: 10px; }
+  .barEnd { gap: 5px; }
+  .brand { font-size: 17px; }
+  .brand .mark { width: 30px; height: 30px; margin-right: 4px; }
+  .jg-back { padding-inline: 6px; }
+  .langBtn { min-width: 34px; padding: 0 7px; }
+}
+@media (max-width: 420px) {
+  .visSeg { flex-wrap: nowrap; }
+  .pubRow .visSeg button { flex: 1 1 auto; min-width: 0; padding: 0 6px; gap: 4px; font-size: 13px; white-space: nowrap; }
+  .visSeg button .ic { width: 13px; height: 13px; }
+}
+/* --- kısa telefon ekranları: soru, dört şık ve sohbet tek ekrana sığsın --- */
+@media (max-width: 1099px) and (max-height: 820px) {
+  /* oyun sırasında sohbet çubuğu yalnızca yazma kutusu (mesajlar dokununca açılır) */
+  body.hasChat:has(.game) .chatBox:not(.exp) .chatList { display: none; }
+  body.hasChat:has(.game) .chatBox:not(.exp) .chatForm::before { content: "💬"; align-self: center; font-size: 16px; }
+}
+@media (max-width: 560px) and (max-height: 760px) {
+  .game { gap: 8px; padding-top: 6px; }
+  .tq { padding: 12px; gap: 6px; margin: 2px 0 6px; }
+  .tqText { font-size: clamp(16px, 4.8vw, 20px); }
+  .tq .tqAns { min-height: 40px; }
+  .tqNo { font-size: 11px; }
+  .answers { gap: 6px; }
+  .ans { min-height: 46px; padding: 8px; font-size: 14px; }
+  .gImg { width: 40px; height: 40px; }
+  .dock { padding-top: 8px; padding-bottom: 8px; }
+}
+.gq { min-width: 0; }
+.gq small { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: block; }
+.hm-copy .hm-actions { gap: 10px; }
+.hm-copy .hm-actions .btn.lg { padding-inline: 18px; }
