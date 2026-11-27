@@ -1,18 +1,18 @@
 // JinjaQuiz: quiz oluşturma sayfası (/quiz/create/). Sanatçı ve şarkı araması ayrı sekmelerde;
 // sanatçının popüler şarkıları ve tüm albümleri tek tek ya da topluca eklenebilir.
-import { searchArtists, searchTracks, artistInfo, artistTop, artistAlbums, albumTracks, ownTracks, isAlternate, customLists, saveCustom, removeCustom, cleanTracks, fold, cdn } from "./music.js?v=5";
-import { fetchCommunity, loadFull, publishQuiz, removeQuiz, myPubkey, MIN_TRACKS, MAX_TRACKS } from "./community.js?v=11";
-import { TCATS, TART, EMOJIS, T_MIN, T_MAX, cleanItems, cleanCat, cleanEmoji, isTF, IMG } from "./trivia.js?v=4";
-import { cleanOps, RANK_PTS, OP_PTS } from "./engine.js?v=12";
+import { searchArtists, searchTracks, artistInfo, artistTop, artistAlbums, albumTracks, ownTracks, isAlternate, customLists, saveCustom, removeCustom, cleanTracks, fold, cdn } from "./music.js?v=6";
+import { fetchCommunity, loadFull, publishQuiz, removeQuiz, myPubkey, MIN_TRACKS, MAX_TRACKS } from "./community.js?v=12";
+import { TCATS, TART, EMOJIS, T_MIN, T_MAX, cleanItems, cleanCat, cleanEmoji, isTF, IMG } from "./trivia.js?v=5";
+import { cleanOps, RANK_PTS, OP_PTS } from "./engine.js?v=13";
 import { isBadName } from "./badwords.js?v=1";
-import { quizSlug } from "./slug.js?v=1";
-import { initI18n } from "./i18n.js?v=11";
-import { rankItems } from "./rank.js?v=4";
-import { OP_MIN } from "./community.js?v=11";
+import { quizSlug, slugify } from "./slug.js?v=1";
+import { initI18n } from "./i18n.js?v=12";
+import { rankItems } from "./rank.js?v=5";
+import { OP_MIN } from "./community.js?v=12";
 
 const $ = (s, r = document) => r.querySelector(s);
 const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
-const ic = (n) => `<i class="ic" aria-hidden="true" style="--i:url(/quiz/assets/icons/${/^[a-z0-9-]{1,32}$/.test(n) ? n : "music"}.svg)"></i>`;
+const ic = (n) => `<i class="ic" aria-hidden="true" style="--i:url(/quiz/assets/icons/${/^[a-z0-9-]{1,32}$/.test(n) ? n : "music"}.svg?v=2)"></i>`;
 const spinner = () => `<span class="spin" aria-hidden="true"></span>`;
 // Yüklenirken iskelet görünüm (dönen simge yerine içeriğin taslağı)
 const skRows = (n = 4) => `<div class="skWrap" aria-busy="true" aria-label="Yükleniyor">${Array.from({ length: n }, (_, i) => `<div class="skRow" style="--i:${i}"><span class="sk skAv"></span><span class="skCol"><span class="sk skL" style="width:${60 - (i % 3) * 12}%"></span><span class="sk skL" style="width:${34 + (i % 2) * 10}%"></span></span></div>`).join("")}</div>`;
@@ -498,6 +498,11 @@ function artistHtml() {
 }
 
 function drawAll() {
+  if (st.loadingEdit) {
+    app.innerHTML = `<section class="crLoading">${spinner()}<b>Quizin yükleniyor…</b><small class="muted">Topluluktaki son hali getiriliyor.</small></section>`;
+    $("#crTitle").textContent = "Quizi düzenle";
+    return;
+  }
   if (!st.kind) {
     app.innerHTML = chooserHtml();
     $("#crTitle").textContent = "Quiz oluştur";
@@ -574,11 +579,13 @@ async function checkPublishNow() {
     return false;
   }
   const slug = quizSlug({ name: st.name, kind: st.kind === "rev" || st.kind === "song" ? "" : st.kind, rev: st.kind === "rev" });
+  // düzenlenen quizin adı değişmediyse (eskiden aynı adla yayınlanmış olsa da) güncellenebilir
+  if (st.d && st.origName && slugify(st.origName) === slugify(name)) return true;
   let taken = RESERVED.has(slug);
   if (!taken) {
     try {
       const [{ PRESETS, MIXES }, { TRIVIA }, { RANK_QUIZZES }, { ANIME_QUIZZES }, comm] = await Promise.all([
-        import("./music.js?v=5"), import("./trivia.js?v=4"), import("./rank.js?v=4"), import("./anime.js?v=3"), fetchCommunity({ ms: 2500 }).catch(() => []),
+        import("./music.js?v=6"), import("./trivia.js?v=5"), import("./rank.js?v=5"), import("./anime.js?v=3"), fetchCommunity({ ms: 2500 }).catch(() => []),
       ]);
       const mineNow = (x) => st.d && x.d === st.d && x.pubkey === myPubkey(); // düzenlenen quizin kendisi
       taken = [...PRESETS, ...MIXES, ...TRIVIA, ...RANK_QUIZZES, ...ANIME_QUIZZES, ...comm].some((x) => !mineNow(x) && quizSlug(x) === slug);
@@ -833,17 +840,23 @@ addEventListener("popstate", async () => {
     return drawAll();
   }
   if (id.startsWith("nq-")) {
-    const sel = app.querySelector("#crSel");
-    if (sel) sel.innerHTML = skRows(4);
+    // ana sayfa quizi yanında getirdiyse hemen aç; yoksa topluluktan getir (bu arada "yükleniyor" görünür)
+    let handed = null;
+    try { handed = JSON.parse(sessionStorage.getItem("jqEdit")); sessionStorage.removeItem("jqEdit"); } catch {}
+    st.loadingEdit = !(handed?.id === id && handed.pubkey === myPubkey());
+    if (st.loadingEdit) drawAll();
     try {
-      const q = (await fetchCommunity()).find((x) => x.id === id && x.mine);
+      const q = !st.loadingEdit ? handed : (await fetchCommunity({ ms: 4000 })).find((x) => x.id === id && x.mine);
       if (!q) throw Error("Bu quiz bulunamadı ya da senin değil.");
-      await loadFull(q);
+      if (st.loadingEdit) await loadFull(q);
+      st.loadingEdit = false;
+      if (!q.kind && !Array.isArray(q.tracks)) throw Error("Bu quiz şu an açılamadı. Biraz sonra tekrar dene.");
       if (q.kind === "rank") Object.assign(st, { kind: "rank", name: q.name, desc: q.desc, author: q.author, rank: { artist: { id: q.artistId, name: q.artist, picture: q.picture }, items: q.items }, public: true, d: q.d, prevAt: q.at, pubkey: q.pubkey });
       else if (q.kind === "op") Object.assign(st, { kind: "op", name: q.name, desc: q.desc, author: q.author, emoji: q.emoji, ops: q.items.map((o) => ({ url: `https://www.youtube.com/watch?v=${o.yt}${o.s ? `&t=${o.s}` : ""}`, anime: o.anime, song: o.song })), public: true, d: q.d, prevAt: q.at, pubkey: q.pubkey });
       else if (q.kind === "trivia") Object.assign(st, { kind: "trivia", name: q.name, desc: q.desc, author: q.author, cat: q.cat, emoji: q.emoji, items: q.items.map(toEditor), public: true, d: q.d, prevAt: q.at, pubkey: q.pubkey });
-      else Object.assign(st, { kind: q.rev ? "rev" : "song", name: q.name, desc: q.desc, author: q.author, tracks: [...q.tracks], public: true, d: q.d, prevAt: q.at, pubkey: q.pubkey });
-    } catch (e) { fail(e); }
+      else Object.assign(st, { kind: q.rev ? "rev" : "song", name: q.name, desc: q.desc, author: q.author, tracks: cleanTracks(q.tracks), public: true, d: q.d, prevAt: q.at, pubkey: q.pubkey });
+      st.origName = q.name;
+    } catch (e) { st.loadingEdit = false; fail(e); }
     drawAll();
   }
 })();

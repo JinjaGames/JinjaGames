@@ -3,9 +3,9 @@
 // saklanan anahtarla imzalar; aynı quizi yalnızca o güncelleyebilir ya da kaldırabilir.
 // Gelen her kayıt imzası doğrulandıktan ve alan alan süzüldükten sonra kullanılır.
 import { schnorr, sha256, bytesToHex, hexToBytes } from "../vendor/nostr-sign.js";
-import { cdn } from "./music.js?v=5";
-import { cleanItems, cleanCat, cleanEmoji, T_MIN, T_MAX } from "./trivia.js?v=4";
-import { cleanRank, cleanOps } from "./engine.js?v=12";
+import { cdn } from "./music.js?v=6";
+import { cleanItems, cleanCat, cleanEmoji, T_MIN, T_MAX } from "./trivia.js?v=5";
+import { cleanRank, cleanOps } from "./engine.js?v=13";
 import { isBadName, maskName } from "./badwords.js?v=1";
 // Önceden yayınlanmış quizlerde uygunsuz ad / açıklama / yazar ekranda gizlenir (kayda dokunulmaz).
 const tidy = (q) => (isBadName(q.name) || isBadName(q.desc) || isBadName(q.author) ? { ...q, name: maskName(q.name), desc: isBadName(q.desc) ? "" : q.desc, author: maskName(q.author) } : q);

@@ -1,7 +1,8 @@
-import { MORE } from "./trivia-more.js?v=2";
+import { MORE } from "./trivia-more.js?v=3";
 import { EXTRA, FLAG_QUIZZES, flagFor } from "./trivia-extra.js?v=2";
 import { NEW } from "./trivia-new.js?v=1";
 import { NEW2 } from "./trivia-new2.js?v=1";
+import { MAPS } from "./trivia-maps.js?v=1";
 
 // Trivia quizleri: müzik dışı bilgi soruları. Her soru { q: soru, a: [doğru, yanlış, yanlış, yanlış] }
 // biçimindedir; ilk cevap her zaman doğrudur, oyunda şıklar karıştırılır. Doğru/Yanlış soruları iki şıklıdır.
@@ -39,6 +40,9 @@ export const IMG = /^data:image\/(jpeg|png|webp);base64,[A-Za-z0-9+/=]{1,24000}$
 export const ANI_IMG = /^https:\/\/s4\.anilist\.co\/file\/anilistcdn\/[\w\/.-]{1,200}$/;
 const EMO = /^[\p{Extended_Pictographic}\p{Regional_Indicator}‍️⃣\p{Emoji_Modifier}#*0-9]{1,16}$/u;
 export const flagUrl = (f) => (FLAG.test(f || "") ? `https://flagcdn.com/w320/${f}.png` : "");
+// Soruyla birlikte görünen görsel: qf = bayrak, qs = ülkenin haritadaki şekli (Mapsicon, djaiss; sürümü sabit).
+export const SHAPE = /^[a-z]{2}$/;
+export const shapeUrl = (c) => (SHAPE.test(c || "") ? `https://cdn.jsdelivr.net/gh/djaiss/mapsicon@33ba288/all/${c}/256.png` : "");
 export const cleanEmo = (e) => (typeof e === "string" && EMO.test(e) ? e : "");
 
 /** Başka bir yerden (kullanıcı, röle, oyuncu) gelen soru listesini süzer. Bozuk sorular atılır. */
@@ -50,6 +54,8 @@ export function cleanItems(arr) {
     if (!q || a.length < 2 || new Set(a.map(key)).size !== a.length) continue;
     const o = { q, a };
     if (FLAG.test(it?.f || "")) o.f = it.f;
+    if (FLAG.test(it?.qf || "")) o.qf = it.qf;
+    if (SHAPE.test(it?.qs || "")) o.qs = it.qs;
     if (cleanEmo(it?.e)) o.e = it.e;
     if (typeof it?.img === "string" && (IMG.test(it.img) || ANI_IMG.test(it.img))) {
       o.img = it.img;
@@ -541,11 +547,14 @@ export const TRIVIA = [
     Q("Logosunda sıçrayan bir kedi bulunan spor markası hangisidir?", "Puma", "Jack Wolfskin", "Under Armour", "Lotto"),
     Q("Kırmızı-beyaz logosu ve kıvrımlı yazısıyla bilinen içecek markası hangisidir?", "Coca-Cola", "Pepsi", "Fanta", "Sprite"),
     Q("Logosunda kırmızı bir 'play' düğmesi bulunan platform hangisidir?", "YouTube", "Netflix", "Twitch", "Vimeo"),
-  ]),  ...MORE, ...NEW, ...NEW2,
+  ]),  ...MORE, ...NEW, ...NEW2, ...MAPS,
 ];
 // Ek soruları birleştir (aynı soru iki kez girmez) ve ülke cevaplarına bayrak ekle.
 for (const t of TRIVIA) {
-  const seen = new Set(t.items.map((it) => key(it.q)));
-  for (const it of EXTRA[t.id] || []) if (!seen.has(key(it.q))) seen.add(key(it.q)), t.items.push(it);
-  if (FLAG_QUIZZES.has(t.id)) for (const it of t.items) if (!it.f && !it.e && flagFor(it.a[0])) it.f = flagFor(it.a[0]);
+  // görselli quizlerde (ör. Bayrakları Tanı) ek metin soruları yalnızca günün quizinin eski havuzuna gider
+  const into = t.dailyItems || t.items;
+  const seen = new Set(into.map((it) => key(it.q)));
+  for (const it of EXTRA[t.id] || []) if (!seen.has(key(it.q))) seen.add(key(it.q)), into.push(it);
+  // (günün quizi için saklanan eski sorular da aynı işlemden geçer; günün soruları değişmesin)
+  if (FLAG_QUIZZES.has(t.id)) for (const it of [...t.items, ...(t.dailyItems || [])]) if (!it.f && !it.e && !it.qf && !it.qs && flagFor(it.a[0])) it.f = flagFor(it.a[0]);
 }

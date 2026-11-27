@@ -1,7 +1,7 @@
 // Oyun motoru. Kurucunun tarayıcısında çalışır ve tek doğruluk kaynağıdır.
 // Diğer oyuncular yalnızca kendilerine özel durum özetini (view) alır.
-import { fold, preview } from "./music.js?v=5";
-import { cleanItems, cleanEmoji } from "./trivia.js?v=4";
+import { fold, preview } from "./music.js?v=6";
+import { cleanItems, cleanEmoji } from "./trivia.js?v=5";
 
 export const MAX_PLAYERS = 12;
 const PLAYS = 3;
@@ -64,7 +64,8 @@ const shuffle = (a) => {
 const uid = () => Math.random().toString(36).slice(2, 10);
 // Sorunun kimliği (daha önce sorulanları hatırlamak için kısa özet)
 const hash = (s) => { let h = 2166136261; for (const c of String(s)) h = Math.imul(h ^ c.codePointAt(0), 16777619) >>> 0; return h.toString(36); };
-const qKey = (kind, x) => hash(kind === "trivia" || kind === "rank" ? x.q : kind === "op" ? x.yt : x.id);
+// (bayrak / harita sorularında metin aynı, görsel farklıdır: görsel de anahtara girer)
+const qKey = (kind, x) => hash(kind === "trivia" ? x.q + (x.qf ? "|f" + x.qf : "") + (x.qs ? "|s" + x.qs : "") : kind === "rank" ? x.q : kind === "op" ? x.yt : x.id);
 const USED_MAX = 400; // havuz başına hatırlanan soru
 const USED_POOLS = 80;
 
@@ -731,6 +732,8 @@ export class Game {
               video: set.kind === "op" ? !!set.video : null,
               options2: set.kind === "op" ? q.options2 : null,
               pic: set.kind === "trivia" && q.item.iw === "q" ? q.item.img : null,
+              qflag: set.kind === "trivia" ? q.item.qf || null : null,
+              qshape: set.kind === "trivia" ? q.item.qs || null : null,
               url: this.phase === "preparing" ? null : q.url,
               offset: q.offset,
               clip: set.clip,

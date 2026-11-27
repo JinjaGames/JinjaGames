@@ -1,12 +1,60 @@
 // Ek trivia quizleri (trivia.js'teki TRIVIA listesine eklenir). Biçim aynı: ilk cevap doğrudur.
 
 const Q = (q, ...a) => ({ q, a });
+// bayrak sorusu: bayrağın kendisi soruyla birlikte görünür
+const F = (qf, ...a) => ({ q: "Bu bayrak hangi ülkenin?", qf, a });
 const TF = (q, yes) => ({ q, a: yes ? ["Doğru", "Yanlış"] : ["Yanlış", "Doğru"] });
 const quiz = (id, cat, emoji, name, desc, items) => ({ id: "t-" + id, kind: "trivia", cat, genre: cat, emoji, name, desc, items });
 
 export const MORE = [
   // ---------------------------------------------------------------- Coğrafya
-  quiz("bayraklar", "Coğrafya", "🚩", "Bayrakları Tanı", "Renklerden, sembollerden ülkeyi bul.", [
+  // Bayrakları Tanı: bayrağın kendisi görünür. Eski metin soruları yalnızca günün quizinde kullanılır
+  // (günün quizi tarihten seçilir; havuz değişirse o günün soruları değişirdi).
+  { ...quiz("bayraklar", "Coğrafya", "🚩", "Bayrakları Tanı", "Bayrağa bak, hangi ülkenin olduğunu bul.", [
+    F("it", "İtalya", "İrlanda", "Meksika", "Macaristan"),
+    F("ie", "İrlanda", "İtalya", "Fildişi Sahili", "Hindistan"),
+    F("fr", "Fransa", "Hollanda", "Rusya", "İtalya"),
+    F("nl", "Hollanda", "Lüksemburg", "Fransa", "Rusya"),
+    F("ru", "Rusya", "Slovenya", "Sırbistan", "Hollanda"),
+    F("de", "Almanya", "Belçika", "Avusturya", "Litvanya"),
+    F("be", "Belçika", "Almanya", "Romanya", "Çad"),
+    F("ro", "Romanya", "Çad", "Moldova", "Andorra"),
+    F("jp", "Japonya", "Bangladeş", "Güney Kore", "Palau"),
+    F("bd", "Bangladeş", "Japonya", "Palau", "Pakistan"),
+    F("kr", "Güney Kore", "Japonya", "Tayvan", "Moğolistan"),
+    F("ch", "İsviçre", "Danimarka", "Avusturya", "Gürcistan"),
+    F("dk", "Danimarka", "Norveç", "İsviçre", "İsveç"),
+    F("se", "İsveç", "Finlandiya", "Norveç", "Danimarka"),
+    F("no", "Norveç", "İzlanda", "Danimarka", "Finlandiya"),
+    F("fi", "Finlandiya", "İsveç", "İzlanda", "Estonya"),
+    F("br", "Brezilya", "Portekiz", "Arjantin", "Kolombiya"),
+    F("ar", "Arjantin", "Uruguay", "Nikaragua", "El Salvador"),
+    F("ca", "Kanada", "Peru", "Lübnan", "Avusturya"),
+    F("lb", "Lübnan", "Kanada", "Ürdün", "Suriye"),
+    F("az", "Azerbaycan", "Özbekistan", "Türkmenistan", "Kazakistan"),
+    F("kz", "Kazakistan", "Kırgızistan", "Özbekistan", "Moğolistan"),
+    F("ua", "Ukrayna", "İsveç", "Polonya", "Kazakistan"),
+    F("pl", "Polonya", "Endonezya", "Monako", "Avusturya"),
+    F("id", "Endonezya", "Monako", "Polonya", "Singapur"),
+    F("mx", "Meksika", "İtalya", "İrlanda", "Peru"),
+    F("gr", "Yunanistan", "İsrail", "Uruguay", "Finlandiya"),
+    F("np", "Nepal", "Butan", "Sri Lanka", "Bangladeş"),
+    F("bt", "Butan", "Nepal", "Moğolistan", "Sri Lanka"),
+    F("au", "Avustralya", "Yeni Zelanda", "Birleşik Krallık", "Fiji"),
+    F("nz", "Yeni Zelanda", "Avustralya", "Fiji", "Tuvalu"),
+    F("gb", "Birleşik Krallık", "Avustralya", "Yeni Zelanda", "İzlanda"),
+    F("us", "ABD", "Liberya", "Malezya", "Porto Riko"),
+    F("lr", "Liberya", "ABD", "Malezya", "Şili"),
+    F("cl", "Şili", "Küba", "Porto Riko", "Liberya"),
+    F("cu", "Küba", "Porto Riko", "Şili", "Panama"),
+    F("sa", "Suudi Arabistan", "Pakistan", "Cezayir", "Libya"),
+    F("tr", "Türkiye", "Tunus", "Azerbaycan", "Pakistan"),
+    F("tn", "Tunus", "Türkiye", "Libya", "Cezayir"),
+    F("pk", "Pakistan", "Cezayir", "Türkiye", "Maldivler"),
+    F("za", "Güney Afrika", "Jamaika", "Mozambik", "Kenya"),
+    F("jm", "Jamaika", "Güney Afrika", "Tanzanya", "Brezilya"),
+    F("ke", "Kenya", "Güney Sudan", "Malavi", "Uganda"),
+  ]), dailyItems: [
     Q("Bayrağında akçaağaç yaprağı bulunan ülke hangisidir?", "Kanada", "Avustralya", "İsviçre", "Norveç"),
     Q("Kare biçimli, kırmızı zemin üzerinde beyaz eşit kollu haç bulunan bayrak hangi ülkenindir?", "İsviçre", "Avusturya", "Finlandiya", "Gürcistan"),
     Q("Beyaz zemin üzerinde tek bir kırmızı daire bulunan bayrak hangi ülkenindir?", "Japonya", "Güney Kore", "Çin", "Vietnam"),
@@ -21,7 +69,7 @@ export const MORE = [
     Q("Brezilya bayrağındaki kürenin üzerinde hangi söz yazar?", "Ordem e Progresso", "Brasil Unido", "Deus e Pátria", "Viva o Brasil"),
     Q("Bayrağında kelime-i tevhid ve bir kılıç bulunan ülke hangisidir?", "Suudi Arabistan", "Birleşik Arap Emirlikleri", "Pakistan", "Mısır"),
     Q("Hangi ülkenin bayrağında ay-yıldız yoktur?", "Mısır", "Tunus", "Azerbaycan", "Pakistan"),
-  ]),
+  ] },
   quiz("avrupa", "Coğrafya", "🏰", "Avrupa Turu", "Başkentler, nehirler ve ünlü yapılar.", [
     Q("Eyfel Kulesi hangi şehirdedir?", "Paris", "Londra", "Roma", "Brüksel"),
     Q("Big Ben saat kulesi hangi şehirdedir?", "Londra", "Dublin", "Edinburgh", "Manchester"),

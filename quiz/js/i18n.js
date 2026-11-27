@@ -232,6 +232,8 @@ const D = {
   "Bu bağlantıdaki quiz bulunamadı; adı değişmiş ya da kaldırılmış olabilir.": "The quiz at this link wasn't found; it may have been renamed or removed.",
   "Quiz adında uygunsuz bir kelime var. Lütfen değiştir.": "The quiz name has an inappropriate word. Please change it.", "Açıklamada uygunsuz bir kelime var. Lütfen değiştir.": "The description has an inappropriate word. Please change it.",
   "Yazar adında uygunsuz bir kelime var. Lütfen değiştir.": "The author name has an inappropriate word. Please change it.",
+  "Cevapları gör": "See answers", "Bugünün cevapları": "Today's answers", "cevap vermedin": "no answer", "Quizin yükleniyor…": "Loading your quiz…", "Quizi düzenle": "Edit quiz",
+  "Topluluktaki son hali getiriliyor.": "Fetching the latest version from Community.", "Doğru cevaplar (bu oyundaki kendi cevapların kaydedilmemiş).": "Correct answers (your own answers from this game weren't saved).", "Bayrak": "Flag", "Ülkenin haritadaki şekli": "Country shape on the map",
 };
 const EN = new Map(Object.entries(D));
 const DAYS = { Pazar: "Sunday", Pazartesi: "Monday", Salı: "Tuesday", Çarşamba: "Wednesday", Perşembe: "Thursday", Cuma: "Friday", Cumartesi: "Saturday" };
@@ -282,6 +284,8 @@ const RX = [
   [/^"(.+)" hazır\. Ayarlarını seçip sıraya ekle\.$/, "\"$1\" is ready. Pick its settings and add it to the queue."],
   [/^Rekorun (.+)$/, "Your record $1"],
   [/^(.+) istiyor: (.+)$/, "$1 wants: $2"],
+  [/^Senin cevabın: (.+)$/, "Your answer: $1"],
+  [/^(\d+)\/(\d+) doğru · (\d+) puan$/, "$1/$2 correct · $3 points"],
   [/^“(.+)” kurucuya istek olarak gitti\.$/, "“$1” went to the host as a request."],
   [/^Kuruculuk (.+) devredildi\. Lobide oyuncu olarak devam ediyorsun\.$/, "Host handed over to $1. You continue in the lobby as a player."],
   [/^(.+) kurucu olsun$/, "Make $1 host"],

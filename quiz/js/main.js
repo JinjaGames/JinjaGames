@@ -1,20 +1,20 @@
-import { PRESETS, MIXES, loadTracks, searchArtists, customLists, saveCustom, removeCustom, fold, cdn, realPic, loadPresetPictures } from "./music.js?v=5";
+import { PRESETS, MIXES, loadTracks, searchArtists, customLists, saveCustom, removeCustom, fold, cdn, realPic, loadPresetPictures } from "./music.js?v=6";
 import { sfx, sfxEnabled, setSfx, setSfxVolume } from "./sfx.js?v=5";
 import { randomName } from "./names.js";
-import { fetchCommunity, loadFull, removeQuiz, hideQuiz, unhideQuiz, hiddenList } from "./community.js?v=11";
-import { Game, MAX_PLAYERS, RANK_PTS, OP_PTS } from "./engine.js?v=12";
-import { lbKey, loadBoard, peekBoard, submitScore, myBest, isMine, syncMine, LB_TOP, LB_QUESTIONS } from "./board.js?v=7";
+import { fetchCommunity, loadFull, removeQuiz, hideQuiz, unhideQuiz, hiddenList } from "./community.js?v=12";
+import { Game, MAX_PLAYERS, RANK_PTS, OP_PTS } from "./engine.js?v=13";
+import { lbKey, loadBoard, peekBoard, submitScore, myBest, isMine, syncMine, LB_TOP, LB_QUESTIONS } from "./board.js?v=8";
 import { quizSlug, slugTable } from "./slug.js?v=1";
 import { maskName, isBadName } from "./badwords.js?v=1";
-import { RANK_QUIZZES, RANK_CATS, rankItems, fromYouTube } from "./rank.js?v=4";
-import { TRIVIA, TCATS, TART, EMOJIS, cleanItems, IMG, ANI_IMG, FLAG, flagUrl, cleanEmo } from "./trivia.js?v=4";
+import { RANK_QUIZZES, RANK_CATS, rankItems, fromYouTube } from "./rank.js?v=5";
+import { TRIVIA, TCATS, TART, EMOJIS, cleanItems, IMG, ANI_IMG, FLAG, flagUrl, cleanEmo, SHAPE, shapeUrl } from "./trivia.js?v=5";
 import { ANIME_QUIZZES, ERAS, animeItems, animeOps } from "./anime.js?v=3";
 import { NUMCATS, fmtNum, farEnough } from "./numdata.js";
 import { hostRoom, guestRoom, newCode, validCode } from "./net.js?v=7";
-import { announceLobby, listLobbies } from "./lobbies.js?v=5";
-import { countPlay, loadPlays, plays, players, onPlays, playsLoaded } from "./plays.js?v=7";
-import { dailyQuiz, dailyDate, dailyLeft, dailyLabel, dailyResult, saveDaily, dailyStreak } from "./daily.js?v=1";
-import { initI18n, LANG, applyLang } from "./i18n.js?v=11";
+import { announceLobby, listLobbies } from "./lobbies.js?v=6";
+import { countPlay, loadPlays, plays, players, onPlays, playsLoaded } from "./plays.js?v=8";
+import { dailyQuiz, dailyDate, dailyLeft, dailyLabel, dailyResult, saveDaily, dailyStreak } from "./daily.js?v=2";
+import { initI18n, LANG, applyLang } from "./i18n.js?v=12";
 
 // ---------- yardımcılar ----------
 const $ = (s, r = document) => r.querySelector(s);
@@ -22,7 +22,7 @@ const $$ = (s, r = document) => [...r.querySelectorAll(s)];
 const esc = (s) =>
   String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
 const ic = (n, cls = "") =>
-  `<i class="ic ${esc(cls)}" aria-hidden="true" style="--i:url(assets/icons/${/^[a-z0-9-]{1,32}$/.test(n) ? n : "music"}.svg)"></i>`;
+  `<i class="ic ${esc(cls)}" aria-hidden="true" style="--i:url(assets/icons/${/^[a-z0-9-]{1,32}$/.test(n) ? n : "music"}.svg?v=2)"></i>`;
 const store = {
   get(k, d, s = localStorage) {
     try {
@@ -76,7 +76,8 @@ function cleanView(x, k = "", depth = 0) {
   if (k === "url" || k === "cover" || k === "picture") return cdn(x);
   if (k === "photo") return PHOTO.test(x || "") ? x : "";
   if (k === "pic") return IMG.test(x || "") || ANI_IMG.test(x || "") ? x : null;
-  if (k === "flag") return FLAG.test(x || "") ? x : null;
+  if (k === "flag" || k === "qflag") return FLAG.test(x || "") ? x : null;
+  if (k === "qshape") return SHAPE.test(x || "") ? x : null;
   if (k === "emo") return cleanEmo(x) || null;
   if (k === "avatar") return AVATARS.includes(x) ? x : "headphones";
   if (k === "color") return COLORS.includes(x) ? x : "coral";
@@ -1105,7 +1106,7 @@ function dailyHtml() {
       <h2>${res ? "Bugünün quizini çözdün!" : "Bugün herkes aynı 10 soruyu çözüyor"}</h2>
       ${res ? `<p class="dlyRes"><b>${num(res.hits)}/${d.items.length}</b> doğru · <b>${num(res.pts)}</b> puan${marks ? ` <span class="dlyMarks">${marks}</span>` : ""}</p>` : `<p class="muted">Her gün yeni 10 soru, her biri farklı bir kategoriden. İlk oyunun günün sıralamasına yazılır.</p>`}
       <div class="dlyBtns">${res
-        ? `<button class="btn primary" data-do="dailyShare">${ic("copy")}Sonucu paylaş</button><button class="btn soft" data-do="dailyBoard">${ic("trophy")}Günün sıralaması</button><button class="btn ghost" data-do="dailyGo" title="Puanın değişmez">${ic("rotate-ccw")}Tekrar oyna</button>`
+        ? `<button class="btn primary" data-do="dailyShare">${ic("copy")}Sonucu paylaş</button><button class="btn soft" data-do="dailyAnswers">${ic("check")}Cevapları gör</button><button class="btn soft" data-do="dailyBoard">${ic("trophy")}Günün sıralaması</button><button class="btn ghost" data-do="dailyGo" title="Puanın değişmez">${ic("rotate-ccw")}Tekrar oyna</button>`
         : `<button class="btn primary lg" data-do="dailyGo">${ic("play")}Hemen oyna</button><button class="btn ghost" data-do="dailyBoard">${ic("trophy")}Sıralama</button>`}</div>
     </div>
     <div class="dlySide">
@@ -1115,19 +1116,24 @@ function dailyHtml() {
   </section>`;
 }
 // Oyun içinde: günün quizindeki her sorunun doğru/yanlışı (paylaşım için), bitince sonuç kaydedilir.
-const dailyRun = { qid: "", marks: [] };
+const dailyRun = { qid: "", marks: [], qa: [] };
 function trackDaily(v) {
   const set = v?.queue?.[v.set];
   if (!set?.qid?.startsWith("daily-")) return;
-  if (dailyRun.qid !== set.qid + v.code) { dailyRun.qid = set.qid + v.code; dailyRun.marks = []; }
-  if (v.phase === "reveal" && v.question?.reveal) dailyRun.marks[num(v.index)] = !!v.question.reveal.results?.[v.me]?.correct;
+  if (dailyRun.qid !== set.qid + v.code) { dailyRun.qid = set.qid + v.code; dailyRun.marks = []; dailyRun.qa = []; }
+  if (v.phase === "reveal" && v.question?.reveal) {
+    const r = v.question.reveal.results?.[v.me];
+    dailyRun.marks[num(v.index)] = !!r?.correct;
+    // cevap anahtarı için: soru, doğru cevap ve senin cevabın (yalnızca bu tarayıcıda saklanır)
+    dailyRun.qa[num(v.index)] = { q: String(v.question.text || "").slice(0, 200), a: String(v.question.reveal.title || "").slice(0, 80), m: r?.answer == null ? "" : String(r.answer).slice(0, 80), ok: !!r?.correct };
+  }
 }
 function finishDaily(h, v) {
   const date = `${h.qid.slice(6, 10)}-${h.qid.slice(10, 12)}-${h.qid.slice(12, 14)}`;
   if (dailyResult(date)) return;
   const me = h.top?.find((t) => t.pid === v.me);
   const marks = Array.from({ length: num(h.count) }, (_, i) => !!dailyRun.marks[i]);
-  saveDaily(date, { pts: num(me?.pts), hits: marks.filter(Boolean).length, marks });
+  saveDaily(date, { pts: num(me?.pts), hits: marks.filter(Boolean).length, marks, qa: Array.from({ length: num(h.count) }, (_, i) => dailyRun.qa[i] || null) });
   toast("Günün quizi kaydedildi. Yarın yeni sorular!");
 }
 function dailyShareText() {
@@ -1790,6 +1796,8 @@ function gameHtml(v) {
       <div class="countdown ${pre0 ? "on" : ""}" id="countdown" aria-hidden="true"><div class="cdRing"><svg viewBox="0 0 100 100"><circle cx="50" cy="50" r="46" pathLength="100"/><circle class="cdArc" id="cdArc" cx="50" cy="50" r="46" pathLength="100"/></svg><b id="cdNum"></b><small>Başlıyor</small></div></div>
       <span class="tqNo">${ic("circle-help")} Soru ${num(v.index) + 1}</span>
       ${q.pic ? `<img class="tqPic${/^https:/.test(q.pic) ? " big" : ""}" src="${esc(q.pic)}" alt="" referrerpolicy="no-referrer">` : ""}
+      ${q.qflag ? `<img class="tqPic qflag" src="${esc(flagUrl(q.qflag))}" alt="Bayrak" referrerpolicy="no-referrer">` : ""}
+      ${q.qshape ? `<span class="tqShape"><img src="${esc(shapeUrl(q.qshape))}" alt="Ülkenin haritadaki şekli" referrerpolicy="no-referrer"></span>` : ""}
       <h2 class="tqText">${esc(q.text)}</h2>
       ${reveal ? `<div class="tqAns ${tqVisual(q.reveal) ? "hasVis" : ""}">${tqVisual(q.reveal)}<span class="tqAnsText"><small>Doğru cevap</small><b>${esc(q.reveal.title)}</b>${verdict}</span></div>` : `<div class="tqAns slot" aria-hidden="true"></div>`}
     </div>`;
@@ -2553,6 +2561,17 @@ function openSheet(kind, ctx = {}) {
       <p class="muted">${host ? (others ? "Şu an bir lobinin kurucususun. Devam edersen lobi herkes için kapanır." : "Şu an açık bir lobin var. Devam edersen lobi kapanır.") : "Şu an bir lobidesin. Devam edersen lobiden ayrılırsın; puanın lobide kalır."}</p>
       <div class="sheetFoot"><button class="btn ghost" data-close autofocus>Vazgeç</button><button class="btn danger" data-do="switchGo">${ic("door-open")}Ayrıl ve devam et</button></div>`;
   }
+  if (kind === "dailyAns") {
+    // Günün quizinin cevap anahtarı: yalnızca o gün quizi bitirenlere (yarın yeni sorular gelir)
+    const d = daily();
+    const res = dailyResult(d.daily);
+    if (!res) return closeSheet();
+    const qa = Array.isArray(res.qa) && res.qa.some(Boolean) ? res.qa : null;
+    const rows = qa ? qa.filter(Boolean) : d.items.map((it) => ({ q: it.q, a: it.a[0], m: "", ok: null }));
+    sheetBody.innerHTML = `<div class="sheetHead"><div><small class="kicker">Günün quizi · ${esc(dailyLabel(d.daily))}</small><h2>Bugünün cevapları</h2></div><button class="icon" data-close aria-label="Kapat">${ic("x")}</button></div>
+      <p class="muted">${qa ? `${num(res.hits)}/${rows.length} doğru · ${num(res.pts)} puan` : "Doğru cevaplar (bu oyundaki kendi cevapların kaydedilmemiş)."}</p>
+      <ol class="dlyAns">${rows.map((r, i) => `<li class="${r.ok === true ? "ok" : r.ok === false ? "no" : ""}"><span class="dlyAnsN">${i + 1}</span><div><p>${esc(r.q)}</p><b>${ic("check")}${esc(r.a)}</b>${r.ok === false ? `<small>Senin cevabın: ${r.m ? esc(r.m) : "cevap vermedin"}</small>` : ""}</div></li>`).join("")}</ol>`;
+  }
   if (kind === "visAsk") {
     sheetBody.innerHTML = `<div class="sheetHead"><h2>Lobi herkese açılsın mı?</h2><button class="icon" data-close aria-label="Kapat">${ic("x")}</button></div>
       <p class="muted">Lobin ana sayfadaki “Açık lobiler” listesinde görünür; kodu bilmeyen herkes de katılabilir. Oyun başlayınca listeden düşer, istediğin zaman yeniden özel yapabilirsin.</p>
@@ -2582,6 +2601,22 @@ function openSheet(kind, ctx = {}) {
       <div class="sheetFoot"><button class="btn ghost" data-close autofocus>Vazgeç</button><button class="btn danger" data-do="leave">${ic("door-open")}${solo ? "Çık" : "Ayrıl"}</button></div>`;
   }
   if (!sheet.open) sheet.showModal();
+}
+// Düzenle: topluluk quizinin içeriği oluşturma sayfasına buradan verilir; sayfa rölelerden yeniden toplamayı
+// beklemeden (eskiden ~6 sn boş "ne oluşturmak istersin" ekranı görünüyordu) hemen quizle açılır.
+async function editQuiz(id) {
+  id = String(id || "");
+  if (!id) return;
+  const l = allLists().find((x) => String(x.id) === id);
+  if (l?.genre === "Topluluk" && l.mine) {
+    if (l.full === false) {
+      document.body.classList.add("loadingQuiz");
+      try { await loadFull(l); } catch (e) { return fail(e); } finally { document.body.classList.remove("loadingQuiz"); }
+    }
+    const { id: qid, d, pubkey, at, kind, name, desc, author, tracks, items, rev, cat, emoji, artist, artistId, picture } = l;
+    try { sessionStorage.setItem("jqEdit", JSON.stringify({ id: qid, d, pubkey, at, kind, name, desc, author, tracks, items, rev, cat, emoji, artist, artistId, picture })); } catch {}
+  }
+  location.href = BASE + "create/?edit=" + encodeURIComponent(id);
 }
 function setVis(v) {
   if (mode?.role !== "host") return;
@@ -3389,6 +3424,8 @@ async function doAction(a, el) {
       sheetCtx = { list: l, count: l.items.length, mode: "choice", clip: 3, rev: 0, play: "solo", gmode: dailyResult(l.daily) ? "normal" : "ranked" };
       return doAction("soloGo");
     }
+    case "dailyAnswers":
+      return openSheet("dailyAns");
     case "dailyBoard":
       return openList(daily().id);
     case "dailyShare": {
@@ -3417,8 +3454,7 @@ async function doAction(a, el) {
       return copy(url, "Quizin bağlantısı kopyalandı.");
     }
     case "editQuiz":
-      location.href = "create/?edit=" + encodeURIComponent(sheetCtx.list?.id || "");
-      return;
+      return editQuiz(sheetCtx.list?.id);
     case "reset":
       return openSheet("resetAsk");
 
@@ -3634,10 +3670,7 @@ document.addEventListener("click", async (e) => {
       return renderHome();
     }
     if (d.requeue) return act({ type: "requeue", id: d.requeue });
-    if (d.edit) {
-      location.href = "create/?edit=" + encodeURIComponent(d.edit);
-      return;
-    }
+    if (d.edit) return editQuiz(d.edit);
     // gizle / listeden kaldır / yayından kaldır: yanlış tıklamaya karşı önce onay paneli
     if (d.unpublish) return openSheet("rmConfirm", { act: "unpublish", id: d.unpublish });
     if (d.hidequiz) return openSheet("rmConfirm", { act: "hide", id: d.hidequiz });
