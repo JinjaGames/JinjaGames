@@ -2,12 +2,21 @@
 // çevrilir (sayfa çizildikçe; MutationObserver). Quiz içerikleri (sorular, şarkı ve quiz adları) çevrilmez;
 // oyuncu adları ve sohbet mesajları [data-noi18n] içinde olduğu için hiç dokunulmaz.
 const KEY = "jqLang";
-export const LANG = (() => {
+export let LANG = (() => {
   try { const v = localStorage.getItem(KEY); if (v === "en" || v === "tr") return v; } catch {}
   return /^tr\b/i.test(navigator.language || "tr") ? "tr" : "en";
 })();
 export function setLang(l) {
   try { localStorage.setItem(KEY, l === "en" ? "en" : "tr"); } catch {}
+}
+/** Dili sayfayı yenilemeden değiştirir: İngilizce'de çeviri başlar; Türkçe'de durur (sayfa yeniden çizilince Türkçe gelir). */
+export function applyLang(l) {
+  l = l === "en" ? "en" : "tr";
+  setLang(l);
+  LANG = l;
+  document.documentElement.lang = l;
+  if (l === "en") start();
+  else stop();
 }
 
 const D = {
@@ -53,7 +62,11 @@ const D = {
   "Henüz oynanmadı": "Not played yet", "Kategoriler": "Categories", "Yabancı": "International", "Türkçe Rap": "Turkish Rap", "Türkçe Pop": "Turkish Pop", "Türkçe Rock": "Turkish Rock",
   "Genel Kültür": "General Knowledge", "Tarih": "History", "Coğrafya": "Geography", "Bilim": "Science", "Spor": "Sports", "Film & Dizi": "Film & TV", "Oyun": "Games",
   "Edebiyat & Sanat": "Literature & Art", "Yemek": "Food", "Teknoloji": "Technology", "Eğlence": "Fun", "Rap": "Rap", "Pop": "Pop", "Rock": "Rock",
-  // açık lobiler
+  // açık lobiler ve yeni ana sayfa
+  "Canlı": "Live", "Şifreli lobi": "Locked lobby", "Şu an açık lobi yok": "No open lobbies right now", "İlk açık lobiyi sen kur; herkes buradan tek dokunuşla katılabilir.": "Create the first open lobby; anyone can join from here in one tap.",
+  "Kodla katıl": "Join with code", "Quiz oluştur": "Create quiz", "Türünü seç, birkaç dakikada kur. Herkese açık yayınlarsan Topluluk'ta herkes görür.": "Pick a type and build it in minutes. Publish it and everyone sees it under Community.",
+  "Anime opening": "Anime opening", "Bölümler": "Sections", "Kategoriler": "Categories", "bugün oynayan": "played today", "Tekrar oyna": "Play again", "Puanın değişmez": "Your score won't change",
+  "Sohbeti aç": "Open chat", "Sohbeti kapat": "Close chat", "Geçici · son 10 mesaj": "Temporary · last 10 messages",
   "Açık lobiler": "Open lobbies", "Listeyi yenile": "Refresh list", "Yenile": "Refresh", "Quiz seçiliyor": "Picking a quiz", "Şifreli": "Locked", "Şifreyle katıl": "Join with password",
   "Şu an katılınabilecek açık lobi yok.": "No open lobbies to join right now.", ", “Herkese açık” yap; burada herkes görsün.": ", set it to “Public” and everyone will see it here.",
   // günün quizi
@@ -233,6 +246,8 @@ const RX = [
   [/^(.+) lobiden çıkar$/, "Remove $1 from the lobby"],
   [/^(\d+) (\S+) (\S+)$/, (m, d, mo, day) => (MONTHS[mo] && DAYS[day] ? `${DAYS[day]}, ${d} ${MONTHS[mo]}` : null)],
   [/^Simge (.+)$/, "Icon $1"],
+  [/^(\d+)\/(\d+) oyuncu$/, "$1/$2 players"],
+  [/^Sohbeti aç \((\d+) yeni mesaj\)$/, "Open chat ($1 new messages)"],
   [/^Trivia · (.+)$/, (_, c) => `Trivia · ${tr1(c) || c}`],
   [/^(.+) için YouTube'daki gerçek en çok izlenen şarkılar hazırlanıyor\. Liste her gün güncellenir; en geç 1–2 gün içinde oynanabilir\.$/, "$1's real most-watched songs on YouTube are being prepared. The list updates daily; it'll be playable within 1–2 days."],
   [/^"(.+)" yayından kaldırılsın mı\? Başkaları artık göremez\.$/, "Unpublish \"$1\"? Others won't see it anymore."],
@@ -297,19 +312,27 @@ function walk(root) {
   });
   for (let n = it.nextNode(); n; n = it.nextNode()) n.nodeType === 3 ? fixText(n) : fixAttrs(n);
 }
-/** İngilizce seçiliyse sayfayı çevirmeye başlar (sonradan çizilen her şey de çevrilir). */
-export function initI18n() {
-  document.documentElement.lang = LANG;
-  if (LANG !== "en") return;
-  const c0 = window.confirm.bind(window);
-  window.confirm = (m) => c0(T(m) ?? m);
-  if (document.title.includes("JinjaQuiz")) document.title = document.title.replace("Quiz oluştur", "Create quiz");
+let obs = null;
+const c0 = window.confirm.bind(window);
+window.confirm = (m) => c0(LANG === "en" ? T(m) ?? m : m);
+function start() {
   walk(document.body);
-  new MutationObserver((muts) => {
+  if (obs) return;
+  obs = new MutationObserver((muts) => {
     for (const m of muts) {
       if (m.type === "characterData") walk(m.target);
       else if (m.type === "attributes") fixAttrs(m.target);
       else m.addedNodes.forEach(walk);
     }
-  }).observe(document.body, { subtree: true, childList: true, characterData: true, attributes: true, attributeFilter: ATTRS });
+  });
+  obs.observe(document.body, { subtree: true, childList: true, characterData: true, attributes: true, attributeFilter: ATTRS });
+}
+function stop() {
+  obs?.disconnect();
+  obs = null;
+}
+/** İngilizce seçiliyse sayfayı çevirmeye başlar (sonradan çizilen her şey de çevrilir). */
+export function initI18n() {
+  document.documentElement.lang = LANG;
+  if (LANG === "en") start();
 }

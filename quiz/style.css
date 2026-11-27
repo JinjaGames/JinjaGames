@@ -3490,3 +3490,145 @@ body.loadingQuiz, body.loadingQuiz * { cursor: progress !important; }
 /* dil düğmesi */
 .langBtn { flex: none; height: 34px; min-width: 40px; padding: 0 10px; border-radius: 999px; background: var(--s2); border: 1px solid var(--line); color: var(--ink); font: 800 12px var(--body); letter-spacing: 0.06em; }
 .langBtn:hover { border-color: var(--accent); }
+/* ======================= 2026-11 düzen ve oran düzeltmeleri ======================= */
+/* --- şarkı quizi kartı: üstüne gelince kapak plak gibi döner (Keşfet'teki yuvarlak kartlar gibi) --- */
+.qcard.song .qcardArt { background: radial-gradient(circle at 50% 50%, #26262d 0 34%, #111114 35% 64%, #0b0b0d 65%); }
+.qcard.song .qcardArt::before { content: ""; position: absolute; inset: 0; margin: auto; z-index: 1; width: 13%; aspect-ratio: 1; border-radius: 50%; background: var(--bg); box-shadow: 0 0 0 4px #ffffff26, 0 0 0 9px #0000004d, inset 0 1px 3px #000a; opacity: 0; scale: 0.3; transition: opacity 0.3s, scale 0.4s var(--ease); pointer-events: none; }
+.qcard.song .qcardImg { transition: border-radius 0.35s var(--ease), scale 0.35s var(--ease), transform 0.6s var(--ease); }
+.qcard.song:hover .qcardImg, .qcard.song .qcardBtn:focus-visible .qcardImg { border-radius: 50%; scale: 0.8; transform: none; animation: rot 3.2s linear infinite; box-shadow: 0 0 0 2px #ffffff1a, 0 14px 30px #000c; }
+.qcard.song:hover .qcardArt::before, .qcard.song .qcardBtn:focus-visible .qcardArt::before { opacity: 1; scale: 1; }
+@media (prefers-reduced-motion: reduce) { .qcard.song:hover .qcardImg { animation: none; } }
+
+/* --- kart üstü: etiket, araçlar ve oynanma sayısı üst üste binmesin --- */
+.qcardTag { max-width: calc(100% - 64px); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.qcard.tools .qcardPlays { top: 48px; right: 8px; }
+.qcardPlays, .acardPlays, .pPlays, .numPlays { line-height: 1; }
+.numCard { position: relative; }
+.numPlays { position: absolute; top: 10px; left: 10px; z-index: 2; padding: 5px 8px 5px 6px; border-radius: 999px; background: #000b; color: #fff; }
+@media (max-width: 560px) {
+  .qcardTag { left: 8px; top: 8px; padding: 3px 8px; font-size: 10px; letter-spacing: 0.03em; max-width: calc(100% - 48px); }
+  .cardTools { top: 6px; right: 6px; gap: 4px; }
+  .cardTools .icon { width: 28px; height: 28px; }
+  .qcard.tools .qcardPlays { top: 40px; right: 6px; }
+  .qcardPlays { top: 8px; right: 8px; padding: 4px 7px 4px 5px; }
+}
+
+/* --- oyun: telefonda soru ve dört şık kaydırmadan sığsın --- */
+.ans kbd { font-family: var(--body); font-weight: 800; }
+@media (max-width: 560px) {
+  .game { gap: 10px; padding-top: 10px; }
+  .tq { min-height: 0; margin: 4px 0 8px; padding: 16px 14px; gap: 10px; }
+  .tqText { font-size: clamp(18px, 5.2vw, 23px); line-height: 1.25; }
+  .tq .tqAns { min-height: 56px; }
+  .tqPic, .tqVis { max-height: 22vh; }
+  .answers { grid-template-columns: 1fr 1fr; gap: 8px; }
+  .ans { min-height: 56px; padding: 10px; gap: 8px; font-size: 14px; }
+  .ans kbd { width: 24px; height: 24px; border-radius: 7px; font-size: 12px; }
+  .answers.multi .ans { min-height: 64px; padding-bottom: 10px; }
+}
+@media (max-width: 560px) and (max-height: 700px) {
+  .tq { padding: 12px; }
+  .ans { min-height: 50px; }
+}
+
+/* --- seçmeli düğmelerde simge ve yazı oranı --- */
+.seg button { display: inline-flex; align-items: center; justify-content: center; gap: 6px; }
+.seg button .ic { flex: none; width: 15px; height: 15px; }
+.visSeg button { padding: 0 14px; }
+
+/* --- lobide tür sekmeleri: taşmaz, kaç tür olursa olsun satıra sığar --- */
+.lobPick .pickTabs { display: flex; flex-wrap: wrap; gap: 6px; padding: 0; background: none; border-radius: 0; overflow: visible; }
+.lobPick .pickTabs button { flex: 1 1 auto; min-height: 38px; padding: 0 12px; border-radius: 12px; background: var(--s2); border: 1px solid var(--line); font-size: 14px; }
+.lobPick .pickTabs button[aria-selected="true"] { background: var(--accent); border-color: var(--accent); }
+.lobPick .pickTabs button .ic { width: 15px; height: 15px; }
+@media (max-width: 900px) {
+  .lobPick .pickTabs { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .lobPick .pickTabs button { padding: 0 6px; font-size: 13px; gap: 4px; }
+  .lobPick .pickTabs button small { display: none; }
+}
+
+/* --- sohbet: aç / kapa --- */
+.chatBtn { position: relative; width: 40px; height: 40px; border-radius: 50%; background: var(--s2); border: 1px solid var(--line); display: grid; place-items: center; }
+.chatBtn small { position: absolute; top: -4px; right: -4px; min-width: 18px; height: 18px; padding: 0 5px; border-radius: 9px; background: var(--accent); color: #fff; font: 800 11px/18px var(--body); box-shadow: 0 0 0 2px var(--bg); }
+.chatMinM { display: none; }
+.chatForm .chatMin { width: 42px; height: 42px; flex: none; }
+@media (max-width: 1099px) {
+  .chatMinM { display: grid; }
+  .chatBox:not(.exp) .chatHead { display: none; }
+  .chatBox.exp .chatMinM { display: none; }
+}
+
+/* --- üst çubuk: bilgisayarda bölüm menüsü --- */
+.barNav { display: none; }
+@media (min-width: 1000px) {
+  .barNav { display: flex; align-items: center; gap: 4px; margin-right: auto; margin-left: 18px; }
+  .barNav button, .barNav a { display: inline-flex; align-items: center; gap: 7px; min-height: 38px; padding: 0 12px; border-radius: 999px; color: var(--muted); font-weight: 700; font-size: 14px; text-decoration: none; white-space: nowrap; transition: color 0.2s, background 0.2s; }
+  .barNav button:hover, .barNav a:hover { color: var(--ink); background: var(--s2); }
+  .barNav .ic { width: 16px; height: 16px; }
+  .barNav a { color: var(--accent-2); }
+}
+.barCta { white-space: nowrap; }
+@media (max-width: 999px) { .barCta { display: none; } }
+.barEnd { gap: 8px; }
+
+/* --- ana sayfa: açık lobiler + quiz oluştur yan yana --- */
+.hm-duo { display: grid; grid-template-columns: minmax(0, 1.55fr) minmax(0, 1fr); gap: 18px; align-items: stretch; margin: 0 0 34px; }
+@media (max-width: 900px) { .hm-duo { grid-template-columns: 1fr; } }
+.hm-lobbies { margin: 0; padding: 20px; border-radius: 24px; background: linear-gradient(160deg, color-mix(in srgb, #2fd3a6 9%, var(--s1)), var(--s1) 60%); border: 1px solid color-mix(in srgb, #2fd3a6 22%, #ffffff12); display: grid; gap: 14px; align-content: start; }
+.lbyHead { display: flex; align-items: flex-end; justify-content: space-between; gap: 12px; }
+.lbyHead h2 { margin: 2px 0 0; font: 800 clamp(24px, 3vw, 32px)/1 var(--display); text-transform: uppercase; display: flex; align-items: center; gap: 8px; }
+.lbyHead .kicker { display: inline-flex; align-items: center; gap: 7px; color: #2fd3a6; }
+.liveDot { width: 8px; height: 8px; border-radius: 50%; background: #2fd3a6; box-shadow: 0 0 0 0 #2fd3a688; animation: livePulse 1.8s ease-out infinite; }
+@keyframes livePulse { to { box-shadow: 0 0 0 9px #2fd3a600; } }
+.lbyRow { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 12px; }
+.lbyCard { display: grid; gap: 10px; padding: 14px; border-radius: 18px; background: var(--s2); border: 1px solid var(--line); text-align: left; transition: transform 0.2s var(--ease), border-color 0.2s, background 0.2s; }
+.lbyCard:hover, .lbyCard:focus-visible { transform: translateY(-3px); border-color: #2fd3a6; background: color-mix(in srgb, #2fd3a6 7%, var(--s2)); outline: none; }
+.lbyTop { display: flex; align-items: center; gap: 10px; min-width: 0; }
+.lbyWho { flex: 1; min-width: 0; display: grid; gap: 2px; }
+.lbyWho b { font-weight: 800; font-size: 16px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.lbyWho small { display: inline-flex; align-items: center; gap: 5px; color: var(--muted); font-size: 12px; }
+.lbyWho small .ic { width: 13px; height: 13px; }
+.lbyGo { flex: none; display: inline-flex; align-items: center; gap: 2px; padding: 7px 10px 7px 12px; border-radius: 999px; background: #2fd3a6; color: #06231b; font-weight: 800; font-size: 13px; }
+.lbyGo .ic { width: 15px; height: 15px; }
+.lbyQuiz { display: flex; flex-wrap: wrap; gap: 6px; min-height: 24px; }
+.lbyQuiz i { font-style: normal; font-size: 12px; font-weight: 700; padding: 4px 9px; border-radius: 999px; background: var(--s3); max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.lbyBar { height: 5px; border-radius: 99px; background: var(--s3); overflow: hidden; }
+.lbyFill { display: block; height: 100%; border-radius: inherit; background: linear-gradient(90deg, #2fd3a6, #8aa4ff); }
+.lbyFoot { display: inline-flex; align-items: center; gap: 6px; color: var(--muted); font-size: 12px; font-weight: 700; }
+.lbyFoot .ic { width: 14px; height: 14px; }
+.lbyCard.sk { min-height: 150px; }
+.lbyEmpty { display: flex; align-items: center; gap: 18px; padding: 18px; border-radius: 18px; border: 1.5px dashed color-mix(in srgb, #2fd3a6 30%, var(--line)); }
+.lbyEmpty b { font-size: 17px; }
+.lbyEmpty p { margin: 4px 0 12px; }
+.lbyRadar { position: relative; flex: none; display: grid; place-items: center; width: 72px; height: 72px; border-radius: 50%; background: color-mix(in srgb, #2fd3a6 14%, transparent); color: #2fd3a6; }
+.lbyRadar::after { content: ""; position: absolute; inset: 0; border-radius: 50%; border: 2px solid #2fd3a6; opacity: 0; animation: radar 2.2s ease-out infinite; }
+@keyframes radar { 0% { transform: scale(0.7); opacity: 0.7; } 100% { transform: scale(1.35); opacity: 0; } }
+.lbyRadar .ic { width: 30px; height: 30px; }
+.lbyBtns { display: flex; flex-wrap: wrap; gap: 8px; }
+@media (max-width: 560px) {
+  .hm-lobbies { padding: 16px; }
+  .lbyEmpty { flex-direction: column; align-items: flex-start; gap: 12px; }
+  .lbyRadar { width: 56px; height: 56px; }
+}
+@media (prefers-reduced-motion: reduce) { .liveDot, .lbyRadar::after { animation: none; } }
+.hm-create { display: grid; gap: 10px; align-content: start; padding: 20px; border-radius: 24px; background: radial-gradient(120% 120% at 100% 0%, #ff5b3a33, transparent 55%), linear-gradient(160deg, color-mix(in srgb, var(--accent) 12%, var(--s1)), var(--s1) 65%); border: 1px solid color-mix(in srgb, var(--accent) 35%, #ffffff12); }
+.hm-create h2 { margin: 0; font: 800 clamp(24px, 3vw, 32px)/1.02 var(--display); text-transform: uppercase; }
+.hm-create p { margin: 0; }
+.mkKinds { display: flex; flex-wrap: wrap; gap: 6px; margin: 4px 0; }
+.mkKinds a { display: inline-flex; align-items: center; gap: 6px; padding: 7px 11px; border-radius: 999px; background: var(--s2); border: 1px solid var(--line); color: var(--ink); text-decoration: none; font-size: 13px; font-weight: 700; transition: border-color 0.2s, background 0.2s; }
+.mkKinds a:hover { border-color: var(--accent); background: color-mix(in srgb, var(--accent) 12%, var(--s2)); }
+.mkKinds .ic { width: 14px; height: 14px; color: var(--accent-2); }
+.hm-create .btn.wide { margin-top: auto; justify-content: center; }
+
+/* --- günün quizi: üç sayı --- */
+.dlyStats { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.dlyStat b { font-size: clamp(20px, 2.6vw, 28px); }
+.dlyStat small { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+/* --- düğmelerde yazı tek satırda kalsın (iki dilde de) --- */
+.btn { white-space: nowrap; }
+.hm-actions { flex-wrap: wrap; }
+@media (max-width: 420px) { .hm-actions .btn.lg { flex: 1 1 calc(50% - 6px); justify-content: center; padding-inline: 12px; } }
+.qcard.tools .qcardTag { max-width: calc(100% - 60px); }
+.qcard.tools:has(.cardTools .icon + .icon) .qcardTag { max-width: calc(100% - 96px); }
+@media (max-width: 560px) { .qcard.tools .qcardTag { max-width: calc(100% - 48px); } .qcard.tools:has(.cardTools .icon + .icon) .qcardTag { max-width: calc(100% - 80px); } }

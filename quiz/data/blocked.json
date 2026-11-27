@@ -1,7 +1,8 @@
 {
   "note": "Uygunsuz içerik ya da kaldırma talebi için engel listesi. quizzes: topluluk quiz kimlikleri (nq-...), pubkeys: yazar/oyuncu anahtarları (64 karakter hex). Buraya eklenen quiz ve oyuncular sitede ve puan sıralamasında gösterilmez.",
   "quizzes": [
-    "nq-9286bac894550136-160c21d1e3c3c0eb"
+    "nq-9286bac894550136-160c21d1e3c3c0eb",
+    "nq-aa8ce28d3fb69bd3-e45f7f2b500ab750"
   ],
   "pubkeys": [
     "213b3c4a19e3b01618d3f4baed75eb27acce044bce3b8fbfbb32757257f49166"

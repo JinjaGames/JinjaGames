@@ -21,10 +21,13 @@ export const playKey = (id) => {
 };
 
 const totals = new Map(); // quiz -> toplam
+const people = new Map(); // quiz -> kaç farklı kişi
 let loaded = false;
 const listeners = new Set();
 export const onPlays = (fn) => listeners.add(fn);
 export const plays = (id) => totals.get(playKey(id)) || 0;
+/** Bu quizi oynayan farklı kişi sayısı */
+export const players = (id) => people.get(playKey(id)) || 0;
 export const playsLoaded = () => loaded;
 
 /** Bir quiz bitti: bu tarayıcının sayısı bir artar ve (biraz sonra) rölelere yazılır. */
@@ -36,6 +39,7 @@ export function countPlay(id) {
   m[k] = (m[k] | 0) + 1;
   local.set(LOCAL, m);
   local.set(DIRTY, [...new Set([...local.get(DIRTY, []), k])].slice(-60));
+  if (m[k] === 1 && playsLoaded()) people.set(k, (people.get(k) || 0) + 1); // bu tarayıcının ilk oyunu
   totals.set(k, (totals.get(k) || 0) + 1);
   listeners.forEach((fn) => fn());
   clearTimeout(flushT);
@@ -106,7 +110,8 @@ export function loadPlays() {
     const me = myPubkey().slice(0, 12);
     for (const [k, n] of Object.entries(local.get(LOCAL, {}))) if (playKey(k) && n > 0) put(k, me, Math.min(PLAYS_MAX, n | 0));
     totals.clear();
-    for (const [k, m] of per) totals.set(k, [...m.values()].reduce((a, b) => a + b, 0));
+    people.clear();
+    for (const [k, m] of per) { totals.set(k, [...m.values()].reduce((a, b) => a + b, 0)); people.set(k, m.size); }
     loaded = true;
     listeners.forEach((fn) => fn());
   })().catch(() => { loaded = true; });

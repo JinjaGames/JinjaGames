@@ -4,7 +4,7 @@ import { searchArtists, searchTracks, artistInfo, artistTop, artistAlbums, album
 import { fetchCommunity, loadFull, publishQuiz, removeQuiz, myPubkey, MIN_TRACKS, MAX_TRACKS } from "./community.js?v=10";
 import { TCATS, TART, EMOJIS, T_MIN, T_MAX, cleanItems, cleanCat, cleanEmoji, isTF, IMG } from "./trivia.js?v=4";
 import { cleanOps, RANK_PTS, OP_PTS } from "./engine.js?v=11";
-import { initI18n } from "./i18n.js?v=1";
+import { initI18n } from "./i18n.js?v=2";
 import { rankItems } from "./rank.js?v=4";
 import { OP_MIN } from "./community.js?v=10";
 
