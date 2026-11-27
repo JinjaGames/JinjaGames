@@ -1,11 +1,11 @@
 // JinjaQuiz: quiz oluşturma sayfası (/quiz/create/). Sanatçı ve şarkı araması ayrı sekmelerde;
 // sanatçının popüler şarkıları ve tüm albümleri tek tek ya da topluca eklenebilir.
 import { searchArtists, searchTracks, artistInfo, artistTop, artistAlbums, albumTracks, ownTracks, isAlternate, customLists, saveCustom, removeCustom, cleanTracks, fold, cdn } from "./music.js?v=5";
-import { fetchCommunity, publishQuiz, removeQuiz, myPubkey, MIN_TRACKS, MAX_TRACKS } from "./community.js?v=8";
+import { fetchCommunity, loadFull, publishQuiz, removeQuiz, myPubkey, MIN_TRACKS, MAX_TRACKS } from "./community.js?v=9";
 import { TCATS, TART, EMOJIS, T_MIN, T_MAX, cleanItems, cleanCat, cleanEmoji, isTF, IMG } from "./trivia.js?v=4";
 import { cleanOps, RANK_PTS, OP_PTS } from "./engine.js?v=10";
 import { rankItems } from "./rank.js?v=4";
-import { OP_MIN } from "./community.js?v=8";
+import { OP_MIN } from "./community.js?v=9";
 
 const $ = (s, r = document) => r.querySelector(s);
 const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
@@ -751,6 +751,7 @@ addEventListener("popstate", () => {
     try {
       const q = (await fetchCommunity()).find((x) => x.id === id && x.mine);
       if (!q) throw Error("Bu quiz bulunamadı ya da senin değil.");
+      await loadFull(q);
       if (q.kind === "rank") Object.assign(st, { kind: "rank", name: q.name, desc: q.desc, author: q.author, rank: { artist: { id: q.artistId, name: q.artist, picture: q.picture }, items: q.items }, public: true, d: q.d, prevAt: q.at, pubkey: q.pubkey });
       else if (q.kind === "op") Object.assign(st, { kind: "op", name: q.name, desc: q.desc, author: q.author, emoji: q.emoji, ops: q.items.map((o) => ({ url: `https://www.youtube.com/watch?v=${o.yt}${o.s ? `&t=${o.s}` : ""}`, anime: o.anime, song: o.song })), public: true, d: q.d, prevAt: q.at, pubkey: q.pubkey });
       else if (q.kind === "trivia") Object.assign(st, { kind: "trivia", name: q.name, desc: q.desc, author: q.author, cat: q.cat, emoji: q.emoji, items: q.items.map(toEditor), public: true, d: q.d, prevAt: q.at, pubkey: q.pubkey });

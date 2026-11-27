@@ -1,17 +1,17 @@
 import { PRESETS, MIXES, loadTracks, searchArtists, customLists, saveCustom, removeCustom, fold, cdn, realPic, loadPresetPictures } from "./music.js?v=5";
 import { sfx, sfxEnabled, setSfx, setSfxVolume } from "./sfx.js?v=5";
 import { randomName } from "./names.js";
-import { fetchCommunity, removeQuiz, hideQuiz, unhideQuiz, hiddenList } from "./community.js?v=8";
+import { fetchCommunity, loadFull, removeQuiz, hideQuiz, unhideQuiz, hiddenList } from "./community.js?v=9";
 import { Game, MAX_PLAYERS, RANK_PTS, OP_PTS } from "./engine.js?v=10";
-import { lbKey, loadBoard, peekBoard, submitScore, myBest, isMine, LB_TOP, LB_QUESTIONS } from "./board.js?v=3";
+import { lbKey, loadBoard, peekBoard, submitScore, myBest, isMine, LB_TOP, LB_QUESTIONS } from "./board.js?v=4";
 import { maskName, isBadName } from "./badwords.js?v=1";
 import { RANK_QUIZZES, RANK_CATS, rankItems, fromYouTube } from "./rank.js?v=4";
 import { TRIVIA, TCATS, TART, EMOJIS, cleanItems, IMG, ANI_IMG, FLAG, flagUrl, cleanEmo } from "./trivia.js?v=4";
 import { ANIME_QUIZZES, ERAS, animeItems, animeOps } from "./anime.js?v=3";
 import { NUMCATS, fmtNum, farEnough } from "./numdata.js";
 import { hostRoom, guestRoom, newCode, validCode } from "./net.js?v=3";
-import { announceLobby, listLobbies } from "./lobbies.js?v=1";
-import { countPlay, loadPlays, plays, onPlays, playsLoaded } from "./plays.js?v=1";
+import { announceLobby, listLobbies } from "./lobbies.js?v=2";
+import { countPlay, loadPlays, plays, onPlays, playsLoaded } from "./plays.js?v=2";
 
 // ---------- yardımcılar ----------
 const $ = (s, r = document) => r.querySelector(s);
@@ -1105,10 +1105,10 @@ function acard(l, k = 0, rev = false) {
 function cardSub(l) {
   if (l.anime) return l.items?.length ? `Anime · ${l.items.length} soru` : "Anime trivia";
   if (l.kind === "rank") return l.genre === "Topluluk" ? `${ic("user")}${esc(l.author)} · Sıralama` : `${esc(l.rcat || "Sıralama")} · ilk 5 şarkı`;
-  if (l.kind === "op") return `${l.genre === "Topluluk" ? `${ic("user")}${esc(l.author)} · ` : ""}${l.items?.length ? `Anime opening · ${num(l.items.length)}` : "Anime opening"}`;
+  if (l.kind === "op") return `${l.genre === "Topluluk" ? `${ic("user")}${esc(l.author)} · ` : ""}${l.items?.length || l.n ? `Anime opening · ${num(l.items?.length || l.n)}` : "Anime opening"}`;
   if (l.mix) return `${esc(l.genre)} · ${num(l.artists?.length)} sanatçı`;
-  if (l.rev) return `${l.genre === "Topluluk" ? `${ic("user")}${esc(l.author)} · ` : ""}${ic("rewind")}Tersten · ${num(l.tracks?.length)} şarkı`;
-  const n = l.kind === "trivia" ? `${num(l.items?.length)} soru` : `${num(l.tracks?.length)} şarkı`;
+  if (l.rev) return `${l.genre === "Topluluk" ? `${ic("user")}${esc(l.author)} · ` : ""}${ic("rewind")}Tersten · ${num(l.tracks?.length || l.n)} şarkı`;
+  const n = l.kind === "trivia" ? `${num(l.items?.length || l.n)} soru` : `${num(l.tracks?.length || l.n)} şarkı`;
   if (l.genre === "Topluluk") return `${ic("user")}${esc(l.author)} · ${l.kind === "trivia" ? esc(l.cat) + " · " : ""}${n}`;
   if (l.kind === "trivia") return `Trivia · ${n}`;
   if (l.tracks?.length) return `${esc(l.genre)} · ${l.tracks.length} şarkı`;
@@ -2511,7 +2511,16 @@ function showHomeFromHistory() {
   if (after) after();
   else requestAnimationFrame(() => scrollTo({ top: homeY }));
 }
-function openList(id, fromHistory = false, revHint = false) {
+// Topluluk quizlerinin içeriği (şarkılar / sorular) ana sayfada indirilmez; quiz açılınca arşivdeki kendi dosyasından gelir.
+async function openList(id, fromHistory = false, revHint = false) {
+  const l = allLists().find((x) => String(x.id) === String(id));
+  if (l?.full === false) {
+    document.body.classList.add("loadingQuiz");
+    try { await loadFull(l); } catch (e) { return fail(e); } finally { document.body.classList.remove("loadingQuiz"); }
+  }
+  return openListNow(id, fromHistory, revHint);
+}
+function openListNow(id, fromHistory = false, revHint = false) {
   const l = allLists().find((x) => String(x.id) === String(id));
   if (!l) return;
   if (l.anime && !l.items) loadAnime(l, l.era || "pop");

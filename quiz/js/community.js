@@ -55,8 +55,8 @@ export function valid(e) {
   }
 }
 
-/** Bir kaydı quiz nesnesine çevirir; bozuk ya da eksikse null. */
-function parse(e) {
+/** Bir kaydı quiz nesnesine çevirir; bozuk ya da eksikse null. (Arşiv betiği de kullanır.) */
+export function parse(e) {
   const d = (e.tags.find((t) => t[0] === "d") || [])[1] || "";
   if (!/^jinjaquiz:[a-z0-9]{6,24}$/.test(d)) return null;
   let c;
@@ -115,16 +115,52 @@ export function relayCall(url, onOpen, onMsg, ms) {
 }
 
 // Röleler eski kayıtları zamanla silebilir; sitedeki arşiv (tools/archive_community.mjs) quizleri kalıcı tutar.
-const ARCHIVE = new URL("../data/community.json", import.meta.url);
-async function archived() {
+// Arşiv iki parçadır: hafif bir dizin (ad, yazar, tür, kapak, soru sayısı; ana sayfa için) ve her quizin kendi
+// dosyası (imzalı kaydın tamamı; quiz açılınca indirilir). Böylece quiz sayısı artsa da ana sayfa hafif kalır.
+const ARCHIVE = new URL("../data/community/", import.meta.url);
+const fileOf = (pubkey, d) => `q/${pubkey.slice(0, 16)}-${d.slice(10)}.json`;
+async function archiveIndex() {
   try {
-    const r = await fetch(ARCHIVE, { cache: "no-cache" });
-    if (!r.ok) return [];
+    const r = await fetch(new URL("index.json", ARCHIVE), { cache: "no-cache" });
+    if (!r.ok) return { upto: 0, items: [] };
     const j = await r.json();
-    return Array.isArray(j?.events) ? j.events.slice(0, 3000) : [];
+    return { upto: Number(j?.upto) || 0, items: Array.isArray(j?.items) ? j.items : [] };
   } catch {
-    return [];
+    return { upto: 0, items: [] };
   }
+}
+// Dizindeki satır → içeriği henüz yüklenmemiş quiz (full: false). Alanlar parse() ile aynı biçimde süzülür.
+function fromIndex(m) {
+  const pubkey = String(m?.pk || "").toLowerCase(), d = String(m?.d || "");
+  if (!/^[0-9a-f]{64}$/.test(pubkey) || !/^jinjaquiz:[a-z0-9]{6,24}$/.test(d)) return null;
+  const at = int(m.at);
+  if (m.del) return { del: true, pubkey, d, at };
+  const kind = ["trivia", "rank", "op"].includes(m.kind) ? m.kind : "";
+  const name = str(m.name, 60);
+  const n = Math.min(MAX_TRACKS, int(m.n));
+  if (!name || !n) return null;
+  return {
+    id: "nq-" + pubkey.slice(0, 16) + "-" + d.slice(10), d, pubkey, at, full: false, n,
+    ...(kind ? { kind } : {}),
+    name, desc: str(m.desc, 160), author: str(m.author, 24) || "Anonim",
+    emoji: kind === "trivia" || kind === "op" ? cleanEmoji(m.emoji) : "",
+    picture: kind === "trivia" || kind === "op" ? "" : cdn(m.picture),
+    artist: str(m.artist, 80), artistId: int(m.artistId),
+    ...(kind === "rank" ? { rcat: "Topluluk" } : {}),
+    cat: kind === "trivia" ? cleanCat(m.cat) : kind === "op" ? "Anime" : "",
+    ...(!kind && m.rev ? { rev: true } : {}),
+    genre: "Topluluk", mine: pubkey === myPubkey(),
+  };
+}
+/** Dizinden gelen quizin içeriğini (şarkılar / sorular) arşivdeki kendi dosyasından yükler. */
+export async function loadFull(q) {
+  if (!q || q.full !== false) return q;
+  const r = await fetch(new URL(fileOf(q.pubkey, q.d), ARCHIVE), { cache: "no-cache" }).catch(() => null);
+  const e = r?.ok ? await r.json().catch(() => null) : null;
+  const p = e && valid(e) && e.pubkey === q.pubkey && dOf(e) === q.d ? parse(e) : null;
+  if (!p) throw Error("Bu quiz şu an açılamadı. Biraz sonra tekrar dene.");
+  Object.assign(q, p, { full: true });
+  return q;
 }
 // Site engel listesi (quiz/data/blocked.json): kaldırma talebi gelen quizler ve oyuncular gösterilmez.
 let blockedP = null;
@@ -142,40 +178,43 @@ const dOf = (e) => (e.tags.find((t) => t[0] === "d") || [])[1] || "";
 // NIP-01: daha yeni olan, eşitse kimliği küçük olan kazanır.
 const newer = (a, b) => !b || a.created_at > b.created_at || (a.created_at === b.created_at && a.id < b.id);
 
-/** Rölelerden ve arşivden topluluk quizlerini toplar (en yeni sürüm kazanır). */
+/** Arşiv dizininden ve rölelerdeki yeni kayıtlardan topluluk quizlerini toplar (en yeni sürüm kazanır).
+ *  Rölelerden yalnızca arşivin son güncellemesinden (bir gün payla) sonraki kayıtlar istenir; eskileri arşivde.
+ *  Rölelerde eksik kalan kayıtları rölelere geri yazmak arşiv betiğinin işidir (tools/archive_community.mjs). */
 export async function fetchCommunity({ limit = 300, ms = 6000 } = {}) {
   const sub = "jq" + Math.random().toString(36).slice(2, 8);
-  const found = new Map();
-  const onRelay = new Map();
-  const arc = archived();
-  const answered = await Promise.all(RELAYS.map((url) => relayCall(url,
-    (ws) => ws.send(JSON.stringify(["REQ", sub, { kinds: [KIND], "#t": [TAG], limit }])),
+  const idx = await archiveIndex();
+  const best = new Map(); // pubkey|d -> { at, q } (q: quiz nesnesi ya da silinmiş işareti)
+  for (const m of idx.items) {
+    const q = fromIndex(m);
+    if (!q) continue;
+    const key = q.pubkey + "|" + q.d;
+    const cur = best.get(key);
+    if (!cur || q.at > cur.at) best.set(key, { at: q.at, q });
+  }
+  const filter = { kinds: [KIND], "#t": [TAG], limit };
+  if (idx.upto) filter.since = idx.upto - 86400;
+  const fromRelay = new Map();
+  await Promise.all(RELAYS.map((url) => relayCall(url,
+    (ws) => ws.send(JSON.stringify(["REQ", sub, filter])),
     (x) => {
       if (x[0] === "EOSE" && x[1] === sub) return true;
       if (x[0] !== "EVENT" || x[1] !== sub || !valid(x[2])) return undefined;
       const e = x[2];
       const key = e.pubkey + "|" + dOf(e);
-      if (newer(e, found.get(key))) found.set(key, e);
-      if (newer(e, onRelay.get(key))) onRelay.set(key, e);
+      if (newer(e, fromRelay.get(key))) fromRelay.set(key, e);
       return undefined;
     }, ms)));
-  // Arşivdeki kayıtları ekle; rölelerde eksik ya da eski olanları rölelere geri gönder (imzalı, değiştirilemez).
-  const heal = [];
-  for (const e of await arc) {
-    if (!e || typeof e !== "object" || !Array.isArray(e.tags)) continue;
-    const key = e.pubkey + "|" + dOf(e);
-    const cur = found.get(key);
-    if (!newer(e, cur) || !valid(e)) continue;
-    found.set(key, e);
-    if (newer(e, onRelay.get(key))) heal.push(e);
+  for (const [key, e] of fromRelay) {
+    const cur = best.get(key);
+    if (cur && cur.at >= e.created_at) continue;
+    best.set(key, { at: e.created_at, q: parse(e) || { del: true } }); // silinmiş ya da bozuk sürüm eskisini gizler
   }
-  if (answered.some(Boolean)) for (const e of heal.slice(0, 20)) sendToRelays(e).catch(() => {});
   const hidden = hiddenSet();
   const bl = await blocked();
   const out = [];
-  for (const e of found.values()) {
-    const q = parse(e);
-    if (q && !hidden.has(q.id) && !bl.quizzes.has(q.id) && !bl.pubkeys.has(q.pubkey)) out.push(q);
+  for (const { q } of best.values()) {
+    if (q && !q.del && !hidden.has(q.id) && !bl.quizzes.has(q.id) && !bl.pubkeys.has(q.pubkey)) out.push(q);
   }
   return out.sort((a, b) => b.at - a.at);
 }

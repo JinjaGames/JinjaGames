@@ -1,10 +1,11 @@
 // JinjaQuiz topluluk quizlerini kalıcı tutar.
 // Herkese açık Nostr röleleri eski kayıtları zamanla silebilir; bu betik rölelerdeki imzalı kayıtları
-// quiz/data/community.json içine biriktirir. Site bu arşivi de okur ve rölelerde eksik olanları
-// rölelere geri gönderir. Kayıtlar imzalı olduğu için arşivdeki hiçbir quiz değiştirilemez.
+// quiz/data/community.json içine biriktirir (tam arşiv; sınırsız, hiçbir quiz atılmaz; yedek ve YouTube işi okur).
+// Site bunu değil, buradan üretilen bölünmüş arşivi okur (quiz/data/community/). Rölelerde eksik kalanları
+// betik rölelere geri gönderir. Kayıtlar imzalı olduğu için arşivdeki hiçbir quiz değiştirilemez.
 // Puan sıralaması kayıtlarını da (quiz/js/board.js) quiz/data/scores.json içine biriktirir.
 // Kullanım: node tools/archive_community.mjs   (GitHub Actions'ta 6 saatte bir çalışır)
-import { readFileSync, writeFileSync, mkdirSync } from "node:fs";
+import { readFileSync, writeFileSync, mkdirSync, readdirSync, unlinkSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { schnorr, sha256, bytesToHex, hexToBytes } from "../quiz/vendor/nostr-sign.js";
@@ -14,7 +15,6 @@ const OUT = join(ROOT, "quiz/data/community.json");
 const RELAYS = ["wss://nos.lol", "wss://relay.primal.net", "wss://relay.damus.io", "wss://nostr.mom", "wss://relay.nostr.band", "wss://offchain.pub"];
 const KIND = 30078;
 const TAG = "jinjaquiz";
-const MAX_EVENTS = 3000;
 // Sitedeki SONG_CUTOFF ile aynı: bu tarihten önceki şarkı listeleri arşive alınmaz.
 const SONG_CUTOFF = Number((readFileSync(join(ROOT, "quiz/js/community.js"), "utf8").match(/SONG_CUTOFF = (\d+)/) || [])[1] || 0);
 const enc = new TextEncoder();
@@ -67,7 +67,7 @@ old.forEach(add);
 const before = JSON.stringify(old.map((e) => e.id).sort());
 const results = await Promise.all(RELAYS.map(fetchRelay));
 results.flat().forEach(add);
-const events = [...best.values()].sort((a, b) => b.created_at - a.created_at).slice(0, MAX_EVENTS);
+const events = [...best.values()].sort((a, b) => b.created_at - a.created_at);
 const after = JSON.stringify(events.map((e) => e.id).sort());
 console.log(`Röleler: ${results.map((r, i) => `${RELAYS[i].slice(6)}=${r.length}`).join(", ")}`);
 console.log(`Arşiv: ${old.length} → ${events.length} kayıt`);
@@ -77,6 +77,69 @@ if (before === after && old.length) {
   mkdirSync(dirname(OUT), { recursive: true });
   writeFileSync(OUT, JSON.stringify({ note: "JinjaQuiz topluluk quizleri arşivi (imzalı Nostr kayıtları). tools/archive_community.mjs üretir.", events }) + "\n");
 }
+
+// ---- Site için bölünmüş arşiv ----
+// Site community.json'u indirmez (quiz sayısıyla büyür): ana sayfa için hafif dizin (quiz/data/community/index.json),
+// her quizin imzalı kaydı da kendi dosyasında (quiz/data/community/q/<anahtar16>-<kimlik>.json; quiz açılınca indirilir).
+// Dizindeki alanlar sitenin kendi süzgecinden (quiz/js/community.js, parse) geçirilerek yazılır.
+globalThis.localStorage ??= { getItem: () => null, setItem() {} };
+const { parse } = await import("../quiz/js/community.js");
+const CDIR = join(ROOT, "quiz/data/community");
+const QDIR = join(CDIR, "q");
+mkdirSync(QDIR, { recursive: true });
+const writeIfChanged = (path, body) => {
+  let old = "";
+  try { old = readFileSync(path, "utf8"); } catch {}
+  if (old !== body) { writeFileSync(path, body); return true; }
+  return false;
+};
+const items = [];
+const keepFiles = new Set();
+let upto = 0, changedFiles = 0;
+for (const e of events) {
+  upto = Math.max(upto, e.created_at);
+  const d = dTag(e);
+  const q = parse(e);
+  if (!q) { items.push({ d, pk: e.pubkey, at: e.created_at, del: 1 }); continue; } // sahibince kaldırılmış ya da geçersiz
+  items.push({
+    d, pk: e.pubkey, at: e.created_at, kind: q.kind, name: q.name, desc: q.desc || undefined, author: q.author,
+    emoji: q.emoji || undefined, picture: q.picture || undefined, artist: q.artist || undefined, artistId: q.artistId || undefined,
+    cat: q.kind === "trivia" ? q.cat : undefined, rev: q.rev ? 1 : undefined, n: (q.tracks || q.items || []).length,
+  });
+  const file = `${e.pubkey.slice(0, 16)}-${d.slice(10)}.json`;
+  keepFiles.add(file);
+  if (writeIfChanged(join(QDIR, file), JSON.stringify(pick(e)) + "\n")) changedFiles++;
+}
+// Dosyası kalan ama artık geçerli sürümü olmayan (sahibinin kaldırdığı) quizlerin içeriği sunulmaz.
+for (const f of readdirSync(QDIR)) if (f.endsWith(".json") && !keepFiles.has(f)) { unlinkSync(join(QDIR, f)); changedFiles++; }
+const indexChanged = writeIfChanged(join(CDIR, "index.json"), JSON.stringify({ note: "JinjaQuiz topluluk quizleri dizini (tools/archive_community.mjs üretir). İçerik: q/<anahtar16>-<kimlik>.json", upto, items }) + "\n");
+console.log(`Bölünmüş arşiv: ${items.length} dizin satırı, ${keepFiles.size} quiz dosyası, ${changedFiles} dosya değişti${indexChanged ? ", dizin güncellendi" : ""}`);
+
+// ---- Rölelerde eksik kalan kayıtları geri yaz ----
+// Röleler eski kayıtları silebilir; arşivdeki imzalı kayıt değiştirilemez, olduğu gibi geri gönderilir.
+const onRelays = new Map();
+for (const e of results.flat()) {
+  if (!valid(e)) continue;
+  const k = e.pubkey + "|" + dTag(e);
+  const p = onRelays.get(k);
+  if (!p || e.created_at > p.created_at) onRelays.set(k, e);
+}
+const heal = events.filter((e) => { const r = onRelays.get(e.pubkey + "|" + dTag(e)); return !r || r.created_at < e.created_at; }).slice(0, 40);
+function publish(url, e) {
+  return new Promise((resolve) => {
+    let ws;
+    const done = (v) => { clearTimeout(t); try { ws.close(); } catch {} resolve(v); };
+    const t = setTimeout(() => done(false), 8000);
+    try { ws = new WebSocket(url); } catch { return done(false); }
+    ws.onopen = () => ws.send(JSON.stringify(["EVENT", e]));
+    ws.onerror = () => done(false);
+    ws.onmessage = (m) => { try { const x = JSON.parse(m.data); if (x[0] === "OK" && x[1] === e.id) done(!!x[2]); } catch {} };
+  });
+}
+let healed = 0;
+for (const e of heal) if ((await Promise.all(RELAYS.map((u) => publish(u, e)))).some(Boolean)) healed++;
+if (heal.length) console.log(`Rölelere geri yazılan: ${healed}/${heal.length}`);
+
 
 // ---- Puan sıralaması kayıtları (quiz/js/board.js) ----
 // Her oyuncunun her quizdeki en İYİ kaydı saklanır (röleler yalnızca en yenisini tutar).
