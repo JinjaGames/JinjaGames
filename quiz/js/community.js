@@ -6,9 +6,9 @@ import { schnorr, sha256, bytesToHex, hexToBytes } from "../vendor/nostr-sign.js
 import { cdn } from "./music.js?v=6";
 import { cleanItems, cleanCat, cleanEmoji, T_MIN, T_MAX } from "./trivia.js?v=5";
 import { cleanRank, cleanOps } from "./engine.js?v=13";
-import { isBadName, maskName } from "./badwords.js?v=1";
+import { isBadName, isBadText, maskName, maskText } from "./badwords.js?v=2";
 // Önceden yayınlanmış quizlerde uygunsuz ad / açıklama / yazar ekranda gizlenir (kayda dokunulmaz).
-const tidy = (q) => (isBadName(q.name) || isBadName(q.desc) || isBadName(q.author) ? { ...q, name: maskName(q.name), desc: isBadName(q.desc) ? "" : q.desc, author: maskName(q.author) } : q);
+const tidy = (q) => (isBadText(q.name) || isBadText(q.desc) || isBadName(q.author) ? { ...q, name: maskText(q.name), desc: isBadText(q.desc) ? "" : q.desc, author: maskName(q.author) } : q);
 
 export const OP_MIN = 4; // anime opening quizinde en az (şıklar diğer openinglerden oluşur)
 

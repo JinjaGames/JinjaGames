@@ -4,7 +4,7 @@
 // Her lobi kendi rastgele anahtarıyla imzalanır: duyuru kurucunun topluluk quizleriyle ilişkilendirilemez.
 // Özel lobiler hiç duyurulmaz. Sohbet ve oyun verisi duyuruya girmez.
 import { schnorr, sha256, bytesToHex } from "../vendor/nostr-sign.js";
-import { relayCall, sendToRelays, RELAYS, valid } from "./community.js?v=12";
+import { relayCall, sendToRelays, RELAYS, valid } from "./community.js?v=13";
 
 const KIND = 30078;
 const TAG = "jinjaquiz-lobby";

@@ -1,11 +1,11 @@
 import { PRESETS, MIXES, loadTracks, searchArtists, customLists, saveCustom, removeCustom, fold, cdn, realPic, loadPresetPictures } from "./music.js?v=6";
 import { sfx, sfxEnabled, setSfx, setSfxVolume } from "./sfx.js?v=5";
 import { randomName } from "./names.js";
-import { fetchCommunity, loadFull, removeQuiz, hideQuiz, unhideQuiz, hiddenList } from "./community.js?v=12";
+import { fetchCommunity, loadFull, removeQuiz, hideQuiz, unhideQuiz, hiddenList } from "./community.js?v=13";
 import { Game, MAX_PLAYERS, RANK_PTS, OP_PTS } from "./engine.js?v=13";
 import { lbKey, loadBoard, peekBoard, submitScore, myBest, isMine, syncMine, LB_TOP, LB_QUESTIONS } from "./board.js?v=8";
 import { quizSlug, slugTable } from "./slug.js?v=1";
-import { maskName, isBadName } from "./badwords.js?v=1";
+import { maskName, maskText, isBadName } from "./badwords.js?v=2";
 import { RANK_QUIZZES, RANK_CATS, rankItems, fromYouTube } from "./rank.js?v=5";
 import { TRIVIA, TCATS, TART, EMOJIS, cleanItems, IMG, ANI_IMG, FLAG, flagUrl, cleanEmo, SHAPE, shapeUrl } from "./trivia.js?v=5";
 import { ANIME_QUIZZES, ERAS, animeItems, animeOps } from "./anime.js?v=3";
@@ -1047,7 +1047,7 @@ function lobbiesHtml() {
   const ls = ui.lobbies;
   const card = (l) => `<button class="lbyCard" data-joinlobby="${esc(l.code)}" aria-label="${esc(l.host.name)} lobisine katıl">
       <span class="lbyTop">${avatar(l.host, "lg")}<span class="lbyWho"><b data-noi18n>${esc(maskName(l.host.name))}</b><small>${l.lock ? `${ic("lock")}Şifreli lobi` : `${ic("globe")}Herkese açık`}</small></span><span class="lbyGo">${l.lock ? "Şifreyle katıl" : "Katıl"}${ic("chevron-right")}</span></span>
-      <span class="lbyQuiz">${l.quizzes.length ? l.quizzes.map((q) => `<i data-noi18n>${esc(maskName(q))}</i>`).join("") + (l.more ? `<i>+${l.more}</i>` : "") : `<i class="muted">Quiz seçiliyor</i>`}</span>
+      <span class="lbyQuiz">${l.quizzes.length ? l.quizzes.map((q) => `<i data-noi18n>${esc(maskText(q))}</i>`).join("") + (l.more ? `<i>+${l.more}</i>` : "") : `<i class="muted">Quiz seçiliyor</i>`}</span>
       <span class="lbyBar"><span class="lbyFill" style="width:${Math.round((num(l.players) / Math.max(1, num(l.max))) * 100)}%"></span></span>
       <span class="lbyFoot">${ic("users")}${num(l.players)}/${num(l.max)} oyuncu</span>
     </button>`;

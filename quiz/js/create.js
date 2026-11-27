@@ -1,14 +1,14 @@
 // JinjaQuiz: quiz oluşturma sayfası (/quiz/create/). Sanatçı ve şarkı araması ayrı sekmelerde;
 // sanatçının popüler şarkıları ve tüm albümleri tek tek ya da topluca eklenebilir.
 import { searchArtists, searchTracks, artistInfo, artistTop, artistAlbums, albumTracks, ownTracks, isAlternate, customLists, saveCustom, removeCustom, cleanTracks, fold, cdn } from "./music.js?v=6";
-import { fetchCommunity, loadFull, publishQuiz, removeQuiz, myPubkey, MIN_TRACKS, MAX_TRACKS } from "./community.js?v=12";
+import { fetchCommunity, loadFull, publishQuiz, removeQuiz, myPubkey, MIN_TRACKS, MAX_TRACKS } from "./community.js?v=13";
 import { TCATS, TART, EMOJIS, T_MIN, T_MAX, cleanItems, cleanCat, cleanEmoji, isTF, IMG } from "./trivia.js?v=5";
 import { cleanOps, RANK_PTS, OP_PTS } from "./engine.js?v=13";
-import { isBadName } from "./badwords.js?v=1";
+import { isBadName, isBadText } from "./badwords.js?v=2";
 import { quizSlug, slugify } from "./slug.js?v=1";
 import { initI18n } from "./i18n.js?v=12";
 import { rankItems } from "./rank.js?v=5";
-import { OP_MIN } from "./community.js?v=12";
+import { OP_MIN } from "./community.js?v=13";
 
 const $ = (s, r = document) => r.querySelector(s);
 const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
@@ -572,7 +572,7 @@ async function checkPublish() {
 }
 async function checkPublishNow() {
   const name = st.name;
-  const bad = [["qName", st.name, "Quiz adında"], ["qDesc", st.desc, "Açıklamada"], ["qAuthor", st.author, "Yazar adında"]].find(([, v]) => v && isBadName(v));
+  const bad = [["qName", st.name, "Quiz adında", isBadText], ["qDesc", st.desc, "Açıklamada", isBadText], ["qAuthor", st.author, "Yazar adında", isBadName]].find(([, v, , bad]) => v && bad(v));
   if (bad) {
     $("#" + bad[0])?.focus();
     toast(`${bad[2]} uygunsuz bir kelime var. Lütfen değiştir.`, "bad");
