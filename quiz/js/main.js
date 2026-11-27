@@ -13,7 +13,7 @@ import { hostRoom, guestRoom, newCode, validCode } from "./net.js?v=5";
 import { announceLobby, listLobbies } from "./lobbies.js?v=4";
 import { countPlay, loadPlays, plays, players, onPlays, playsLoaded } from "./plays.js?v=6";
 import { dailyQuiz, dailyDate, dailyLeft, dailyLabel, dailyResult, saveDaily, dailyStreak } from "./daily.js?v=1";
-import { initI18n, LANG, applyLang } from "./i18n.js?v=9";
+import { initI18n, LANG, applyLang } from "./i18n.js?v=10";
 
 // ---------- yardımcılar ----------
 const $ = (s, r = document) => r.querySelector(s);
@@ -2280,6 +2280,18 @@ function openSheet(kind, ctx = {}) {
       <p class="muted">Bunlar yalnızca sana gösterilmiyor. Yanlışlıkla gizlediysen geri açabilirsin.</p>
       ${list.length ? `<ol class="hidList">${list.map((x) => `<li>${ic("eye-off")}<span><b>${esc(x.name || "Adsız quiz")}</b>${x.author ? `<small>${esc(x.author)}</small>` : ""}</span><button class="btn soft sm" data-unhide="${esc(x.id)}">${ic("eye")}Geri göster</button></li>`).join("")}</ol>` : `<p class="muted">Gizlenen quiz yok.</p>`}`;
   }
+  if (kind === "switch") {
+    const host = mode?.role === "host";
+    const others = host && !hostAlone();
+    sheetBody.innerHTML = `<div class="sheetHead"><h2>Lobiden ayrılsın mı?</h2><button class="icon" data-close aria-label="Kapat">${ic("x")}</button></div>
+      <p class="muted">${host ? (others ? "Şu an bir lobinin kurucususun. Devam edersen lobi herkes için kapanır." : "Şu an açık bir lobin var. Devam edersen lobi kapanır.") : "Şu an bir lobidesin. Devam edersen lobiden ayrılırsın; puanın lobide kalır."}</p>
+      <div class="sheetFoot"><button class="btn ghost" data-close autofocus>Vazgeç</button><button class="btn danger" data-do="switchGo">${ic("door-open")}Ayrıl ve devam et</button></div>`;
+  }
+  if (kind === "resetAsk") {
+    sheetBody.innerHTML = `<div class="sheetHead"><h2>Puanlar sıfırlansın mı?</h2><button class="icon" data-close aria-label="Kapat">${ic("x")}</button></div>
+      <p class="muted">Herkesin genel puanı ve oynanan quizler listesi temizlenir. Bu işlem geri alınamaz.</p>
+      <div class="sheetFoot"><button class="btn ghost" data-close autofocus>Vazgeç</button><button class="btn danger" data-do="resetGo">${ic("shuffle")}Sıfırla</button></div>`;
+  }
   if (kind === "numLeave") {
     const n = num(nq?.streak);
     sheetBody.innerHTML = `<div class="sheetHead"><h2>Sayı Quizinden çıkılsın mı?</h2><button class="icon" data-close aria-label="Kapat">${ic("x")}</button></div>
@@ -2347,6 +2359,13 @@ async function rmConfirm() {
   }
   if (screen === "home") renderHome();
   else render();
+}
+// Lobideyken (kurucu ya da oyuncu) seni lobiden çıkaracak bir şey yapılırsa önce sorulur;
+// kurucuysan lobi herkes için kapanacağı söylenir. Onaylanınca iş devam eder.
+const inParty = () => !!mode && mode.role !== "solo";
+function guardLeave(then) {
+  if (!inParty()) return then();
+  openSheet("switch", { then });
 }
 function closeSheet() {
   if (sheet.open) sheet.close();
@@ -2833,9 +2852,10 @@ function pickPair(cat, keep) {
   }
   return [sorted[0], sorted[n - 1]];
 }
-function startNumber(id) {
+function startNumber(id, ok = false) {
   const cat = NUMCATS.find((c) => c.id === id);
   if (!cat) return;
+  if (inParty() && !ok) return guardLeave(() => startNumber(id, true));
   if (mode) leaveRoom(true);
   countPlay("num-" + cat.id);
   nq = { cat, streak: 0, phase: "pick", recent: [], pair: null, pick: -1 };
@@ -2915,7 +2935,16 @@ function numPick(i) {
 async function doAction(a, el) {
   switch (a) {
     case "create":
-      return startHost();
+      if (mode?.role === "host") { screen = "room"; lastSig = ""; return render(); }
+      return guardLeave(() => { if (mode) leaveRoom(true); startHost(); });
+    case "switchGo": {
+      const then = sheetCtx.then;
+      closeSheet();
+      return then?.();
+    }
+    case "resetGo":
+      closeSheet();
+      return act({ type: "reset" });
     case "rkgo": {
       const q = view?.question;
       if (!q || q.mine || rkFilled(q) < (num(q.slots) || 5)) return;
@@ -3024,7 +3053,7 @@ async function doAction(a, el) {
       location.href = "create/?edit=" + encodeURIComponent(sheetCtx.list?.id || "");
       return;
     case "reset":
-      return act({ type: "reset" });
+      return openSheet("resetAsk");
 
     case "listen":
       if (el.dataset.pressed) return;
@@ -3060,6 +3089,10 @@ async function doAction(a, el) {
         lastSig = "";
         toast(`“${sheetCtx.list?.name || "Quiz"}” sıraya eklendi.`);
         return act(payload);
+      }
+      if (inParty() && !sheetCtx.leaveOk) {
+        const ctx = sheetCtx;
+        return guardLeave(() => { sheetCtx = { ...ctx, leaveOk: true }; doAction(a); });
       }
       if (mode) leaveRoom(true);
       const game = startHost({ solo: a === "soloGo" });
@@ -3122,8 +3155,12 @@ document.addEventListener("click", async (e) => {
     if (d.joinlobby) {
       if (!validCode(d.joinlobby)) return;
       // şifreli lobide önce şifre sorulur
-      if (ui.lobbies?.find((x) => x.code === d.joinlobby)?.lock) return askPw(d.joinlobby);
-      return startGuest(d.joinlobby, { fromList: true });
+      if (mode?.code === d.joinlobby) { screen = "room"; lastSig = ""; return render(); }
+      const code = d.joinlobby;
+      return guardLeave(() => {
+        if (ui.lobbies?.find((x) => x.code === code)?.lock) { if (mode) leaveRoom(true); return askPw(code); }
+        startGuest(code, { fromList: true });
+      });
     }
     if (d.vis && mode?.role === "host") {
       mode.vis = ["public", "locked"].includes(d.vis) ? d.vis : "private";
@@ -3354,7 +3391,8 @@ document.addEventListener("submit", (e) => {
   if (f.id === "joinForm") {
     const code = $("#joinCode").value.trim().toUpperCase();
     if (!validCode(code)) return toast("Kod 5 karakter olmalı (ör. K7QXM).", "bad");
-    return startGuest(code);
+    if (mode?.code === code) { screen = "room"; lastSig = ""; return render(); }
+    return guardLeave(() => startGuest(code));
   }
   if (f.id === "searchForm") return runSearch($("#search").value, "home");
   if (f.id === "pickSearch") return runSearch($("#pickQ").value, "picker");
