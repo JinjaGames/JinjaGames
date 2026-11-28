@@ -18,7 +18,7 @@ import { dailyQuiz, dailyDate, dailyLeft, dailyLabel, dailyResult, saveDaily, da
 import { initI18n, LANG, applyLang } from "./i18n.js?v=14";
 import { initTabs, tabsUpdate, lobbyElsewhere, pidTaken, takeLobby } from "./tabs.js?v=1";
 import { favList, isFav, favCount, toggleFav, loadFavs, onFavs, favKey } from "./favs.js?v=2";
-import { initAccount, googleButton, signOut, account, onAccount, accountReady, push as pushAccount } from "./account.js?v=3";
+import { initAccount, googleButton, signOut, account, onAccount, accountReady, push as pushAccount } from "./account.js?v=4";
 
 // ---------- yardımcılar ----------
 const $ = (s, r = document) => r.querySelector(s);

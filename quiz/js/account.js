@@ -43,7 +43,7 @@ async function load() {
     user = u ? { uid: u.uid, name: u.displayName || "", email: u.email || "", photo: u.photoURL || "" } : null;
     set(FLAG, u ? "1" : null);
     tell();
-    if (u) await pull().catch(() => {});
+    if (u) { await pull().catch(() => {}); await retryPhoto().catch(() => {}); }
   });
   return fb;
 }
@@ -157,18 +157,37 @@ function union(local, cloud) {
 // Google hesabının fotoğrafı küçük bir kopya olarak profile konur (sitenin profil fotoğrafı biçimi)
 async function googlePhoto(url) {
   if (!/^https:\/\/lh\d\.googleusercontent\.com\//.test(url || "")) return "";
-  try {
-    const r = await fetch(url.replace(/=s\d+(-c)?$/, "") + "=s160-c", { mode: "cors", credentials: "omit" });
-    if (!r.ok) return "";
-    const bmp = await createImageBitmap(await r.blob());
-    const c = document.createElement("canvas");
-    c.width = c.height = 128;
-    c.getContext("2d").drawImage(bmp, 0, 0, 128, 128);
-    const out = c.toDataURL("image/jpeg", 0.82);
-    return /^data:image\/jpeg;base64,[A-Za-z0-9+/=]{1,30000}$/.test(out) ? out : "";
-  } catch {
-    return "";
-  }
+  // (fetch ile istenince Google sunucusu reddedebiliyor; görsel olarak, yönlendiren adres göndermeden yüklenince açılıyor)
+  return new Promise((ok) => {
+    const img = new Image();
+    img.crossOrigin = "anonymous";
+    img.referrerPolicy = "no-referrer";
+    img.onload = () => {
+      try {
+        const c = document.createElement("canvas");
+        c.width = c.height = 128;
+        c.getContext("2d").drawImage(img, 0, 0, 128, 128);
+        const out = c.toDataURL("image/jpeg", 0.82);
+        ok(/^data:image\/jpeg;base64,[A-Za-z0-9+/=]{1,30000}$/.test(out) ? out : "");
+      } catch { ok(""); }
+    };
+    img.onerror = () => ok("");
+    setTimeout(() => ok(""), 8000);
+    img.src = url.replace(/=s\d+(-c)?$/, "") + "=s160-c";
+  });
+}
+// İlk girişte Google fotoğrafı alınamadıysa sonraki açılışlarda yeniden denenir (oyuncu kendi fotoğrafını seçene kadar)
+const GPHOTO = "jqGPhoto";
+async function retryPhoto() {
+  if (get(GPHOTO) !== user.uid) return;
+  const p = json(get("jqProfile"), null);
+  if (!p || p.photo) return set(GPHOTO, null);
+  const photo = await googlePhoto(user.photo);
+  if (!photo) return;
+  set("jqProfile", JSON.stringify({ ...p, photo }));
+  set(GPHOTO, null);
+  await push();
+  tell();
 }
 async function pull() {
   const found = await readDoc();
@@ -184,7 +203,9 @@ async function pull() {
     if (!doc.data.jqProfile) {
       const lp = json(local.jqProfile, {}) || {};
       const name = String(user.name || "").replace(/\s+/g, " ").trim().slice(0, 20) || lp.name || "Oyuncu";
-      data.jqProfile = JSON.stringify({ name, avatar: lp.avatar || "headphones", color: lp.color || "coral", photo: (await googlePhoto(user.photo)) || "" });
+      const photo = await googlePhoto(user.photo);
+      if (!photo && user.photo) set(GPHOTO, user.uid);
+      data.jqProfile = JSON.stringify({ name, avatar: lp.avatar || "headphones", color: lp.color || "coral", photo });
     }
     at = Object.fromEntries(Object.keys(data).map((k) => [k, Date.now()]));
   } else {
