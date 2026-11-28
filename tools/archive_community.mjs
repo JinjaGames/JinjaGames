@@ -142,6 +142,13 @@ for (const e of heal) if ((await Promise.all(RELAYS.map((u) => publish(u, e)))).
 if (heal.length) console.log(`Rölelere geri yazılan: ${healed}/${heal.length}`);
 
 
+// ---- Engel listesi (quiz/data/blocked.json) ----
+// Engellenen oyuncu anahtarlarının (ör. test kimlikleri) puan, oynanma ve kalp kayıtları arşive alınmaz.
+// (Topluluk quizleri engellense de yedek olarak yukarıda arşivlenmeye devam eder; site göstermez.)
+let BLOCKED = new Set();
+try { BLOCKED = new Set((JSON.parse(readFileSync(join(ROOT, "quiz/data/blocked.json"), "utf8")).pubkeys || []).map((k) => String(k).toLowerCase())); } catch {}
+const BLOCKED12 = new Set([...BLOCKED].map((k) => k.slice(0, 12)));
+
 // ---- Puan sıralaması kayıtları (quiz/js/board.js) ----
 // Her oyuncunun her quizdeki en İYİ kaydı saklanır (röleler yalnızca en yenisini tutar).
 const SCORES = join(ROOT, "quiz/data/scores.json");
@@ -188,7 +195,7 @@ let oldS = [];
 try { oldS = JSON.parse(readFileSync(SCORES, "utf8")).events || []; } catch {}
 const bestS = new Map();
 const addS = (e) => {
-  if (!validScore(e)) return;
+  if (!validScore(e) || BLOCKED.has(e.pubkey)) return;
   const k = e.pubkey + "|" + dTag(e);
   const p = bestS.get(k);
   const s = scoreOf(e), ps = p ? scoreOf(p) : -1;
@@ -248,6 +255,7 @@ const resP = await Promise.all(RELAYS.map(fetchPlays));
 let nP = 0;
 for (const e of resP.flat()) {
   const p = playOf(e);
+  if (p && BLOCKED12.has(p.pk)) continue;
   if (!p) continue;
   nP++;
   by[p.k] ||= {};
@@ -300,6 +308,7 @@ try { favBy = JSON.parse(readFileSync(FAVS, "utf8")).by || {}; } catch {}
 const beforeF = JSON.stringify(favBy);
 for (const e of (await Promise.all(RELAYS.map(fetchFavs))).flat()) {
   const f = favOf(e);
+  if (f && BLOCKED12.has(f.pk)) continue;
   if (f && !(favBy[f.pk]?.at >= f.at)) favBy[f.pk] = { at: f.at, f: f.f };
 }
 const sortedF = Object.fromEntries(Object.keys(favBy).sort().map((k) => [k, favBy[k]]));
