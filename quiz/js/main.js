@@ -1454,7 +1454,7 @@ function numCard(c, k = 0) {
   const sample = c.items.filter((x) => x.f).slice(0, 3);
   return `<button class="numCard" data-numcat="${esc(c.id)}" style="--h:${c.hue};--i:${k}">
     <span class="numArt">${sample.length ? sample.map((x, i) => `<img src="${esc(flagUrl(x.f))}" alt="" style="--j:${i}">`).join("") : `<i>${c.emoji}</i>`}</span>
-    <span class="numInfo"><b>${c.emoji} ${esc(c.name)}</b><small>${c.items.length} öğe${numBest(c.id) ? ` · rekorun ${numBest(c.id)}` : ""}</small></span>
+    <span class="numInfo"><b>${c.emoji} ${esc(c.name)}</b></span>
     <span class="numPlay">${ic("play")}</span>
     ${playsTag({ id: "num-" + c.id }, "plays numPlays")}
   </button>`;
@@ -1565,7 +1565,7 @@ function qcard(l, k = 0) {
     <button class="qcardBtn" data-list="${esc(l.id)}" aria-label="${esc(l.name)} quizini aç">
       <span class="qcardArt">${cover(l, "qcardImg", true)}${playsTag(l, "plays qcardPlays")}</span>
       <span class="qcardTag">${esc(l.genre)}</span>
-      <span class="qcardInfo"><b>${esc(l.name)}</b><small>${cardSub(l)}</small></span>
+      <span class="qcardInfo"><b>${esc(l.name)}</b>${cardBy(l)}</span>
       <span class="qcardPlay">${ic("play")}</span>
     </button>
     ${cardTools(l)}
@@ -1573,13 +1573,9 @@ function qcard(l, k = 0) {
   </div>`;
 }
 function acard(l, k = 0, rev = false) {
-  const n = num(l.tracks?.length || l.n);
-  const sub = l.genre === "Topluluk" ? `<bdi data-noi18n>${esc(l.author)}</bdi> · ${l.rev ? "Tersten · " : ""}${n} şarkı`
-    : l.genre === "Senin" ? (n ? `${l.rev ? "Tersten · " : ""}${n} şarkı` : "Senin")
-    : esc(l.kind === "rank" ? l.rcat || "Sıralama" : l.genre);
   return `<button class="acard" data-list="${esc(l.id)}"${rev ? ' data-rev="1"' : ""} style="--i:${Math.min(k, 20)}" aria-label="${esc(l.name)} quizini aç">
     <span class="acardArt">${cover(l, "acardImg")}${playsTag(l, "plays acardPlays")}</span>
-    <b>${esc(l.name)}</b><small>${sub}</small>
+    <b>${esc(l.name)}</b>${cardBy(l)}
   </button>`;
 }
 // Şarkı quizleri (sanatçılar, karma listeler, topluluk ve kendi listelerin) her yerde yuvarlak, plak gibi dönen kartla;
@@ -1587,6 +1583,8 @@ function acard(l, k = 0, rev = false) {
 const isSong = (l) => !l.kind && !l.anime;
 const scard = (l, k = 0) => `<div class="acardW">${acard(l, k)}${cardTools(l)}${favBtn(l)}</div>`;
 const card = (l, k = 0) => (isSong(l) ? scard(l, k) : qcard(l, k));
+// Kartlar sade: yalnızca ad (soru sayısı, tür, rekor detay sayfasında). Topluluk quizlerinde yapanın adı kalır.
+const cardBy = (l) => (l.genre === "Topluluk" && l.author ? `<small class="cardBy">${ic("user")}<bdi data-noi18n>${esc(l.author)}</bdi></small>` : "");
 function cardSub(l) {
   if (l.anime) return l.items?.length || l.n ? `Anime · ${num(l.items?.length || l.n)} soru` : "Anime trivia";
   if (l.kind === "num") return `Sayı · ${num(l.n)} öğe${numBest(l.numcat) ? ` · rekorun ${numBest(l.numcat)}` : ""}`;
