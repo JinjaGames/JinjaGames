@@ -5,7 +5,7 @@
 import { schnorr, sha256, bytesToHex, hexToBytes } from "../vendor/nostr-sign.js";
 import { cdn } from "./music.js?v=6";
 import { cleanItems, cleanCat, cleanEmoji, T_MIN, T_MAX } from "./trivia.js?v=5";
-import { cleanRank, cleanOps } from "./engine.js?v=13";
+import { cleanRank, cleanOps } from "./engine.js?v=14";
 import { isBadName, isBadText, maskName, maskText } from "./badwords.js?v=2";
 // Önceden yayınlanmış quizlerde uygunsuz ad / açıklama / yazar ekranda gizlenir (kayda dokunulmaz).
 const tidy = (q) => (isBadText(q.name) || isBadText(q.desc) || isBadName(q.author) ? { ...q, name: maskText(q.name), desc: isBadText(q.desc) ? "" : q.desc, author: maskName(q.author) } : q);

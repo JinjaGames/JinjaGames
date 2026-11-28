@@ -2,16 +2,17 @@ import { PRESETS, MIXES, loadTracks, searchArtists, customLists, saveCustom, rem
 import { sfx, sfxEnabled, setSfx, setSfxVolume } from "./sfx.js?v=5";
 import { randomName } from "./names.js";
 import { fetchCommunity, loadFull, removeQuiz, hideQuiz, unhideQuiz, hiddenList } from "./community.js?v=13";
-import { Game, MAX_PLAYERS, RANK_PTS, OP_PTS } from "./engine.js?v=13";
-import { lbKey, loadBoard, peekBoard, submitScore, myBest, isMine, syncMine, LB_TOP, LB_QUESTIONS } from "./board.js?v=8";
+import { Game, MAX_PLAYERS, RANK_PTS, OP_PTS } from "./engine.js?v=14";
+import { lbKey, loadBoard, peekBoard, submitScore, myBest, isMine, syncMine, LB_TOP, LB_QUESTIONS } from "./board.js?v=9";
 import { quizSlug, slugTable } from "./slug.js?v=1";
 import { maskName, maskText, isBadName } from "./badwords.js?v=2";
+import { AVATARS, ICON_AVATARS, LETTER_AVATARS, isLetterAvatar } from "./avatars.js?v=1";
 import { RANK_QUIZZES, RANK_CATS, rankItems, fromYouTube } from "./rank.js?v=5";
 import { TRIVIA, TCATS, TART, EMOJIS, cleanItems, IMG, ANI_IMG, FLAG, flagUrl, cleanEmo, SHAPE, shapeUrl } from "./trivia.js?v=5";
 import { ANIME_QUIZZES, ERAS, animeItems, animeOps } from "./anime.js?v=3";
 import { NUMCATS, fmtNum, farEnough } from "./numdata.js";
 import { hostRoom, guestRoom, newCode, validCode } from "./net.js?v=7";
-import { announceLobby, listLobbies } from "./lobbies.js?v=6";
+import { announceLobby, listLobbies } from "./lobbies.js?v=7";
 import { countPlay, loadPlays, plays, players, onPlays, playsLoaded } from "./plays.js?v=8";
 import { dailyQuiz, dailyDate, dailyLeft, dailyLabel, dailyResult, saveDaily, dailyStreak } from "./daily.js?v=2";
 import { initI18n, LANG, applyLang } from "./i18n.js?v=12";
@@ -47,7 +48,7 @@ const uid = () => Math.random().toString(36).slice(2, 12);
 const skRows = (n = 4) => `<div class="skWrap" aria-busy="true" aria-label="Yükleniyor">${Array.from({ length: n }, (_, i) => `<div class="skRow" style="--i:${i}"><span class="sk skAv"></span><span class="skCol"><span class="sk skL" style="width:${60 - (i % 3) * 12}%"></span><span class="sk skL" style="width:${34 + (i % 2) * 10}%"></span></span></div>`).join("")}</div>`;
 const skCards = (n = 4) => Array.from({ length: n }, (_, i) => `<div class="skCard" style="--i:${i}" aria-hidden="true"><span class="sk skArt"></span><span class="sk skL" style="width:70%"></span><span class="sk skL" style="width:45%"></span></div>`).join("");
 
-const AVATARS = ["headphones", "guitar", "mic-vocal", "disc-3", "radio", "drum"];
+const AVATAR_ICONS = ICON_AVATARS;
 const COLORS = ["coral", "violet", "mint", "gold", "sky", "rose"];
 const LEVELS = { 5: "Kolay", 3: "Orta", 1: "Zor" };
 // tersten çalınan quizde zorluklar: kolay 10, orta 5, zor 3 sn
@@ -120,7 +121,7 @@ const fail = (e) => toast(e?.message || String(e), "bad");
 function avatar(p, size = "") {
   const color = COLORS.includes(p.color) ? p.color : "coral";
   const av = AVATARS.includes(p.avatar) ? p.avatar : "headphones";
-  return `<span class="av ${color} ${esc(size)}">${PHOTO.test(p.photo || "") ? `<img src="${esc(p.photo)}" alt="">` : ic(av)}</span>`;
+  return `<span class="av ${color} ${esc(size)}">${PHOTO.test(p.photo || "") ? `<img src="${esc(p.photo)}" alt="">` : isLetterAvatar(av) ? `<span class="avL" aria-hidden="true">${av}</span>` : ic(av)}</span>`;
 }
 // Açık / koyu tema: tercih hatırlanır; sayfa açılırken js/theme.js uygular (yanıp sönme olmasın).
 const isLight = () => document.documentElement.dataset.theme === "light";
@@ -726,14 +727,15 @@ emoTray.addEventListener("click", (e) => {
 document.addEventListener("pointerdown", (e) => { if (!emoTray.hidden && !e.target.closest(".emoTray, .emoBtn")) emoClose(); }, true);
 addEventListener("keydown", (e) => { if (e.key === "Escape") emoClose(); });
 const emoRate = new Map();
-// Kurucu: tepkiyi doğrular, hızını sınırlar (4 sn'de en çok 6), herkese yollar.
+// Kurucu: tepkiyi doğrular, hızını sınırlar (4 sn'de en çok 8), herkese yollar.
+// Oyuncu kendi tarafında 4 sn'de 6 ile sınırlanır ve uyarılır: kurucuya ulaşan her tepki herkese gider (sessizce düşmez).
 function hostEmo(from, e) {
   if (mode?.role !== "host") return;
   const i = Number(e);
   if (!Number.isInteger(i) || i < 0 || i >= EMOS.length || !mode.game.players.some((p) => p.pid === from)) return;
   const now = Date.now();
   const r = (emoRate.get(from) || []).filter((t) => now - t < 4000);
-  if (r.length >= 6) return false;
+  if (r.length >= (from === pid ? 6 : 8)) return false;
   r.push(now);
   emoRate.set(from, r);
   const m = { pid: from, e: i };
@@ -744,7 +746,10 @@ function hostEmo(from, e) {
 function emoSend(i) {
   if (!mode || mode.role === "solo") return;
   if (mode.role === "host") { if (hostEmo(pid, i) === false) toast("Biraz yavaş!", "bad"); return; }
-  try { mode.net.emo(i); } catch (e) { fail(e); }
+  const now = Date.now();
+  const r = (emoRate.get(pid) || []).filter((t) => now - t < 4000);
+  if (r.length >= 6) return toast("Biraz yavaş!", "bad");
+  try { mode.net.emo(i); r.push(now); emoRate.set(pid, r); } catch (e) { fail(e); }
 }
 function emoShow(m) {
   const i = Number(m?.e);
@@ -1578,7 +1583,7 @@ const ansCountText = (v) => (v.solo ? "" : `${num(v.question?.answered?.length)}
 
 function vchip(p, q, reveal, me) {
   const r = reveal ? q.reveal?.results?.[p.pid] : null;
-  return `<span class="vchip ${p.pid === me ? "me" : ""}${r ? (r.correct ? " ok" : " no") : ""}" title="${esc(maskName(p.name))}">${avatar(p, "xs")}<b data-noi18n>${esc(maskName(p.name))}</b>${r ? `<em class="${r.correct ? "good" : ""}">+${num(r.points)}</em>` : ""}</span>`;
+  return `<span class="vchip ${p.pid === me ? "me" : ""}${r ? (r.correct ? " ok" : " no") : ""}" title="${esc(maskName(p.name))}${r ? ` · +${num(r.points)}` : ""}" aria-label="${esc(maskName(p.name))}">${avatar(p, "sm")}</span>`;
 }
 
 function lobbyHtml(v) {
@@ -1623,8 +1628,8 @@ function lobbyHtml(v) {
       ${v.history?.length ? `<p class="standHead">Genel sıralama · ${v.history.length} quiz</p>` : ""}
       <ul class="${v.history?.length ? "standings" : ""}">${(v.history?.length ? [...v.players].sort((a, b) => num(b.score) - num(a.score)) : v.players)
         .map(
-          (p, i) => `<li class="${p.online ? "" : "off"} ${p.pid === v.me ? "me" : ""}" style="--i:${i}">${v.history?.length ? `<span class="rank r${i + 1}">${i + 1}</span>` : ""}${avatar(p)}<b><bdi data-noi18n>${esc(p.name)}</bdi>${p.pid === v.me ? " <small>(sen)</small>" : ""}</b>
-          ${v.history?.length ? `<span class="pscore" data-count="${num(p.score)}">${num(p.score)}</span>` : ""}
+          (p, i) => `<li class="${p.online ? "" : "off"} ${p.pid === v.me ? "me" : ""}" style="--i:${i}"><span class="pAv">${avatar(p)}${v.history?.length ? `<span class="rank r${i + 1}">${i + 1}</span>` : ""}</span><span class="pInfo"><b title="${esc(p.name)}"><bdi data-noi18n>${esc(p.name)}</bdi>${p.pid === v.me ? " <small>(sen)</small>" : ""}</b>
+          ${v.history?.length ? `<span class="pscore" data-count="${num(p.score)}">${num(p.score)}</span>` : ""}</span>
           ${p.pid === v.host ? `<span class="crown" title="Kurucu">${ic("crown")}</span>` : host ? `<span class="pBtns">${p.online ? `<button class="icon sm" data-promote="${esc(p.pid)}" aria-label="${esc(p.name)} kurucu olsun" title="Kurucu yap">${ic("crown")}</button>` : ""}<button class="icon sm" data-kick="${esc(p.pid)}" aria-label="${esc(p.name)} lobiden çıkar" title="Lobiden çıkar">${ic("x")}</button></span>` : ""}</li>`,
         )
         .join("")}</ul>
@@ -1842,7 +1847,7 @@ function gameHtml(v) {
           .filter(Boolean);
         return `<button class="ans ${cls}" data-ans="${i}" ${reveal || mine ? "disabled" : ""}>
           <kbd>${"ABCD"[i] || i + 1}</kbd><span class="ansText">${esc(o)}</span>
-          ${voters.length ? `<span class="voters${voters.length > 2 ? " many" : ""}">${voters.slice(0, 5).map((p) => vchip(p, q, reveal, v.me)).join("")}${voters.length > 5 ? `<span class="vmore">+${voters.length - 5}</span>` : ""}</span>` : ""}
+          ${voters.length ? `<span class="voters">${voters.slice(0, 6).map((p) => vchip(p, q, reveal, v.me)).join("")}${voters.length > 6 ? `<span class="vmore">+${voters.length - 6}</span>` : ""}</span>` : ""}
         </button>`;
       })
       .join("")}</div>`;
@@ -2703,7 +2708,7 @@ function autoProfile() {
   if (profile) return closeSheet();
   const ed = sheetCtx?.ed || {};
   const rnd = (l) => l[Math.floor(Math.random() * l.length)];
-  profile = { name: ($("#pName")?.value || "").trim() || ed.suggest || randomName(), avatar: ed.avatar || rnd(AVATARS), color: ed.color || rnd(COLORS), photo: ed.photo || "" };
+  profile = { name: ($("#pName")?.value || "").trim() || ed.suggest || randomName(), avatar: ed.avatar || rnd(AVATAR_ICONS), color: ed.color || rnd(COLORS), photo: ed.photo || "" };
   store.set("jqProfile", profile);
   const then = sheetCtx?.then;
   sheetCtx = {};
@@ -2725,8 +2730,9 @@ function profileSheet() {
     <div class="profPreview">${avatar(ed, "xl")}</div>
     <label class="field"><span>Oyuncu adı</span><span class="nameRow"><input id="pName" maxlength="20" value="${esc(ed.name)}" placeholder="${esc(ed.suggest ??= randomName())}" autocomplete="nickname"><button type="button" class="icon soft" data-do="rollName" aria-label="Rastgele ad" title="Rastgele ad">${ic("dices")}</button></span></label>
     ${profile ? "" : `<p class="muted small">Boş bırakırsan ya da geçersen sana rastgele bir ad verilir; sonra istediğin zaman değiştirebilirsin.</p>`}
-    <div class="field"><span>Simge</span><div class="pick">${AVATARS.map((a) => `<button data-pav="${a}" aria-pressed="${!ed.photo && ed.avatar === a}">${avatar({ ...ed, avatar: a, photo: "" })}</button>`).join("")}
-      <label class="upload" title="Fotoğraf yükle">${ed.photo ? avatar(ed) : ic("plus")}<input type="file" id="pPhoto" accept="image/*" hidden></label></div></div>
+    <div class="field"><span>Simge</span><div class="pick">${ICON_AVATARS.map((a) => `<button data-pav="${a}" aria-pressed="${!ed.photo && ed.avatar === a}">${avatar({ ...ed, avatar: a, photo: "" })}</button>`).join("")}
+      <label class="upload" title="Fotoğraf yükle">${ed.photo ? avatar(ed) : ic("plus")}<input type="file" id="pPhoto" accept="image/*" hidden></label></div>
+      <div class="pick letters" aria-label="Harf simgeleri">${LETTER_AVATARS.map((a) => `<button data-pav="${a}" aria-pressed="${!ed.photo && ed.avatar === a}" aria-label="${a} harfi">${avatar({ ...ed, avatar: a, photo: "" }, "sm")}</button>`).join("")}</div></div>
     <div class="field"><span>Renk</span><div class="pick colors">${COLORS.map((c) => `<button data-pcol="${c}" class="sw ${c}" aria-pressed="${ed.color === c}" aria-label="${c}"></button>`).join("")}</div></div>
     <div class="sheetFoot"><button class="btn primary wide" data-do="saveProfile">${ic("check")}Kaydet</button></div>`;
   setTimeout(() => !profile && $("#pName")?.focus(), 50);

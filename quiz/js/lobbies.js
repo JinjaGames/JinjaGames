@@ -10,7 +10,7 @@ const KIND = 30078;
 const TAG = "jinjaquiz-lobby";
 export const LOBBY_TTL = 180; // sn: bu kadar süre tazelenmeyen duyuru listelenmez
 const enc = new TextEncoder();
-const AVATARS = ["headphones", "guitar", "mic-vocal", "disc-3", "radio", "drum"];
+import { AVATARS } from "./avatars.js?v=1";
 const COLORS = ["coral", "violet", "mint", "gold", "sky", "rose"];
 const CODE = /^[A-HJ-NP-Z2-9]{5}$/;
 const str = (v, n) => (typeof v === "string" ? v.replace(/[\u0000-\u001f\u007f​-‏‪-‮]/g, " ").replace(/\s+/g, " ").trim().slice(0, n) : "");

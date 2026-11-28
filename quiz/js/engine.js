@@ -2,6 +2,7 @@
 // Diğer oyuncular yalnızca kendilerine özel durum özetini (view) alır.
 import { fold, preview } from "./music.js?v=6";
 import { cleanItems, cleanEmoji } from "./trivia.js?v=5";
+import { AVATARS } from "./avatars.js?v=1";
 
 export const MAX_PLAYERS = 12;
 const PLAYS = 3;
@@ -72,7 +73,7 @@ const USED_POOLS = 80;
 function clean(p = {}) {
   return {
     name: String(p.name || "Oyuncu").trim().slice(0, 20) || "Oyuncu",
-    avatar: ["headphones", "guitar", "mic-vocal", "disc-3", "radio", "drum"].includes(p.avatar)
+    avatar: AVATARS.includes(p.avatar)
       ? p.avatar
       : "headphones",
     color: ["coral", "violet", "mint", "gold", "sky", "rose"].includes(p.color) ? p.color : "coral",

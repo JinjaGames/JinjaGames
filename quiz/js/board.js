@@ -12,7 +12,7 @@ export const LB_MAX = 2000;
 const KIND = 30078;
 const BEST = "jqLbBest";
 const PENDING = "jqLbPending";
-const AVATARS = ["headphones", "guitar", "mic-vocal", "disc-3", "radio", "drum"];
+import { AVATARS } from "./avatars.js?v=1";
 const COLORS = ["coral", "violet", "mint", "gold", "sky", "rose"];
 const str = (v, n) => (typeof v === "string" ? v.replace(/[\u0000-\u001f\u007f]/g, " ").replace(/\s+/g, " ").trim().slice(0, n) : "");
 // Profil fotoğrafı sıralamada küçük (40 px) bir kopya olarak gider; kayıt şişmesin.

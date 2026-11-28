@@ -3869,3 +3869,67 @@ body.crOpen { overflow: hidden; }
 .dlyAns b { display: inline-flex; align-items: center; gap: 6px; color: var(--good); font-size: 15px; }
 .dlyAns b .ic { width: 15px; height: 15px; flex: none; }
 .dlyAns small { color: var(--bad); font-size: 13px; }
+
+/* ---------- lobi oyuncu listesi: uzun adlar harf harf kırılmasın ---------- */
+/* sıra numarası simgenin köşesine, puan adın altına: ada geniş yer kalır */
+.lobby { grid-template-columns: minmax(0, 1fr) 320px; }
+.players li { gap: 10px; }
+.pAv { position: relative; flex: none; display: grid; }
+.pAv .rank { position: absolute; left: -6px; top: -6px; width: 20px; height: 20px; border-radius: 7px; font-size: 12px; box-shadow: 0 0 0 2px var(--s2); }
+.pInfo { flex: 1; min-width: 0; display: grid; gap: 1px; }
+.players li .pInfo b { overflow-wrap: break-word; word-break: normal; hyphens: none; font-size: 15px; line-height: 1.2; }
+.players li .pInfo b bdi { overflow-wrap: anywhere; }
+.pInfo .pscore { margin: 0; font-size: 17px; line-height: 1.1; color: var(--muted); }
+.players li.me .pscore, .standings li:first-child .pscore { color: var(--ink); }
+.players li > .crown { padding: 0 4px; }
+.pBtns .icon.sm { width: 30px; height: 30px; }
+/* telefondaki yuvarlak oyuncu etiketleri (sıralama yokken) */
+@media (max-width: 900px) {
+  .lobby { grid-template-columns: minmax(0, 1fr); }
+  .lobby .players ul:not(.standings) li .pInfo b { max-width: 130px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .lobby .players ul:not(.standings) li .pBtns .icon.sm { width: 26px; height: 26px; }
+}
+
+/* ---------- şıklar alt alta; şıktaki oyuncular yalnızca simgeyle ---------- */
+.answers, .answers.multi { grid-template-columns: minmax(0, 1fr); gap: 8px; }
+.ans, .answers.multi .ans { min-height: 58px; padding: 10px 14px; flex-wrap: nowrap; align-items: center; }
+.ans .voters, .answers.multi .ans .voters {
+  position: static; flex: none; flex-basis: auto; margin-left: auto; padding: 0; height: auto; max-width: 50%;
+  display: flex; flex-wrap: nowrap; gap: 0; overflow: visible; mask-image: none;
+}
+.voters .vchip, .voters.many .vchip { padding: 0; gap: 0; background: none; margin-left: -6px; }
+.voters .vchip:first-child { margin-left: 0; }
+.voters .vchip .av { box-shadow: 0 0 0 2px var(--s2); }
+.voters .vchip.me .av { box-shadow: 0 0 0 2px var(--ink); }
+.voters .vchip.ok .av { box-shadow: 0 0 0 2px var(--good); }
+.voters .vchip.no .av { opacity: 0.75; }
+.voters .vchip.me { box-shadow: none; }
+.voters .vmore { margin-left: 4px; height: 30px; line-height: 30px; }
+/* anime openinglerinde iki ayrı soru (anime + şarkı) var: orada ikişerli kalır, telefonda kaydırma uzamasın */
+.opRow .answers { grid-template-columns: 1fr 1fr; }
+@media (max-width: 560px) {
+  .ans, .answers.multi .ans { min-height: 50px; padding: 8px 12px; }
+  .voters .vchip .av.sm { width: 26px; height: 26px; font-size: 12px; }
+}
+@media (max-width: 560px) and (max-height: 760px) {
+  .ans, .answers.multi .ans { min-height: 44px; padding: 6px 10px; }
+}
+
+/* ---------- harf simgeleri ---------- */
+.av .avL { font: 800 1.05em/1 var(--display); letter-spacing: 0; transform: translateY(0.04em); }
+.av.xs .avL { font-size: 12px; }
+.pick.letters { gap: 6px; margin-top: 10px; }
+.pick.letters button { width: 40px; height: 40px; }
+.pick.letters .av { width: 34px; height: 34px; font-size: 16px; }
+/* telefonda şıklar alt alta da kaydırmadan sığsın: cevap yeri soru sırasında yer kaplamaz, alttaki çubuk incelir */
+@media (max-width: 560px) {
+  .tq .tqAns.slot:empty { display: none; }
+  .tq .tqPic.qflag, .tq .tqShape { max-height: 18vh; }
+  .dock:has(.waiting) { padding-top: 10px; padding-bottom: 6px; }
+  .dock .waiting { margin: 0; min-height: 34px; }
+}
+@media (max-width: 560px) and (max-height: 760px) {
+  .tq .tqNo { display: none; }
+  .tq .tqPic.qflag, .tq .tqShape { max-height: 15vh; }
+  .tq .tqPic { max-height: 17vh; }
+}
