@@ -16,7 +16,9 @@ export const FIREBASE = {
 // "jinjagames.com oturumunu google.com ile açın" diye açılır; uzun izin listesi gösteren eski pencere kullanılmaz.
 export const GOOGLE_CLIENT = "601277947311-hnfats0hog6v7as6do71mah55c17f9uq.apps.googleusercontent.com";
 
-const SYNC = ["jqProfile", "jqCustomLists", "jqFavs", "jqBest", "jqNumBest", "jqLbBest", "jqDaily", "jqPlays", "jqHidden", "jqNostrKey"];
+import { mergeStats } from "./stats.js?v=1";
+
+const SYNC = ["jqStats", "jqProfile", "jqCustomLists", "jqFavs", "jqBest", "jqNumBest", "jqLbBest", "jqDaily", "jqPlays", "jqHidden", "jqNostrKey"];
 const FLAG = "jqAuth"; // bu tarayıcıda giriş yapılmış (açılışta kütüphaneyi yüklemek için)
 const SENT = "jqSyncSent"; // { uid, data: son eşitlenen değerler, at: anahtar başına değişiklik zamanı }
 const get = (k) => { try { return localStorage.getItem(k); } catch { return null; } };
@@ -69,27 +71,49 @@ function gis() {
 }
 let onError = () => {};
 const fedcmOk = () => "IdentityCredential" in window && !!navigator.userAgentData?.brands?.some((x) => /Google Chrome|Microsoft Edge|Opera/.test(x.brand)) && !/Electron|Claude\//.test(navigator.userAgent);
-/** Google ile giriş düğmesini el içine çizer. Basınca tarayıcının hesap seçicisi açılır, seçilince giriş yapılır. */
+let inited = null;
+async function gid() {
+  const id = await gis();
+  if (inited !== id) {
+    id.initialize({
+      client_id: GOOGLE_CLIENT,
+      callback: (r) => credential(r?.credential).catch((e) => onError(e)),
+      // Tarayıcının kendi hesap seçicisi (FedCM) yalnızca bunu gerçekten gösteren tarayıcılarda (Chrome, Edge, Opera);
+      // gömülü tarayıcılarda (uygulama içi pencereler) Google'ın küçük hesap seçici penceresi açılır.
+      use_fedcm_for_prompt: fedcmOk(),
+      use_fedcm_for_button: fedcmOk(),
+      ux_mode: "popup",
+      button_auto_select: false,
+      auto_select: false,
+      cancel_on_tap_outside: true,
+      itp_support: true,
+      context: "signin",
+    });
+    inited = id;
+  }
+  return id;
+}
+/** Google'ın giriş düğmesini el içine çizer (sitenin kendi düğmesinin üstüne, görünmez olarak konur:
+ *  görünen tasarım sitenin, tıklama Google'ın düğmesine gider). Basınca hesap seçici açılır. */
 export async function googleButton(el, { light = false, fail } = {}) {
   if (!el) return;
   if (fail) onError = fail;
-  const id = await gis();
-  id.initialize({
-    client_id: GOOGLE_CLIENT,
-    callback: (r) => credential(r?.credential).catch((e) => onError(e)),
-    // Tarayıcının kendi hesap seçicisi (FedCM) yalnızca bunu gerçekten gösteren tarayıcılarda (Chrome, Edge, Opera);
-    // gömülü tarayıcılarda (uygulama içi pencereler) Google'ın küçük hesap seçici penceresi açılır.
-    use_fedcm_for_prompt: fedcmOk(),
-    use_fedcm_for_button: fedcmOk(),
-    ux_mode: "popup",
-    button_auto_select: false,
-    auto_select: false,
-    itp_support: true,
-    context: "signin",
-  });
+  const id = await gid();
   if (!el.isConnected) return;
   el.innerHTML = "";
   id.renderButton(el, { type: "standard", theme: light ? "outline" : "filled_black", size: "large", text: "continue_with", shape: "pill", logo_alignment: "center", locale: "tr", width: Math.max(200, Math.min(400, Math.round(el.clientWidth || 320))) });
+}
+/** Klavyeyle (ya da Google düğmesi yüklenemeden) basılırsa: Google'ın hesap seçicisi istem olarak açılır. */
+export async function googlePrompt(fail) {
+  if (fail) onError = fail;
+  const id = await gid();
+  await new Promise((ok, no) => {
+    id.prompt((n) => {
+      if (n?.isNotDisplayed?.() || n?.isSkippedMoment?.()) no(Error("Google penceresi açılamadı."));
+      else ok();
+    });
+    setTimeout(ok, 4000);
+  });
 }
 async function credential(token) {
   if (!token) throw Error("Google girişi tamamlanamadı.");
@@ -146,6 +170,8 @@ function union(local, cloud) {
   out.jqHidden = JSON.stringify([...hid.values()].slice(-500));
   for (const k of ["jqBest", "jqNumBest", "jqLbBest", "jqPlays"]) out[k] = JSON.stringify(maxMap(C(k, {}), L(k, {})));
   out.jqDaily = JSON.stringify({ ...C("jqDaily", {}), ...L("jqDaily", {}) });
+  // istatistikler: cihaz başına sayaç, birleşince toplanır (bkz. stats.js)
+  out.jqStats = mergeStats(local.jqStats, cloud.jqStats);
   return Object.fromEntries(Object.entries(out).filter(([, v]) => v != null && v !== "null"));
 }
 
@@ -213,6 +239,7 @@ async function pull() {
     data = { ...doc.data };
     at = { ...doc.at };
     for (const k of mine.changed) if (!(Number(doc.at[k]) > mine.at[k])) { data[k] = local[k]; at[k] = mine.at[k]; }
+    data.jqStats = mergeStats(doc.data.jqStats, local.jqStats);
   }
   const changed = SYNC.some((k) => (data[k] ?? null) !== (local[k] ?? null));
   for (const k of SYNC) set(k, data[k] ?? null);
@@ -229,7 +256,7 @@ export async function push() {
   if (!mine.changed.size) return;
   const doc = (await readDoc()) || { data: {}, at: {} };
   const data = { ...doc.data }, at = { ...doc.at };
-  for (const k of mine.changed) { const v = get(k); if (v == null) delete data[k]; else data[k] = v; at[k] = mine.at[k]; }
+  for (const k of mine.changed) { const v = k === "jqStats" ? mergeStats(doc.data.jqStats, get(k)) : get(k); if (v == null) delete data[k]; else data[k] = v; at[k] = mine.at[k]; }
   await writeDoc(data, at);
   set(SENT, JSON.stringify({ uid: user.uid, data: { ...sent.data, ...Object.fromEntries([...mine.changed].map((k) => [k, get(k)])) }, at }));
 }

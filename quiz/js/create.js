@@ -6,7 +6,7 @@ import { TCATS, TART, EMOJIS, T_MIN, T_MAX, cleanItems, cleanCat, cleanEmoji, is
 import { cleanOps, RANK_PTS, OP_PTS } from "./engine.js?v=16";
 import { isBadName, isBadText } from "./badwords.js?v=2";
 import { quizSlug, slugify } from "./slug.js?v=1";
-import { initI18n } from "./i18n.js?v=14";
+import { initI18n } from "./i18n.js?v=15";
 import { rankItems } from "./rank.js?v=7";
 import { OP_MIN } from "./community.js?v=15";
 

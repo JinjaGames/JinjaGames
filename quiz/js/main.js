@@ -15,10 +15,11 @@ import { hostRoom, guestRoom, newCode, validCode } from "./net.js?v=7";
 import { announceLobby, listLobbies } from "./lobbies.js?v=9";
 import { countPlay, loadPlays, plays, players, onPlays, playsLoaded } from "./plays.js?v=10";
 import { dailyQuiz, dailyDate, dailyLeft, dailyLabel, dailyResult, saveDaily, dailyStreak } from "./daily.js?v=3";
-import { initI18n, LANG, applyLang } from "./i18n.js?v=14";
+import { initI18n, LANG, applyLang } from "./i18n.js?v=15";
 import { initTabs, tabsUpdate, lobbyElsewhere, pidTaken, takeLobby } from "./tabs.js?v=1";
 import { favList, isFav, favCount, toggleFav, loadFavs, onFavs, favKey } from "./favs.js?v=2";
-import { initAccount, googleButton, signOut, account, onAccount, accountReady, push as pushAccount } from "./account.js?v=4";
+import { bump as statBump, totals as statTotals, seedStats } from "./stats.js?v=1";
+import { initAccount, googleButton, googlePrompt, signOut, account, onAccount, accountReady, push as pushAccount } from "./account.js?v=5";
 
 // ---------- yardımcılar ----------
 const $ = (s, r = document) => r.querySelector(s);
@@ -159,7 +160,7 @@ function topbar() {
       ${screen !== "room" && hiddenList().length ? `<button class="icon hidBtn" data-sheet="hidden" title="Gizlenen quizler (${hiddenList().length})" aria-label="Gizlenen quizler">${ic("eye-off")}<small>${hiddenList().length}</small></button>` : ""}
       <button class="langBtn themeBtn" data-theme-to="${isLight() ? "dark" : "light"}" title="${isLight() ? "Koyu tema" : "Açık tema"}" aria-label="${isLight() ? "Koyu temaya geç" : "Açık temaya geç"}">${ic(isLight() ? "moon" : "sun")}</button>
       <button class="langBtn" data-lang="${LANG === "en" ? "tr" : "en"}" title="${LANG === "en" ? "Türkçe" : "English"}" aria-label="${LANG === "en" ? "Türkçe arayüz" : "English interface"}" data-noi18n>${LANG === "en" ? "TR" : "EN"}</button>
-      <button class="meBtn" data-sheet="profile" aria-label="Profili düzenle">${avatar(profile || {})}<span data-noi18n>${esc(profile?.name || "Profil")}</span></button>
+      <button class="meBtn" ${profile ? 'data-do="profilePage"' : 'data-sheet="profile"'} aria-label="Profilin">${avatar(profile || {})}<span data-noi18n>${esc(profile?.name || "Profil")}</span></button>
     </div>`;
   // Yalnızca değiştiğinde yeniden çiz: ses sürgüsü sürüklenirken ya da düğmeye basılırken kaybolmasın.
   if (html !== barHtml) {
@@ -954,7 +955,17 @@ setInterval(() => lobbyAnnounce(true), 60000);
 
 // ---------- oynanma sayısı: biten her quiz, oynayan herkesin kendi sayısına eklenir ----------
 const playSeen = { code: "", ids: new Set() };
+// istatistik: her soru sonucu bir kez sayılır (sayfa yenilense de)
+function trackAnswer(v) {
+  const q = v?.question;
+  if (v?.phase !== "reveal" || !q?.reveal || !q.id) return;
+  if (store.get("jqStatQ", "", sessionStorage) === q.id) return;
+  store.set("jqStatQ", q.id, sessionStorage);
+  const r = q.reveal.results?.[v.me];
+  if (r) statBump({ answered: 1, correct: r.correct ? 1 : 0, points: num(r.points) });
+}
 function trackPlays(v) {
+  trackAnswer(v);
   if (!v || !Array.isArray(v.history)) return;
   if (playSeen.code !== v.code) {
     // lobiye yeni girildi (ya da sayfa yenilendi): önceden bitmiş quizler sayılmaz
@@ -968,6 +979,11 @@ function trackPlays(v) {
     if (playSeen.ids.has(h.id)) continue;
     playSeen.ids.add(h.id);
     if (h.qid && h.top?.some((t) => t.pid === v.me)) countPlay(h.qid);
+    // istatistik: biten quiz (lobide mi, birinci mi)
+    if (h.top?.some((t) => t.pid === v.me)) {
+      const first = h.top.length > 1 && h.top[0].pid === v.me && num(h.top[0].pts) > 0 && num(h.top[0].pts) > num(h.top[1]?.pts);
+      statBump({ played: 1, lobby: v.solo ? 0 : 1, wins: first ? 1 : 0 });
+    }
     if (h.qid?.startsWith("daily-") && h.top?.some((t) => t.pid === v.me)) finishDaily(h, v);
   }
 }
@@ -1067,11 +1083,12 @@ function render() {
   topbar();
   chatVis();
   document.body.dataset.phase = screen === "room" && mode && view ? view.phase : "";
-  if (screen !== "detail" && location.pathname !== BASE) history.replaceState(history.state, "", BASE + location.search + location.hash);
+  if (screen !== "detail" && screen !== "profile" && location.pathname !== BASE) history.replaceState(history.state, "", BASE + location.search + location.hash);
   if (screen === "pw" && pwAsk && !mode) return renderPw();
   if (screen === "room" && mode) { const out = renderRoom(); sfxTrack(); return out; }
   if (screen === "detail" && sheetCtx?.list) return renderDetail();
   if (screen === "number") return renderNumber();
+  if (screen === "profile") return renderProfile();
   screen = "home";
   lastSig = "";
   renderHome();
@@ -1310,7 +1327,7 @@ function drawHome() {
       <span class="hm-eq">${Array.from({ length: 48 }, (_, k) => `<i style="--k:${k}"></i>`).join("")}</span></div>
     <div class="hm-copy">
       <h1>Şarkıyı<br><em>ilk sen</em> bil.</h1>
-      <p>Bir saniyelik kesiti dinle ya da trivia sorusunu çöz; dört şıktan doğrusunu herkesten önce bul. Lobi kur, bağlantıyı gönder; arkadaşların tek tıkla katılsın.</p>
+      <p>Şarkı, trivia, anime, sıralama ve sayı quizleri tek yerde. İster tek başına oyna, ister lobi kur; bağlantıyı gönder, arkadaşların tek tıkla katılsın, en hızlı bilen kazansın.</p>
       <div class="hm-actions">
         <button class="btn primary lg" data-do="create">${ic("users")}Lobi kur</button>
         <a class="btn light lg" href="create/">${ic("plus")}Quiz oluştur</a>
@@ -2724,6 +2741,7 @@ addEventListener("popstate", () => {
     }
     return;
   }
+  if (st?.jqScreen === "profile") { if (screen !== "profile") openProfilePage(true); return; }
   if (st?.jqScreen === "number") return; // ileri tuşu: sayı quizi yeniden başlamasın, olduğu yerde kal
   if (screen !== "home" && !(screen === "room" && mode)) showHomeFromHistory();
 });
@@ -2926,14 +2944,17 @@ sheet.addEventListener("click", (e) => {
   closeSheet();
 });
 
-function profileSheet() {
-  const ed = (sheetCtx.ed ??= { name: "", avatar: "headphones", color: "coral", photo: "", tab: "", ...(profile || {}) });
+// ---------- profil düzenleme: /quiz/profile sayfası ve ilk açılıştaki ad penceresi aynı düzenleyiciyi kullanır ----------
+let pfEd = null;
+const onPf = () => screen === "profile";
+const freshEd = () => ({ name: "", avatar: "headphones", color: "coral", photo: "", tab: "", ...(profile || {}) });
+const profEd = () => (onPf() ? (pfEd ??= freshEd()) : (sheetCtx.ed ??= freshEd()));
+const profRedraw = () => (onPf() ? renderProfile() : profileSheet());
+const edName = () => { const ed = profEd(); const i = $("#pName"); if (i) ed.name = i.value; return ed; };
+function profileEditorHtml(ed) {
   ed.tab ||= LETTER_AVATARS.includes(ed.avatar) ? "letters" : "icons";
-  const choice = (a, size = "") => `<button data-pav="${a}" aria-pressed="${!ed.photo && ed.avatar === a}" aria-label="${LETTER_AVATARS.includes(a) ? a + " harfi" : "Simge"}">${avatar({ ...ed, avatar: a, photo: "" }, size)}</button>`;
-  sheetBody.innerHTML = `<div class="prof">
-    <div class="sheetHead"><h2>${profile ? "Profilin" : "Adını seç"}</h2>${profile ? `<button class="icon" data-close aria-label="Kapat">${ic("x")}</button>` : `<button class="icon" data-do="skipProfile" aria-label="Geç, rastgele bir ad ver" title="Geç (rastgele ad)">${ic("x")}</button>`}</div>
-    ${acctHtml()}
-    <div class="profTop">
+  const choice = (a) => `<button data-pav="${a}" aria-pressed="${!ed.photo && ed.avatar === a}" aria-label="${LETTER_AVATARS.includes(a) ? a + " harfi" : "Simge"}">${avatar({ ...ed, avatar: a, photo: "" })}</button>`;
+  return `<div class="profTop">
       <div class="profAv">${avatar(ed, "xl")}<label class="profCam" title="Fotoğraf yükle" aria-label="Fotoğraf yükle">${ic("image")}<input type="file" id="pPhoto" accept="image/*" hidden></label></div>
       <div class="profMain">
         <label class="profLbl" for="pName">Oyuncu adı</label>
@@ -2941,26 +2962,99 @@ function profileSheet() {
         <div class="pick colors" aria-label="Renk">${COLORS.map((c) => `<button data-pcol="${c}" class="sw ${c}" aria-pressed="${ed.color === c}" aria-label="${c}"></button>`).join("")}</div>
       </div>
     </div>
-    ${profile ? "" : `<p class="muted small">Boş bırakırsan ya da geçersen sana rastgele bir ad verilir; sonra istediğin zaman değiştirebilirsin.</p>`}
-    <div class="profTabs seg" role="tablist" aria-label="Simge türü"><button role="tab" data-ptabp="icons" aria-pressed="${ed.tab === "icons"}">${ic("headphones")}Simgeler</button><button role="tab" data-ptabp="letters" aria-pressed="${ed.tab === "letters"}"><b class="profA">A</b>Harfler</button>${ed.photo ? `<button data-do="rmPhoto" class="profRm">${ic("x")}Fotoğrafı kaldır</button>` : ""}</div>
-    <div class="profGrid ${ed.tab}">${(ed.tab === "letters" ? LETTER_AVATARS : ICON_AVATARS).map((a) => choice(a)).join("")}</div>
-    <div class="sheetFoot"><button class="btn primary wide" data-do="saveProfile">${ic("check")}Kaydet</button></div>
-  </div>`;
-  const gb = $("#gBtn");
-  if (gb) googleButton(gb, { light: isLight(), fail: () => toast("Google ile giriş yapılamadı. Biraz sonra yeniden dene.", "bad") }).catch(() => { gb.innerHTML = `<p class="muted small">Google girişi şu an yüklenemedi.</p>`; });
-  setTimeout(() => !profile && $("#pName")?.focus(), 50);
+    ${ed.photo ? (ed.rmAsk
+      ? `<div class="profRmAsk">${ic("image")}<span>Fotoğraf kaldırılsın mı? Yerine seçili simge görünür.</span><div class="profRmBtns"><button class="btn ghost sm" data-do="rmPhotoNo">Vazgeç</button><button class="btn danger sm" data-do="rmPhotoYes">${ic("x")}Kaldır</button></div></div>`
+      : `<button class="profRm" data-do="rmPhoto">${ic("x")}Fotoğrafı kaldır</button>`) : ""}
+    <div class="profTabs seg" role="tablist" aria-label="Simge türü"><button role="tab" data-ptabp="icons" aria-pressed="${ed.tab === "icons"}">${ic("headphones")}Simgeler</button><button role="tab" data-ptabp="letters" aria-pressed="${ed.tab === "letters"}"><b class="profA">A</b>Harfler</button></div>
+    <div class="profGrid ${ed.tab}">${(ed.tab === "letters" ? LETTER_AVATARS : ICON_AVATARS).map((a) => choice(a)).join("")}</div>`;
 }
-// Google hesabı: profil, listeler, favoriler ve rekorlar bütün cihazlarda aynı olsun
-function acctHtml() {
+// Google hesabı kartı: giriş yapılmamışsa sitenin kendi düğmesi (basınca Google'ın penceresi açılır)
+function acctBox() {
   if (!accountReady()) return "";
   const u = account();
   if (u) {
     const pic = /^https:\/\/lh\d\.googleusercontent\.com\//.test(u.photo) ? `<img src="${esc(u.photo)}" alt="" referrerpolicy="no-referrer">` : `<span>${esc((u.name || u.email || "?").slice(0, 1).toUpperCase())}</span>`;
     return `<div class="acct on"><span class="acctPic">${pic}</span><span class="acctTxt"><b data-noi18n>${esc(u.name || "Google hesabı")}</b><small data-noi18n>${esc(u.email)}</small></span><button class="acctOut" data-do="signOut">Çıkış</button>
-      <span class="acctSync">${ic("refresh-cw")}Profilin, listelerin, favorilerin ve rekorların bütün cihazlarında eşit</span></div>`;
+      <span class="acctSync">${ic("refresh-cw")}Profilin, listelerin, favorilerin, rekorların ve istatistiklerin bütün cihazlarında aynı</span></div>`;
   }
-  return `<div class="acct"><div id="gBtn" class="gBtnHost"><span class="spin" aria-hidden="true"></span></div><small class="muted">İsteğe bağlı · Giriş yaparsan ilerlemen hesabına kaydedilir; başka cihazda aynı hesapla devam edersin.</small></div>`;
+  return `<div class="acct off"><div class="acctCopy"><b>Hesabını bağla</b><small>İlerlemen kaybolmasın: başka cihazda aynı hesapla devam et. İsteğe bağlı.</small></div>
+    <div class="gWrap"><button class="gBtn" data-do="googleSignIn">${G_MARK}<span>Google ile devam et</span></button><div id="gBtn" class="gOver"></div></div></div>`;
 }
+const G_MARK = `<svg class="gLogo" viewBox="0 0 48 48" aria-hidden="true"><path fill="#FFC107" d="M43.6 20.1H42V20H24v8h11.3C33.7 32.7 29.2 36 24 36c-6.6 0-12-5.4-12-12s5.4-12 12-12c3.1 0 5.8 1.2 7.9 3.1l5.7-5.7C34 6.1 29.3 4 24 4 12.9 4 4 12.9 4 24s8.9 20 20 20 20-8.9 20-20c0-1.3-.1-2.6-.4-3.9z"/><path fill="#FF3D00" d="M6.3 14.7l6.6 4.8C14.7 15.1 19 12 24 12c3.1 0 5.8 1.2 7.9 3.1l5.7-5.7C34 6.1 29.3 4 24 4 16.3 4 9.7 8.3 6.3 14.7z"/><path fill="#4CAF50" d="M24 44c5.2 0 9.9-2 13.4-5.2l-6.2-5.2C29.2 35.1 26.7 36 24 36c-5.2 0-9.6-3.3-11.3-7.9l-6.5 5C9.5 39.6 16.2 44 24 44z"/><path fill="#1976D2" d="M43.6 20.1H42V20H24v8h11.3c-.8 2.2-2.2 4.2-4.1 5.6l6.2 5.2C37 39.2 44 34 44 24c0-1.3-.1-2.6-.4-3.9z"/></svg>`;
+const gFail = () => toast("Google ile giriş yapılamadı. Biraz sonra yeniden dene.", "bad");
+// Google'ın düğmesi sitenin düğmesinin üstüne görünmez olarak konur (yüklenemezse sitenin düğmesi istemi açar)
+function mountGoogle() {
+  const host = $("#gBtn");
+  if (host) googleButton(host, { light: isLight(), fail: gFail }).then(() => host.closest(".gWrap")?.classList.add("ready")).catch(() => {});
+}
+async function googleSignIn(btn) {
+  btn?.classList.add("busy");
+  try {
+    await googlePrompt(gFail);
+  } catch {
+    toast("Google penceresi açılamadı. Biraz sonra yeniden dene.", "bad");
+  } finally {
+    btn?.classList.remove("busy");
+  }
+}
+function openProfilePage(fromHistory = false) {
+  if (!profile) return openSheet("profile");
+  pfEd = null;
+  if (!fromHistory) pushScreen({ jqScreen: "profile" }, BASE + "profile");
+  screen = "profile";
+  render();
+  scrollTo({ top: 0 });
+}
+function renderProfile() {
+  const ed = profEd();
+  const t = statTotals();
+  const nb = Object.values(store.get("jqNumBest", {})).reduce((m, v) => Math.max(m, num(v)), 0);
+  const days = Object.keys(store.get("jqDaily", {}) || {}).length;
+  const mine = (ui.community || []).filter((l) => l.mine).length;
+  const rate = t.answered ? Math.round((t.correct / t.answered) * 100) : 0;
+  const tile = (icon, v, label, sub = "") => `<div class="stat">${ic(icon)}<b>${esc(String(v))}</b><span>${esc(label)}</span>${sub ? `<small>${esc(sub)}</small>` : ""}</div>`;
+  const nf = (x) => Number(x).toLocaleString("tr-TR");
+  app.innerHTML = `<section class="pf">
+    <button class="dtBack" data-go="home">${ic("arrow-left")}Ana sayfa</button>
+    <div class="pfHead"><span class="kicker">Profil</span><h1>Profilin</h1></div>
+    <div class="pfGrid">
+      <div class="pfCol">
+        <div class="pfCard">${acctBox()}</div>
+        <div class="pfCard prof">${profileEditorHtml(ed)}
+          <button class="btn primary wide" data-do="saveProfile">${ic("check")}Kaydet</button>
+        </div>
+      </div>
+      <div class="pfCol">
+        <div class="pfCard"><div class="pfCardHead"><h2>İstatistiklerin</h2><small class="muted">${account() ? "Bütün cihazlarının toplamı" : "Bu tarayıcıda · giriş yaparsan cihazların toplanır"}</small></div>
+          <div class="stats">
+            ${tile("play", nf(t.played), "Oynanan quiz")}
+            ${tile("users", nf(t.lobby), "Lobide oynanan quiz")}
+            ${tile("crown", nf(t.wins), "Lobide birincilik")}
+            ${tile("circle-help", nf(t.answered), "Cevaplanan soru")}
+            ${tile("check", `%${rate}`, "Doğru oranı", `${nf(t.correct)} doğru`)}
+            ${tile("sparkles", nf(t.points), "Toplam puan")}
+            ${tile("hash", nf(nb), "Sayı Quizi rekoru", `${nf(t.numGames)} oyun`)}
+            ${tile("timer", nf(days), "Günün quizi", `seri ${dailyStreak()} gün`)}
+            ${tile("heart", nf(favList().length), "Favori quiz")}
+            ${tile("plus", nf(mine), "Yaptığın quiz")}
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>`;
+  mountGoogle();
+}
+function profileSheet() {
+  const ed = profEd();
+  sheetBody.innerHTML = `<div class="prof">
+    <div class="sheetHead"><h2>${profile ? "Profilin" : "Adını seç"}</h2>${profile ? `<button class="icon" data-close aria-label="Kapat">${ic("x")}</button>` : `<button class="icon" data-do="skipProfile" aria-label="Geç, rastgele bir ad ver" title="Geç (rastgele ad)">${ic("x")}</button>`}</div>
+    ${profileEditorHtml(ed)}
+    ${profile ? "" : `<p class="muted small">Boş bırakırsan ya da geçersen sana rastgele bir ad verilir; sonra profil sayfandan istediğin zaman değiştirebilirsin.</p>`}
+    <div class="sheetFoot"><button class="btn primary wide" data-do="saveProfile">${ic("check")}Kaydet</button></div>
+  </div>`;
+  setTimeout(() => !profile && $("#pName")?.focus(), 50);
+}
+// Google hesabı: profil, listeler, favoriler ve rekorlar bütün cihazlarda aynı olsun
 async function resizePhoto(file) {
   const img = new Image();
   const url = URL.createObjectURL(file);
@@ -3525,7 +3619,11 @@ function numPick(i) {
     if (ok) nq.streak++;
     const last = ok && nq.at + 1 >= nq.chain.length;
     nq.phase = !ok ? "over" : last ? "won" : "done";
-    if (nq.phase !== "done") { nq.newBest = numRecord(nq.cat.id, nq.streak); if (last) { sfx("perfect"); confetti(); } }
+    if (nq.phase !== "done") {
+      nq.newBest = numRecord(nq.cat.id, nq.streak);
+      statBump({ played: 1, numGames: 1, answered: nq.streak + (ok ? 0 : 1), correct: nq.streak });
+      if (last) { sfx("perfect"); confetti(); }
+    }
     renderNumber();
     if (nq.phase === "done")
       setTimeout(() => {
@@ -3583,12 +3681,22 @@ async function doAction(a, el) {
       return openList(pool[Math.floor(Math.random() * pool.length)].id);
     }
     case "rmPhoto":
-      Object.assign(sheetCtx.ed, { photo: "", name: $("#pName")?.value ?? sheetCtx.ed.name });
-      return profileSheet();
+      edName().rmAsk = true;
+      return profRedraw();
+    case "rmPhotoNo":
+      edName().rmAsk = false;
+      return profRedraw();
+    case "rmPhotoYes":
+      Object.assign(edName(), { photo: "", rmAsk: false });
+      return profRedraw();
+    case "profilePage":
+      return openProfilePage();
+    case "googleSignIn":
+      return googleSignIn(el);
     case "signOut":
       await signOut().catch(() => {});
       toast("Çıkış yapıldı. Verilerin bu cihazda duruyor.");
-      if (sheet.open && sheetCtx?.kind === "profile") profileSheet();
+      if (onPf()) renderProfile();
       return;
     case "takeAsk":
       return openSheet("elsewhere");
@@ -3701,17 +3809,22 @@ async function doAction(a, el) {
     case "rollName": {
       const inp = $("#pName");
       inp.value = randomName();
-      sheetCtx.ed.name = inp.value;
+      profEd().name = inp.value;
       return;
     }
     case "skipProfile":
       return autoProfile();
     case "saveProfile": {
-      const ed = sheetCtx.ed;
-      ed.name = $("#pName").value.trim() || ed.suggest || randomName();
+      const ed = edName();
+      ed.name = ed.name.trim() || ed.suggest || randomName();
       profile = { name: ed.name, avatar: ed.avatar, color: ed.color, photo: ed.photo };
       store.set("jqProfile", profile);
       if (account()) pushAccount().catch(() => {});
+      if (onPf()) {
+        topbar();
+        renderProfile();
+        return toast(mode ? "Profil kaydedildi. Yeni lobilerde görünecek." : "Profil kaydedildi.");
+      }
       const then = sheetCtx.then;
       closeSheet();
       topbar();
@@ -3973,16 +4086,16 @@ document.addEventListener("click", async (e) => {
     if (d.move) return act({ type: "move", id: d.move, dir: Number(d.dir) });
     if (d.kick) return openSheet("rmConfirm", { act: "kick", id: d.kick });
     if (d.ptabp) {
-      Object.assign(sheetCtx.ed, { tab: d.ptabp, name: $("#pName")?.value ?? sheetCtx.ed.name });
-      return profileSheet();
+      edName().tab = d.ptabp;
+      return profRedraw();
     }
     if (d.pav) {
-      Object.assign(sheetCtx.ed, { avatar: d.pav, photo: "", name: $("#pName").value });
-      return profileSheet();
+      Object.assign(edName(), { avatar: d.pav, photo: "", rmAsk: false });
+      return profRedraw();
     }
     if (d.pcol) {
-      Object.assign(sheetCtx.ed, { color: d.pcol, name: $("#pName").value });
-      return profileSheet();
+      edName().color = d.pcol;
+      return profRedraw();
     }
     if (d.v && b.parentElement.dataset.opt) {
       const k = b.parentElement.dataset.opt;
@@ -4058,9 +4171,10 @@ document.addEventListener("change", async (e) => {
     }
     if ("auto" in t.dataset) act({ type: "settings", autoNext: t.checked });
     if (t.id === "pPhoto" && t.files[0]) {
-      sheetCtx.ed.name = $("#pName").value;
-      sheetCtx.ed.photo = await resizePhoto(t.files[0]);
-      profileSheet();
+      const ed = edName();
+      ed.photo = await resizePhoto(t.files[0]);
+      ed.rmAsk = false;
+      profRedraw();
     }
   } catch (err) {
     fail(err);
@@ -4143,6 +4257,7 @@ async function boot() {
   const qSlug = new URLSearchParams(location.search).get("q");
   const qNew = new URLSearchParams(location.search).has("yeni");
   if (qSlug) history.replaceState(null, "", BASE);
+  seedStats();
   initAccount();
   communityP = loadCommunity();
   animeCounts().then((ok) => { if (ok && screen === "home" && !mode) bgRender(); });
@@ -4170,7 +4285,8 @@ async function boot() {
   }
   if (saved?.role === "guest" && validCode(saved.code) && profile) return startGuest(saved.code, { pw: saved.pw || "", own: true });
   render();
-  if (qSlug && !validCode(invite)) openSlug(qSlug, qNew);
+  if (qSlug === "profile" && !validCode(invite)) { history.replaceState({ jqScreen: "profile" }, "", BASE + "profile"); if (profile) openProfilePage(true); }
+  else if (qSlug && !validCode(invite)) openSlug(qSlug, qNew);
   if (validCode(invite)) {
     // şifreli lobinin davet bağlantısı şifreyi de taşır (s=); adres çubuğunda kalmasın
     const ipw = (new URLSearchParams(location.search).get("s") || "").slice(0, 20);
@@ -4188,6 +4304,7 @@ onAccount((u) => {
   if (p?.name) profile = p;
   topbar();
   if (sheet.open && sheetCtx?.kind === "profile") { sheetCtx.ed = null; profileSheet(); }
+  if (onPf()) { pfEd = null; renderProfile(); }
 });
 initTabs(() => ({ pid, role: mode && mode.role !== "solo" ? mode.role : "", code: mode && mode.role !== "solo" ? mode.code : "" }), {
   change() { if (screen === "home" && !mode) drawLobbies(); },
