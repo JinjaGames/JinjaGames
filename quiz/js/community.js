@@ -3,9 +3,9 @@
 // saklanan anahtarla imzalar; aynı quizi yalnızca o güncelleyebilir ya da kaldırabilir.
 // Gelen her kayıt imzası doğrulandıktan ve alan alan süzüldükten sonra kullanılır.
 import { schnorr, sha256, bytesToHex, hexToBytes } from "../vendor/nostr-sign.js";
-import { cdn } from "./music.js?v=7";
+import { cdn } from "./music.js?v=8";
 import { cleanItems, cleanCat, cleanEmoji, T_MIN, T_MAX } from "./trivia.js?v=6";
-import { cleanRank, cleanOps } from "./engine.js?v=15";
+import { cleanRank, cleanOps } from "./engine.js?v=16";
 import { isBadName, isBadText, maskName, maskText } from "./badwords.js?v=2";
 // Önceden yayınlanmış quizlerde uygunsuz ad / açıklama / yazar ekranda gizlenir (kayda dokunulmaz).
 const tidy = (q) => (isBadText(q.name) || isBadText(q.desc) || isBadName(q.author) ? { ...q, name: maskText(q.name), desc: isBadText(q.desc) ? "" : q.desc, author: maskName(q.author) } : q);
@@ -101,10 +101,23 @@ export function parse(e) {
     d, pubkey: e.pubkey, at: e.created_at,
     name, desc: str(c.desc, 160), author: str(c.author, 24) || "Anonim",
     picture: cdn(c.cover) || tracks.find((t) => t.cover)?.cover || "",
+    ...(mixPics(tracks).length > 1 ? { pics: mixPics(tracks) } : {}),
     genre: "Topluluk", tracks, rev: !!c.rev, mine: e.pubkey === myPubkey(),
   };
 }
 
+/** Birden çok sanatçılı listenin kolaj kapağı: farklı sanatçıların ilk kapakları (en çok 4). Tek sanatçıysa boş. */
+export function mixPics(tracks) {
+  const seen = new Set(), out = [];
+  for (const t of Array.isArray(tracks) ? tracks : []) {
+    const a = String(t?.artist || "").toLocaleLowerCase("tr").trim();
+    if (!a || seen.has(a) || !cdn(t.cover)) continue;
+    seen.add(a);
+    out.push(cdn(t.cover));
+    if (out.length >= 4) break;
+  }
+  return out.length > 1 ? out : [];
+}
 export function relayCall(url, onOpen, onMsg, ms) {
   return new Promise((resolve) => {
     let ws;
@@ -148,6 +161,7 @@ function fromIndex(m) {
     name, desc: str(m.desc, 160), author: str(m.author, 24) || "Anonim",
     emoji: kind === "trivia" || kind === "op" ? cleanEmoji(m.emoji) : "",
     picture: kind === "trivia" || kind === "op" ? "" : cdn(m.picture),
+    ...(!kind && Array.isArray(m.pics) && m.pics.map(cdn).filter(Boolean).length > 1 ? { pics: m.pics.map(cdn).filter(Boolean).slice(0, 4) } : {}),
     artist: str(m.artist, 80), artistId: int(m.artistId),
     ...(kind === "rank" ? { rcat: "Topluluk" } : {}),
     cat: kind === "trivia" ? cleanCat(m.cat) : kind === "op" ? "Anime" : "",
@@ -260,6 +274,85 @@ export async function sendToRelays(e) {
     (ws) => ws.send(JSON.stringify(["EVENT", e])),
     (x) => (x[0] === "OK" && x[1] === e.id ? !!x[2] : undefined), 7000)));
   return results.some(Boolean);
+}
+
+// ---------- toplu gönderme (giden kutusu) ----------
+// Kalpler, oynanma sayıları gibi acelesi olmayan kayıtlar hemen gönderilmez: üreticiler kaydını hazırlar,
+// 20 sn içinde biriken her şey (ya da sekme gizlenirken / kapanırken) her röleye TEK bağlantıyla birlikte gider.
+const producers = new Set();
+/** fn(): gönderilecek [{ e: imzalı kayıt, done(ok) }] listesi (gönderilecek yoksa boş) */
+export const onOutbox = (fn) => producers.add(fn);
+let outT = 0, outBusy = false;
+export function outboxSoon(ms = 20000) {
+  clearTimeout(outT);
+  outT = setTimeout(outboxFlush, ms);
+}
+export async function outboxFlush() {
+  clearTimeout(outT);
+  if (outBusy) return;
+  outBusy = true;
+  try {
+    const items = [...producers].flatMap((fn) => { try { return fn() || []; } catch { return []; } });
+    if (!items.length) return;
+    const ok = await sendMany(items.map((i) => i.e));
+    for (const i of items) { try { i.done?.(ok.has(i.e.id)); } catch {} }
+  } finally {
+    outBusy = false;
+  }
+}
+addEventListener("visibilitychange", () => { if (document.hidden) outboxFlush(); });
+addEventListener("pagehide", () => outboxFlush());
+/** Birden çok kaydı her röleye tek bağlantıyla gönderir. Dönüş: en az bir rölenin kabul ettiği kayıt kimlikleri. */
+export async function sendMany(events) {
+  const ok = new Set();
+  if (!events.length) return ok;
+  const want = new Set(events.map((e) => e.id));
+  await Promise.all(RELAYS.map((url) => {
+    const left = new Set(want);
+    return relayCall(url,
+      (ws) => { for (const e of events) ws.send(JSON.stringify(["EVENT", e])); },
+      (x) => {
+        if (x[0] !== "OK" || !left.has(x[1])) return undefined;
+        left.delete(x[1]);
+        if (x[2]) ok.add(x[1]);
+        return left.size ? undefined : true;
+      }, 8000);
+  }));
+  return ok;
+}
+
+// ---------- birleşik okuma ----------
+// Aynı anda (ör. sayfa açılışında) istenen okumalar tek bağlantıda birleşir: her röleye bir bağlantı açılır,
+// her istek kendi aboneliğiyle gider. Dönüş: o istek için gelen geçerli kayıtlar.
+const readQ = [];
+let readT = 0;
+export function relayRead(filter, { relays = RELAYS.slice(0, 3), ms = 6000 } = {}) {
+  return new Promise((resolve) => {
+    readQ.push({ filter, relays, ms, resolve, got: [] });
+    clearTimeout(readT);
+    readT = setTimeout(runReads, 60);
+  });
+}
+async function runReads() {
+  const batch = readQ.splice(0);
+  if (!batch.length) return;
+  const urls = [...new Set(batch.flatMap((b) => b.relays))];
+  const ms = Math.max(...batch.map((b) => b.ms));
+  batch.forEach((b, i) => (b.sub = "rd" + i + Math.random().toString(36).slice(2, 6)));
+  await Promise.all(urls.map((url) => {
+    const mine = batch.filter((b) => b.relays.includes(url));
+    const open = new Set(mine.map((b) => b.sub));
+    return relayCall(url,
+      (ws) => { for (const b of mine) ws.send(JSON.stringify(["REQ", b.sub, b.filter])); },
+      (x) => {
+        const b = mine.find((y) => y.sub === x[1]);
+        if (!b) return undefined;
+        if (x[0] === "EVENT" && valid(x[2])) b.got.push(x[2]);
+        else if (x[0] === "EOSE" || x[0] === "CLOSED") open.delete(b.sub);
+        return open.size ? undefined : true;
+      }, ms);
+  }));
+  for (const b of batch) b.resolve(b.got);
 }
 
 // Başkasının quizini bu tarayıcıda gizleme (uygunsuz içerik için). Ad da saklanır ki "Gizlenen quizler"den geri açılabilsin.

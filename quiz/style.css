@@ -339,7 +339,7 @@ button:disabled {
   font-size: 14px;
   max-width: 200px;
 }
-.meBtn span:last-child {
+.meBtn > span:last-child {
   line-height: 1.1;
   overflow-wrap: anywhere;
 }
@@ -2010,7 +2010,7 @@ body:has(.dock) #toast {
   }
 }
 @media (max-width: 560px) {
-  .meBtn span:last-child {
+  .meBtn > span:last-child {
     display: none;
   }
   .meBtn {
@@ -2194,7 +2194,7 @@ body:has(.dock) #toast {
 .totals h2 small { color: var(--muted); font-size: 0.6em; }
 .list li { animation: rise 0.4s var(--ease) backwards; animation-delay: calc(0.5s + var(--i, 0) * 60ms); }
 .list li.me { box-shadow: inset 0 0 0 1.5px color-mix(in srgb, var(--accent) 55%, transparent); color: var(--ink); }
-.list li span:last-child { margin-left: auto; font: 800 20px var(--display); color: var(--ink); }
+.list li > span:last-child { margin-left: auto; font: 800 20px var(--display); color: var(--ink); }
 .confetti { position: fixed; inset: 0; pointer-events: none; overflow: hidden; z-index: 30; }
 .confetti i { position: absolute; top: -20px; left: var(--x); width: 9px; height: 14px; border-radius: 2px; background: var(--c); animation: fall var(--t) cubic-bezier(0.3, 0.6, 0.6, 1) var(--d) forwards; opacity: 0; }
 .confetti i:nth-child(3n) { width: 7px; height: 7px; border-radius: 50%; }
@@ -4031,3 +4031,73 @@ body.crOpen { overflow: hidden; }
 /* anime sahne (geniş afiş) görselleri: dar ekranda da büyük görünsün */
 .tq .tqPic.wide { width: min(100%, 640px); max-width: 100%; height: auto; max-height: none; aspect-ratio: 3 / 1; object-fit: cover; border-radius: 14px; }
 @media (max-width: 560px) { .tq .tqPic.wide { width: 100%; aspect-ratio: 2.4 / 1; } }
+
+/* ---------- canlı sıralama (soru sırasında da) ---------- */
+.board.live .row { animation: none; position: relative; }
+.board.live .meter > span:first-child { animation: none; }
+.board.live .lrN { width: 22px; text-align: center; font: 800 15px var(--display); color: var(--muted); }
+.board.live .row.me .lrN { color: var(--accent); }
+.board.live .row.moving { z-index: 2; box-shadow: 0 10px 26px -10px #000c; }
+.board.live .pts.done .ic { width: 18px; height: 18px; color: var(--good); }
+.board.live .pts.wait .spin { width: 14px; height: 14px; opacity: 0.6; }
+.board.live .pts.out { color: var(--bad); font-size: 12px; font-weight: 800; }
+.board.live .row.out { opacity: 0.55; }
+.board.live .row.out .rowName b { text-decoration: line-through; text-decoration-thickness: 2px; text-decoration-color: color-mix(in srgb, var(--bad) 70%, transparent); }
+.board.live .row.watch, .board.live .row.off { opacity: 0.45; }
+.board.live .mv { position: absolute; left: -6px; top: -6px; display: inline-flex; align-items: center; gap: 1px; padding: 2px 6px 2px 3px; border-radius: 999px; font: 800 11px/1 var(--body); animation: pop 0.4s 1.2s var(--ease) backwards; }
+.board.live .mv .ic { width: 12px; height: 12px; }
+.board.live .mv.up { background: var(--good); color: #062514; }
+.board.live .mv.up .ic { rotate: 180deg; }
+.board.live .mv.down { background: var(--bad); color: #fff; }
+@media (prefers-reduced-motion: reduce) { .board.live .mv { animation: none; } }
+
+/* ---------- geçişlerde sohbet ve emoji açık kalsın ---------- */
+.chatBox { z-index: 50; }
+@media (min-width: 1100px) { body.hasChat .introCard { right: 352px; } }
+@media (max-width: 1099px) { body.hasChat .introCard { bottom: var(--chatH, 0px); } }
+
+/* ---------- oyun ekranı: kaydırmadan sığsın ---------- */
+.game { gap: 12px; padding-top: 12px; }
+.stage { padding: 10px 0 2px; gap: 10px; }
+.disc { width: clamp(108px, 20vh, 190px); }
+.cdRing { width: clamp(96px, 19vh, 190px); }
+.stage .countdown { padding-top: 6px; }
+.tq { min-height: clamp(150px, 22vh, 250px); margin: 6px 0 4px; padding: clamp(14px, 2.6vh, 32px) clamp(14px, 4vw, 36px); gap: 10px; }
+.dock { margin-top: 12px; }
+.answers { gap: 8px; }
+@media (max-height: 820px) {
+  .ans, .answers.multi .ans { min-height: 50px; padding-top: 8px; padding-bottom: 8px; }
+  .listenInfo { margin-top: -4px; }
+}
+
+/* ---------- karma liste kapağı: sanatçı kolajı ---------- */
+.collage { display: grid !important; grid-template-columns: 1fr 1fr; grid-template-rows: 1fr 1fr; gap: 0; padding: 0; overflow: hidden; background: #111; }
+.collage > img { display: block; width: 100%; height: 100%; min-width: 0; min-height: 0; object-fit: cover; border-radius: 0 !important; box-shadow: none !important; margin: 0; }
+.collage.n2 { grid-template-rows: 1fr; }
+.collage.n3 > img:first-child { grid-row: span 2; }
+/* üst çubuk profil adı: dar ekranda harf harf kırılmasın */
+.meBtn { min-width: 0; flex-shrink: 1; }
+.meBtn > .av { flex: none; }
+.meBtn > span:last-child { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; overflow-wrap: normal; }
+@media (max-width: 700px) { .meBtn > span:last-child { display: none; } .meBtn { padding: 0 4px; } }
+
+/* canlı sıralamada satır boyu soru ve sonuçta aynı kalsın */
+.board.live .row { min-height: 54px; }
+.board.live .pts { min-height: 34px; align-content: center; }
+/* şarkı sorusu: plak ve sonuç kutusu ekran yüksekliğine göre; şıklar kaydırmadan görünsün */
+.game > .stage, .game > .reveal { min-height: calc(clamp(108px, 20vh, 190px) + 64px); }
+.game > .reveal .art { width: clamp(96px, 18vh, 150px); height: clamp(96px, 18vh, 150px); }
+.game > .reveal { padding: clamp(12px, 2vh, 18px); }
+@media (max-height: 760px) { .revealText h2 { font-size: clamp(24px, 4vw, 38px); } }
+@media (max-height: 720px) {
+  .dock:has(.waiting) { padding-top: 8px; padding-bottom: max(8px, env(safe-area-inset-bottom)); }
+  .dock .waiting { margin: 0; min-height: 32px; }
+  .game { gap: 10px; padding-top: 8px; }
+  .ans, .answers.multi .ans { min-height: 46px; }
+}
+/* kısa ekranlarda (dizüstü) soru kutusu cevap yeri ayırmasın; şıklar ekrana sığsın */
+@media (max-height: 820px) {
+  .tq .tqAns.slot:empty { display: none; }
+  .tq { min-height: clamp(140px, 20vh, 200px); }
+  .tqText { font-size: clamp(22px, 3.2vw, 30px); }
+}

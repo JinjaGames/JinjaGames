@@ -2,7 +2,7 @@
 // her oyuncunun tek bir imzalı Nostr kaydı vardır (NIP-78, kind 30078, d = "jqfavs"); içinde favori quizlerinin
 // listesi durur. Bir quizin kalp sayısı = listesinde o quiz olan farklı kişi sayısı. Röleler eski kayıtları
 // silebileceği için tools/archive_community.mjs listeleri quiz/data/favs.json içine biriktirir; site ikisini birleştirir.
-import { sign, valid, relayCall, sendToRelays, RELAYS, myPubkey, blocked } from "./community.js?v=14";
+import { sign, myPubkey, blocked, onOutbox, outboxSoon, relayRead } from "./community.js?v=15";
 
 const KIND = 30078;
 const TAG = "jinjaquiz-favs";
@@ -45,8 +45,7 @@ export function toggleFav(id) {
   local.set(LOCAL, mine);
   local.set(DIRTY, 1);
   tell();
-  clearTimeout(flushT);
-  flushT = setTimeout(flush, 4000); // art arda basışlar tek kayıtla gider
+  outboxSoon(); // art arda basışlar tek kayıtla, oynanma sayılarıyla birlikte gider
   return on;
 }
 // başka sekmede kalbe basıldı
@@ -55,19 +54,12 @@ addEventListener("storage", (e) => {
   mine = cleanList(local.get(LOCAL, []));
   tell();
 });
-addEventListener("visibilitychange", () => { if (document.hidden && local.get(DIRTY, 0)) { clearTimeout(flushT); flush(); } });
-let flushT = 0, flushing = false;
-async function flush() {
-  if (flushing || !local.get(DIRTY, 0)) return;
-  flushing = true;
-  try {
-    local.set(DIRTY, 0);
-    const e = sign(KIND, [["d", D], ["t", TAG], ["client", "jinjagames.com/quiz"]], JSON.stringify({ v: 1, f: mine }));
-    if (!(await sendToRelays(e).catch(() => false))) local.set(DIRTY, 1);
-  } finally {
-    flushing = false;
-  }
-}
+onOutbox(() => {
+  if (!local.get(DIRTY, 0)) return [];
+  local.set(DIRTY, 0);
+  return [{ e: sign(KIND, [["d", D], ["t", TAG], ["client", "jinjagames.com/quiz"]], JSON.stringify({ v: 1, f: mine })), done: (ok) => { if (!ok) local.set(DIRTY, 1); } }];
+});
+const flush = () => { if (local.get(DIRTY, 0)) outboxSoon(3000); };
 
 function parse(e) {
   const d = (e.tags.find((t) => t[0] === "d") || [])[1] || "";
@@ -109,16 +101,10 @@ export function loadFavs({ fresh = false } = {}) {
       const j = r.ok ? await r.json() : null;
       for (const [pk, v] of Object.entries(j?.by || {})) if (/^[0-9a-f]{12}$/.test(pk) && v && Number.isInteger(v.at) && !bad(pk)) put(pk, v.at, cleanList(v.f));
     } catch {}
-    const sub = "fv" + Math.random().toString(36).slice(2, 8);
-    await Promise.all(RELAYS.slice(0, 3).map((url) => relayCall(url,
-      (ws) => ws.send(JSON.stringify(["REQ", sub, { kinds: [KIND], "#t": [TAG], limit: 5000 }])),
-      (x) => {
-        if ((x[0] === "EOSE" || x[0] === "CLOSED") && x[1] === sub) return true;
-        if (x[0] !== "EVENT" || x[1] !== sub || !valid(x[2])) return undefined;
-        const p = parse(x[2]);
-        if (p && !bad(p.pk)) put(p.pk, p.at, p.f);
-        return undefined;
-      }, 6000)));
+    for (const e of await relayRead({ kinds: [KIND], "#t": [TAG], limit: 5000 })) {
+      const p = parse(e);
+      if (p && !bad(p.pk)) put(p.pk, p.at, p.f);
+    }
     counts.clear();
     for (const [pk, v] of last) if (pk !== me) for (const k of v.f) counts.set(k, (counts.get(k) || 0) + 1);
     local.set(CACHE, { at: Date.now(), t: [...counts] });

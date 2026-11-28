@@ -1,6 +1,6 @@
 // Oyun motoru. Kurucunun tarayıcısında çalışır ve tek doğruluk kaynağıdır.
 // Diğer oyuncular yalnızca kendilerine özel durum özetini (view) alır.
-import { fold, preview } from "./music.js?v=7";
+import { fold, preview } from "./music.js?v=8";
 import { cleanItems, cleanEmoji } from "./trivia.js?v=6";
 import { AVATARS } from "./avatars.js?v=1";
 import { NUMCATS, numChain } from "./numdata.js?v=2";
@@ -9,7 +9,7 @@ export const MAX_PLAYERS = 12;
 const PLAYS = 3;
 const COUNTDOWN = 3000;
 const INTRO = 2500;
-const AUTO_NEXT = 3000; // çok oyunculu: sonuç ekranı bu kadar sonra kendiliğinden geçer
+const AUTO_NEXT = 5000; // çok oyunculu: sonuç ekranı bu kadar sonra kendiliğinden geçer (sıralama değişimi görülsün)
 const NEXT_QUIZ = 30000; // çok oyunculu: quiz arası sıralama ekranı bu kadar sonra kendiliğinden geçer
 const RANK_N = 5; // sıralama quizi: kaç şarkı sıralanır
 const RANK_SECS = 60; // sıralama sorusu için süre (en az)
@@ -229,10 +229,9 @@ export class Game {
     const x = this.sugg.find((y) => y.id === s.id);
     if (x?.by.includes(pid)) x.by = x.by.filter((y) => y !== pid); // ikinci basış oyu geri alır
     else {
-      if (this.sugg.filter((y) => y.by.includes(pid)).length >= 3) throw Error("En fazla 3 isteğe oy verebilirsin; birini geri al.");
       if (x) x.by.push(pid);
       else {
-        if (this.sugg.length >= 12) throw Error("İstek listesi dolu. Kurucu birkaçını eklesin ya da silsin.");
+        if (this.sugg.length >= 60) throw Error("İstek listesi dolu. Kurucu birkaçını eklesin ya da silsin.");
         this.sugg.push({ ...s, by: [pid] });
       }
     }

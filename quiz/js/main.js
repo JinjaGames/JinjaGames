@@ -1,23 +1,23 @@
-import { PRESETS, MIXES, loadTracks, searchArtists, customLists, saveCustom, removeCustom, fold, cdn, realPic, loadPresetPictures } from "./music.js?v=7";
+import { PRESETS, MIXES, loadTracks, searchArtists, customLists, saveCustom, removeCustom, fold, cdn, realPic, loadPresetPictures } from "./music.js?v=8";
 import { sfx, sfxEnabled, setSfx, setSfxVolume } from "./sfx.js?v=5";
 import { randomName } from "./names.js";
-import { fetchCommunity, loadFull, removeQuiz, hideQuiz, unhideQuiz, hiddenList } from "./community.js?v=14";
-import { Game, MAX_PLAYERS, RANK_PTS, OP_PTS, NUM_BONUS } from "./engine.js?v=15";
-import { lbKey, loadBoard, peekBoard, submitScore, myBest, isMine, syncMine, LB_TOP, LB_QUESTIONS } from "./board.js?v=10";
+import { fetchCommunity, loadFull, removeQuiz, hideQuiz, unhideQuiz, hiddenList, mixPics } from "./community.js?v=15";
+import { Game, MAX_PLAYERS, RANK_PTS, OP_PTS, NUM_BONUS } from "./engine.js?v=16";
+import { lbKey, loadBoard, peekBoard, submitScore, myBest, isMine, syncMine, LB_TOP, LB_QUESTIONS } from "./board.js?v=11";
 import { quizSlug, slugTable } from "./slug.js?v=1";
 import { maskName, maskText, isBadName } from "./badwords.js?v=2";
 import { AVATARS, ICON_AVATARS, LETTER_AVATARS, isLetterAvatar } from "./avatars.js?v=1";
-import { RANK_QUIZZES, RANK_CATS, rankItems, fromYouTube } from "./rank.js?v=6";
+import { RANK_QUIZZES, RANK_CATS, rankItems, fromYouTube } from "./rank.js?v=7";
 import { TRIVIA, TCATS, TART, EMOJIS, cleanItems, IMG, ANI_IMG, FLAG, flagUrl, cleanEmo, SHAPE, shapeUrl } from "./trivia.js?v=6";
 import { ANIME_QUIZZES, ERAS, animeItems, animeOps, animeCounts } from "./anime.js?v=5";
 import { NUMCATS, fmtNum, farEnough, numChain } from "./numdata.js?v=2";
 import { hostRoom, guestRoom, newCode, validCode } from "./net.js?v=7";
-import { announceLobby, listLobbies } from "./lobbies.js?v=8";
-import { countPlay, loadPlays, plays, players, onPlays, playsLoaded } from "./plays.js?v=9";
+import { announceLobby, listLobbies } from "./lobbies.js?v=9";
+import { countPlay, loadPlays, plays, players, onPlays, playsLoaded } from "./plays.js?v=10";
 import { dailyQuiz, dailyDate, dailyLeft, dailyLabel, dailyResult, saveDaily, dailyStreak } from "./daily.js?v=3";
-import { initI18n, LANG, applyLang } from "./i18n.js?v=13";
+import { initI18n, LANG, applyLang } from "./i18n.js?v=14";
 import { initTabs, tabsUpdate, lobbyElsewhere, pidTaken, takeLobby } from "./tabs.js?v=1";
-import { favList, isFav, favCount, toggleFav, loadFavs, onFavs, favKey } from "./favs.js?v=1";
+import { favList, isFav, favCount, toggleFav, loadFavs, onFavs, favKey } from "./favs.js?v=2";
 
 // ---------- yardımcılar ----------
 const $ = (s, r = document) => r.querySelector(s);
@@ -1248,6 +1248,9 @@ function cover(l, cls = "", big = false) {
     const fl = c ? c.items.filter((x) => x.f).slice(0, 3) : [];
     return `<span class="${esc(cls)} noart numCov${big ? " big" : ""}" style="--h:${num(c?.hue)}">${fl.length ? fl.map((x, i) => `<img src="${esc(flagUrl(x.f))}" alt="" style="--j:${i}">`).join("") : `<i>${esc(l.emoji || "🔢")}</i>`}</span>`;
   }
+  // birden çok sanatçılı liste: sanatçılardan kolaj kapak
+  const pics = Array.isArray(l?.pics) && l.pics.length > 1 ? l.pics : l?.genre === "Senin" && l.tracks?.length ? mixPics(l.tracks) : [];
+  if (!l?.kind && pics.length > 1) return `<span class="${esc(cls)} collage n${Math.min(4, pics.length)}">${pics.slice(0, 4).map((u) => `<img src="${esc(u)}" alt="" loading="lazy" referrerpolicy="no-referrer">`).join("")}</span>`;
   if (EMOJIS.includes(l?.emoji)) {
     const [h, d1, d2] = TART[l.cat] || [hue(l.name), "✨", "❓"];
     const hh = TART[l.cat] ? (h + (hue(l.name) % 36) - 18 + 360) % 360 : h;
@@ -1350,7 +1353,7 @@ function drawHome() {
         .map(([name, icon, , desc, hueV]) => `<button role="tab" class="catTab" style="--c:${hueV}" aria-selected="${ui.genre === name}" data-tab="${esc(name)}"><span class="catIc">${ic(icon)}</span><span class="catTxt"><b>${esc(name === "Keşfet" ? "Hepsi" : name)}</b><small>${esc(desc)}</small></span>${tabCount(name, mine) ? `<em class="catN">${tabCount(name, mine)}</em>` : ""}</button>`)
         .join("")}
     </nav>
-    ${SUBS[ui.genre] ? `<div class="seg chips subChips">${["", ...SUBS[ui.genre]].map((c) => `<button data-sub="${esc(c)}" aria-pressed="${ui.cat === c}">${esc(c || "Hepsi")}</button>`).join("")}</div>` : ""}
+    ${subsFor(ui.genre) ? `<div class="seg chips subChips">${["", ...subsFor(ui.genre)].map((c) => `<button data-sub="${esc(c)}" aria-pressed="${ui.cat === c}">${esc(c || "Hepsi")}</button>`).join("")}</div>` : ""}
     ${browsing && ui.genre !== "Sayı" ? sortBar() : ""}
     <div id="results">${resultsHtml()}</div>
     ${
@@ -1484,7 +1487,18 @@ const TABS = [
   ["Favoriler", "heart", "Favorilerin", "Kalplediğin quizler", "#ff4f6d"],
   ["Senin", "bookmark", "Senin quizlerin", "Kaydettiklerin", "#b8b3c4"],
 ];
-const SUBS = { Müzik: ["Rap", "Pop", "Rock"], Sıralama: RANK_CATS, Tersten: ["Pop", "Rap", "Rock"], Trivia: TCATS, Topluluk: ["Müzik", "Trivia"] };
+const SUBS = { Müzik: ["Rap", "Pop", "Rock"], Sıralama: RANK_CATS, Tersten: ["Pop", "Rap", "Rock"], Trivia: TCATS };
+// Topluluk: türler (Müzik, Tersten, Sıralama, Anime, Trivia) ve trivia kategorileri; yalnızca quizi olanlar görünür
+const COMM_KINDS = ["Müzik", "Tersten", "Sıralama", "Anime", "Trivia"];
+// (trivia'nın "Müzik" kategorisi, şarkı quizleriyle karışmasın diye "Müzik bilgisi" adıyla görünür)
+const COMM_TCATS = TCATS.map((c) => (c === "Müzik" ? "Müzik bilgisi" : c));
+const commIn = (l, c) => c === "Müzik" ? !l.kind && !l.rev : c === "Tersten" ? !!l.rev : c === "Sıralama" ? l.kind === "rank" : c === "Anime" ? l.kind === "op" : c === "Trivia" ? l.kind === "trivia" : l.kind === "trivia" && l.cat === (c === "Müzik bilgisi" ? "Müzik" : c);
+function subsFor(tab) {
+  if (tab !== "Topluluk") return SUBS[tab];
+  const comm = ui.community || [];
+  const subs = [...COMM_KINDS, ...COMM_TCATS].filter((c) => comm.some((l) => commIn(l, c)));
+  return subs.length ? subs : null;
+}
 function inTab(l, g = ui.genre, c = ui.cat) {
   const trivia = l.kind === "trivia";
   switch (g) {
@@ -1494,7 +1508,7 @@ function inTab(l, g = ui.genre, c = ui.cat) {
     case "Anime": return !!l.anime || l.kind === "op";
     case "Sayı": return l.kind === "num";
     case "Trivia": return trivia && !l.anime && (!c || l.cat === c);
-    case "Topluluk": return l.genre === "Topluluk" && (!c || (c === "Trivia") === trivia);
+    case "Topluluk": return l.genre === "Topluluk" && (!c || commIn(l, c));
     case "Senin": return l.genre === "Senin";
     case "Favoriler": return isFav(l.id) && !l.daily;
     default: return true;
@@ -1631,6 +1645,8 @@ function renderRoom() {
     lastSig = sig;
     $(".gEnd .mini").innerHTML = miniHtml(v);
     $("#ansCount").textContent = ansCountText(v);
+    const lb = $("#liveBoard");
+    if (lb && v.question) lb.outerHTML = liveBoardHtml(v, v.question, false);
     return paint();
   }
   lastCore = core;
@@ -1651,7 +1667,7 @@ function renderRoom() {
     if (lobSel && sheetCtx?.kind === "inline" && sheetCtx.tracks && $("#trackList")) drawTracks();
     keepVisible('.pickTabs [aria-selected="true"]');
   }
-  else if (["preparing", "question", "reveal"].includes(v.phase)) app.innerHTML = gameHtml(v);
+  else if (["preparing", "question", "reveal"].includes(v.phase)) { const before = boardPos(); app.innerHTML = gameHtml(v); boardFlip(before); }
   else app.innerHTML = rankingHtml(v);
   app.dataset.q = v.question?.id || "";
   if (keepY != null && Math.abs(scrollY - keepY) > 1) scrollTo(0, keepY);
@@ -1787,7 +1803,7 @@ const inLobbyPick = () => screen === "room" && !!mode && mode.role !== "solo" &&
 function lobPickHtml() {
   const tabs = pickTabs();
   if (!tabs.some((t) => t[0] === pick.tab)) Object.assign(pick, { tab: "Hepsi", cat: "" });
-  const subs = SUBS[pick.tab];
+  const subs = subsFor(pick.tab);
   const music = pick.tab === "Müzik" || pick.tab === "Hepsi";
   const guest = mode?.role === "guest";
   return `<div class="block lobPick" id="lobPick">
@@ -1966,21 +1982,7 @@ function gameHtml(v) {
       .join("")}</div>`;
   }
 
-  let foot = "";
-  if (reveal && !v.solo) {
-    const rows = [...v.players]
-      .map((p) => ({ p, r: q.reveal.results[p.pid] }))
-      .sort((a, b) => num(b.p.round) - num(a.p.round) || num(b.r?.points) - num(a.r?.points));
-    // Çubuk quiz toplamını gösterir; bu sorudan gelen kısım parlak uçta.
-    const top = Math.max(1, ...v.players.map((p) => num(p.round)));
-    foot = `<div class="block board"><div class="blockHead"><h2>Quiz sıralaması</h2><small class="muted">Bu soru · Toplam</small></div>${rows
-      .map(
-        ({ p, r }, i) => `<div class="row ${p.pid === v.me ? "me" : ""}" style="--i:${i}">${avatar(p, "sm")}<span class="rowName"><b data-noi18n>${esc(p.name)}</b>
-        <span class="meter"><span style="width:${top ? Math.max(2, (num(p.round) / top) * 100) : 0}%"></span>${num(r?.points) > 0 ? `<span class="gain" style="left:${((num(p.round) - num(r.points)) / top) * 100}%;width:${(num(r.points) / top) * 100}%"></span>` : ""}</span></span>
-        <span class="pts ${num(r?.points) > 0 ? "good" : ""}">${num(r?.points) > 0 ? "+" + num(r.points) : r ? "0" : "—"}${num(r?.points) > 0 ? `<small>${(num(r.ms) / 1000).toFixed(1)} sn</small>` : ""}</span><b class="tot" data-count="${num(p.round)}">${num(p.round)}</b></div>`,
-      )
-      .join("")}</div>`;
-  }
+  const foot = v.solo ? "" : liveBoardHtml(v, q, reveal);
   const answeredCount = q.answered.length;
   const online = v.players.filter((p) => p.online).length;
   const dock = reveal
@@ -1991,6 +1993,65 @@ function gameHtml(v) {
   return `${mode.lost ? `<div class="banner">${spinner()} Kurucunun bağlantısı koptu, bekleniyor…</div>` : ""}
     <section class="game ${reveal ? "isReveal" : ""}">${head}${stage}${answers}${foot}${intro}</section>
     <div class="dock split">${rkDock || dock}</div>`;
+}
+
+// ---------- canlı sıralama: soru sırasında da görünür, sonuçta yer değiştirme animasyonu ----------
+// Soru sürerken sıra önceki toplamlara göredir (kim cevapladı işaretlenir); sonuç açılınca yeni toplamlara göre
+// dizilir, satırlar eski yerlerinden kayarak yeni yerlerine gider, yükselen / düşen ok ile gösterilir.
+// Sayı Quizi'nde kalanlar üstte, elenenler (en son elenen önde) altta ve soluk görünür.
+const boardRank = { qid: "", qOrder: [], rq: "", moves: new Map() };
+function liveBoardHtml(v, q, reveal) {
+  const set = v.queue[v.set];
+  const nq = set?.kind === "num";
+  const prev = boardRank.qid === q.id ? boardRank.qOrder : [];
+  const pos = (p) => { const i = prev.indexOf(p.pid); return i < 0 ? 999 : i; };
+  const state = (p) => (!nq || p.out == null ? 0 : p.out === 0 ? 2 : 1); // 0 oyunda, 1 elendi, 2 izliyor
+  const rows = [...v.players].sort((a, b) => state(a) - state(b) || (nq && state(a) === 1 ? num(b.out) - num(a.out) : 0) || num(b.round) - num(a.round) || pos(a) - pos(b));
+  const order = rows.map((p) => p.pid);
+  if (!reveal) Object.assign(boardRank, { qid: q.id, qOrder: order });
+  else if (boardRank.rq !== q.id) {
+    boardRank.rq = q.id;
+    boardRank.moves = new Map(order.map((pid, i) => { const o = boardRank.qid === q.id ? boardRank.qOrder.indexOf(pid) : -1; return [pid, o < 0 ? 0 : o - i]; }));
+  }
+  const top = Math.max(1, ...v.players.map((p) => num(p.round)));
+  const alive = v.players.filter((p) => state(p) === 0).length, outN = v.players.filter((p) => state(p) === 1).length;
+  const res = reveal ? q.reveal?.results || {} : {};
+  return `<div class="block board live" id="liveBoard"><div class="blockHead"><h2>Sıralama</h2><small class="muted">${nq ? `${alive} kişi oyunda${outN ? ` · ${outN} elendi` : ""}` : reveal ? "Bu soru · Toplam" : `${num(q.answered?.length)}/${v.players.filter((p) => p.online).length} cevapladı`}</small></div>${rows
+    .map((p, i) => {
+      const r = res[p.pid];
+      const gained = reveal ? num(r?.points) : 0;
+      const before = num(p.round) - gained;
+      const st = state(p);
+      const mv = reveal ? boardRank.moves.get(p.pid) || 0 : 0;
+      const pts = st === 2 ? `<span class="pts muted">İzliyor</span>`
+        : reveal
+          ? `<span class="pts ${gained > 0 ? "good" : ""}">${gained > 0 ? "+" + gained : r ? "0" : "—"}${gained > 0 ? `<small>${(num(r.ms) / 1000).toFixed(1)} sn</small>` : ""}</span>`
+          : st === 1 ? `<span class="pts out">Elendi</span>`
+          : q.answered?.includes(p.pid) ? `<span class="pts done" title="Cevapladı">${ic("check")}</span>` : `<span class="pts wait" title="Düşünüyor">${spinner()}</span>`;
+      return `<div class="row liveRow ${p.pid === v.me ? "me" : ""}${st === 1 ? " out" : ""}${st === 2 ? " watch" : ""}${p.online ? "" : " off"}" data-pid="${esc(p.pid)}">
+        <span class="lrN">${i + 1}</span>${avatar(p, "sm")}<span class="rowName"><b data-noi18n>${esc(p.name)}</b>
+        <span class="meter"><span style="width:${Math.max(2, (before / top) * 100)}%"></span>${gained > 0 ? `<span class="gain" style="left:${(before / top) * 100}%;width:${(gained / top) * 100}%"></span>` : ""}</span></span>
+        ${pts}<b class="tot"${gained > 0 ? ` data-count="${num(p.round)}" data-from="${before}"` : ""}>${gained > 0 ? before : num(p.round)}</b>
+        ${mv ? `<span class="mv ${mv > 0 ? "up" : "down"}" title="${mv > 0 ? `${mv} sıra yükseldi` : `${-mv} sıra düştü`}">${ic("chevron-down")}${Math.abs(mv)}</span>` : ""}
+      </div>`;
+    })
+    .join("")}</div>`;
+}
+// Satırları eski yerlerinden yeni yerlerine kaydır (FLIP)
+// (konumlar tablonun kendi üstüne göre ölçülür: soru → sonuç geçişinde üstteki alan büyüyüp küçülse de yalnızca sırası değişen satır kayar)
+const boardTop = () => $("#liveBoard")?.getBoundingClientRect().top || 0;
+const boardPos = () => { const t = boardTop(); return new Map($$("#liveBoard .liveRow").map((r) => [r.dataset.pid, r.getBoundingClientRect().top - t])); };
+function boardFlip(before) {
+  if (!before.size || matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+  const t = boardTop();
+  for (const r of $$("#liveBoard .liveRow")) {
+    const o = before.get(r.dataset.pid);
+    if (o == null) continue;
+    const dy = o - (r.getBoundingClientRect().top - t);
+    if (Math.abs(dy) < 12) continue; // yalnızca sırası değişen satır (satır boyu ~50 px)
+    r.classList.add("moving");
+    r.animate([{ transform: `translateY(${dy}px)` }, { transform: `translateY(${dy}px)`, offset: 0.35 }, { transform: "none" }], { duration: 1300, easing: "cubic-bezier(.2,.8,.2,1)" }).finished.then(() => r.classList.remove("moving"), () => {});
+  }
 }
 
 // ---------- Sayı Quizi sorusu (lobide): iki taraf, büyük olanı seç ----------
@@ -2527,10 +2588,11 @@ function animateCounts(root = app) {
     const to = num(el.dataset.count);
     if (!to || el.dataset.done) return;
     el.dataset.done = 1;
-    const t0 = performance.now(), dur = 900;
+    const from = num(el.dataset.from);
+    const t0 = performance.now() + (el.dataset.from ? 350 : 0), dur = 900;
     const step = (t) => {
-      const k = Math.min(1, (t - t0) / dur);
-      el.textContent = Math.round(to * (1 - Math.pow(1 - k, 3)));
+      const k = Math.max(0, Math.min(1, (t - t0) / dur));
+      el.textContent = Math.round(from + (to - from) * (1 - Math.pow(1 - k, 3)));
       if (k < 1) requestAnimationFrame(step);
     };
     requestAnimationFrame(step);
@@ -2954,7 +3016,7 @@ function pickItem(l) {
 function pickerSheet() {
   const tabs = pickTabs();
   if (!tabs.some((t) => t[0] === pick.tab)) Object.assign(pick, { tab: "Müzik", cat: "" });
-  const subs = SUBS[pick.tab];
+  const subs = subsFor(pick.tab);
   const music = pick.tab === "Müzik";
   sheetBody.innerHTML = `<div class="pickTop">
       <div class="sheetHead"><h2>Quiz ekle</h2><button class="icon" data-close aria-label="Kapat">${ic("x")}</button></div>

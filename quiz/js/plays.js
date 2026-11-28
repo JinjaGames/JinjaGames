@@ -2,7 +2,7 @@
 // d = "jqplays:<quiz>"); içinde o quizi bu tarayıcıda kaç kez bitirdiği yazar. Aynı kişi 4 kez oynadıysa 4 sayılır.
 // Bir quizin toplamı = herkesin kendi sayısının toplamı. Röleler eski kayıtları silebileceği için
 // tools/archive_community.mjs sayıları quiz/data/plays.json içine biriktirir; site ikisini birleştirir.
-import { sign, valid, relayCall, sendToRelays, RELAYS, myPubkey, blocked } from "./community.js?v=14";
+import { sign, myPubkey, blocked, onOutbox, outboxSoon, relayRead } from "./community.js?v=15";
 
 const KIND = 30078;
 const TAG = "jinjaquiz-plays";
@@ -43,32 +43,21 @@ export function countPlay(id) {
   totals.set(k, (totals.get(k) || 0) + 1); // kendi oyunun ekranda hemen görünür
   if (cacheAt) saveCache();
   listeners.forEach((fn) => fn());
-  // yazma hemen yapılır; art arda biten quizler (lobide bir oyun) tek seferde gider
-  clearTimeout(flushT);
-  flushT = setTimeout(flush, 15000);
+  // art arda biten quizler (lobide bir oyun) ve kalpler giden kutusunda birikip birlikte gider
+  outboxSoon();
 }
-// sekme kapanırken / arka plana atılırken bekleyenleri göndermeyi dene (olmazsa sonraki açılışta gider)
-addEventListener("visibilitychange", () => { if (document.hidden && local.get(DIRTY, []).length) { clearTimeout(flushT); flush(); } });
-let flushT = 0;
-let flushing = false;
-async function flush() {
-  if (flushing) return;
-  flushing = true;
-  try {
-    const keys = local.get(DIRTY, []);
-    local.set(DIRTY, []);
-    const m = local.get(LOCAL, {});
-    const failed = [];
-    for (const k of keys) {
-      if (!playKey(k) || !(m[k] > 0)) continue;
-      const e = sign(KIND, [["d", "jqplays:" + k], ["t", TAG], ["client", "jinjagames.com/quiz"]], JSON.stringify({ v: 1, q: k, n: Math.min(PLAYS_MAX, m[k] | 0) }));
-      if (!(await sendToRelays(e).catch(() => false))) failed.push(k);
-    }
-    if (failed.length) local.set(DIRTY, [...new Set([...local.get(DIRTY, []), ...failed])].slice(-60));
-  } finally {
-    flushing = false;
-  }
-}
+// Giden kutusu (community.js) bekleyen sayıları toplu gönderir; gönderilemeyenler sonraki seferde yeniden denenir.
+onOutbox(() => {
+  const keys = local.get(DIRTY, []);
+  if (!keys.length) return [];
+  local.set(DIRTY, []);
+  const m = local.get(LOCAL, {});
+  return keys.filter((k) => playKey(k) && m[k] > 0).map((k) => ({
+    e: sign(KIND, [["d", "jqplays:" + k], ["t", TAG], ["client", "jinjagames.com/quiz"]], JSON.stringify({ v: 1, q: k, n: Math.min(PLAYS_MAX, m[k] | 0) })),
+    done: (ok) => { if (!ok) local.set(DIRTY, [...new Set([...local.get(DIRTY, []), k])].slice(-60)); },
+  }));
+});
+const flush = () => { if (local.get(DIRTY, []).length) outboxSoon(3000); };
 
 function parse(e) {
   const d = (e.tags.find((t) => t[0] === "d") || [])[1] || "";
@@ -133,17 +122,11 @@ export function loadPlays({ fresh = false } = {}) {
         for (const [pk, n] of Object.entries(users)) if (/^[0-9a-f]{12}$/.test(pk) && Number.isInteger(n) && n > 0 && !bad(pk)) put(k, pk, Math.min(PLAYS_MAX, n));
       }
     } catch {}
-    const sub = "pl" + Math.random().toString(36).slice(2, 8);
-    // okumak için üç röle yeter (her kayıt altı röleye yazılır)
-    await Promise.all(RELAYS.slice(0, 3).map((url) => relayCall(url,
-      (ws) => ws.send(JSON.stringify(["REQ", sub, { kinds: [KIND], "#t": [TAG], limit: 5000 }])),
-      (x) => {
-        if ((x[0] === "EOSE" || x[0] === "CLOSED") && x[1] === sub) return true;
-        if (x[0] !== "EVENT" || x[1] !== sub || !valid(x[2])) return undefined;
-        const p = parse(x[2]);
-        if (p && !bad(p.pk)) put(p.k, p.pk, p.n);
-        return undefined;
-      }, 6000)));
+    // okumak için üç röle yeter (her kayıt altı röleye yazılır); kalp okumasıyla aynı bağlantıda gider
+    for (const e of await relayRead({ kinds: [KIND], "#t": [TAG], limit: 5000 })) {
+      const p = parse(e);
+      if (p && !bad(p.pk)) put(p.k, p.pk, p.n);
+    }
     const me = myPubkey().slice(0, 12);
     for (const [k, n] of Object.entries(local.get(LOCAL, {}))) if (playKey(k) && n > 0) put(k, me, Math.min(PLAYS_MAX, n | 0));
     totals.clear();

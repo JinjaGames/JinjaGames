@@ -105,6 +105,7 @@ for (const e of events) {
     d, pk: e.pubkey, at: e.created_at, kind: q.kind, name: q.name, desc: q.desc || undefined, author: q.author,
     emoji: q.emoji || undefined, picture: q.picture || undefined, artist: q.artist || undefined, artistId: q.artistId || undefined,
     cat: q.kind === "trivia" ? q.cat : undefined, rev: q.rev ? 1 : undefined, n: (q.tracks || q.items || []).length,
+    pics: q.pics?.length > 1 ? q.pics : undefined,
   });
   const file = `${e.pubkey.slice(0, 16)}-${d.slice(10)}.json`;
   keepFiles.add(file);

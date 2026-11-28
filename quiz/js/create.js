@@ -1,14 +1,14 @@
 // JinjaQuiz: quiz oluşturma sayfası (/quiz/create/). Sanatçı ve şarkı araması ayrı sekmelerde;
 // sanatçının popüler şarkıları ve tüm albümleri tek tek ya da topluca eklenebilir.
-import { searchArtists, searchTracks, artistInfo, artistTop, artistAlbums, albumTracks, ownTracks, isAlternate, customLists, saveCustom, removeCustom, cleanTracks, fold, cdn } from "./music.js?v=7";
-import { fetchCommunity, loadFull, publishQuiz, removeQuiz, myPubkey, MIN_TRACKS, MAX_TRACKS } from "./community.js?v=14";
+import { searchArtists, searchTracks, artistInfo, artistTop, artistAlbums, albumTracks, ownTracks, isAlternate, customLists, saveCustom, removeCustom, cleanTracks, fold, cdn } from "./music.js?v=8";
+import { fetchCommunity, loadFull, publishQuiz, removeQuiz, myPubkey, MIN_TRACKS, MAX_TRACKS } from "./community.js?v=15";
 import { TCATS, TART, EMOJIS, T_MIN, T_MAX, cleanItems, cleanCat, cleanEmoji, isTF, IMG } from "./trivia.js?v=6";
-import { cleanOps, RANK_PTS, OP_PTS } from "./engine.js?v=15";
+import { cleanOps, RANK_PTS, OP_PTS } from "./engine.js?v=16";
 import { isBadName, isBadText } from "./badwords.js?v=2";
 import { quizSlug, slugify } from "./slug.js?v=1";
-import { initI18n } from "./i18n.js?v=13";
-import { rankItems } from "./rank.js?v=6";
-import { OP_MIN } from "./community.js?v=14";
+import { initI18n } from "./i18n.js?v=14";
+import { rankItems } from "./rank.js?v=7";
+import { OP_MIN } from "./community.js?v=15";
 
 const $ = (s, r = document) => r.querySelector(s);
 const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
@@ -593,7 +593,7 @@ async function checkPublishNow() {
   if (!taken) {
     try {
       const [{ PRESETS, MIXES }, { TRIVIA }, { RANK_QUIZZES }, { ANIME_QUIZZES }, comm] = await Promise.all([
-        import("./music.js?v=7"), import("./trivia.js?v=6"), import("./rank.js?v=6"), import("./anime.js?v=5"), fetchCommunity({ ms: 2500 }).catch(() => []),
+        import("./music.js?v=8"), import("./trivia.js?v=6"), import("./rank.js?v=7"), import("./anime.js?v=5"), fetchCommunity({ ms: 2500 }).catch(() => []),
       ]);
       const mineNow = (x) => st.d && x.d === st.d && x.pubkey === myPubkey(); // düzenlenen quizin kendisi
       taken = [...PRESETS, ...MIXES, ...TRIVIA, ...RANK_QUIZZES, ...ANIME_QUIZZES, ...comm].some((x) => !mineNow(x) && quizSlug(x) === slug);

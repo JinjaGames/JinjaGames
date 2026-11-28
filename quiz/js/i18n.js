@@ -253,6 +253,7 @@ Object.assign(D, {
   "Sahneden Animeyi Bil": "Guess the Anime from the Scene", "Yan Karakterler: Hangi Animeden?": "Side Characters: Which Anime?", "Japonca Adından Animeyi Bil": "Guess the Anime from Its Japanese Title",
   "Bu Animeyi Hangi Stüdyo Yaptı?": "Which Studio Made This Anime?", "Anime Filmleri: Afişten Bil": "Anime Movies: Guess from the Poster",
   "Doğru cevap yap": "Make this the correct answer",
+  "İzliyor": "Watching", "Elendi": "Out", "Cevapladı": "Answered", "Düşünüyor": "Thinking", "Müzik bilgisi": "Music trivia",
 });
 const EN = new Map(Object.entries(D));
 const DAYS = { Pazar: "Sunday", Pazartesi: "Monday", Salı: "Tuesday", Çarşamba: "Wednesday", Perşembe: "Thursday", Cuma: "Friday", Cumartesi: "Saturday" };
@@ -315,6 +316,11 @@ const RX = [
   [/^Anime · ([\d.]+) soru$/, (_, n) => `Anime · ${pl(n, "question", "questions")}`],
   [/^Soru (\d+) · (\d+) kişi oyunda$/, "Question $1 · $2 still in"],
   [/^Serin (\d+)$/, "Your streak $1"],
+  [/^(\d+) kişi oyunda · (\d+) elendi$/, "$1 still in · $2 out"],
+  [/^(\d+) kişi oyunda$/, "$1 still in"],
+  [/^(\d+)\/(\d+) cevapladı$/, "$1/$2 answered"],
+  [/^(\d+) sıra yükseldi$/, "Up $1"],
+  [/^(\d+) sıra düştü$/, "Down $1"],
   [/^Seri: (\d+)$/, "Streak: $1"],
   [/^en çok (\d+)$/, "max $1"],
   [/^Başka bir sekmede (\S+) lobisinde kurucusun\.$/, "You're hosting lobby $1 in another tab."],
