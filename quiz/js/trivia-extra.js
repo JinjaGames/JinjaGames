@@ -8,9 +8,10 @@ import X5 from "./trivia-x5.js?v=2";
 import X6 from "./trivia-x6.js?v=2";
 import X7 from "./trivia-x7.js?v=2";
 import X8 from "./trivia-x8.js?v=2";
+import Y1 from "./trivia-y1.js?v=1";
 
 export const EXTRA = {};
-for (const part of [X1, X2, X3, X4, X5, X6, X7, X8])
+for (const part of [X1, X2, X3, X4, X5, X6, X7, X8, Y1])
   for (const [id, items] of Object.entries(part)) (EXTRA[id] ||= []).push(...items);
 
 // Ülke ve başkent adından bayrak kodu (cevap açılınca bayrağı göstermek için).

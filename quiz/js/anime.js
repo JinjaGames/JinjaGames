@@ -8,7 +8,25 @@ export const ANIME_QUIZZES = [
   { id: "an-cover", name: "Kapaktan Animeyi Bil", emoji: "📺", kind: "trivia", genre: "Anime", cat: "Anime", anime: "cover", desc: "Anime kapak görselinden hangi anime olduğunu bil." },
   { id: "an-op", name: "Anime Opening Quizi", emoji: "🎧", kind: "op", genre: "Anime", cat: "Anime", opsrc: true, desc: "Openingi dinle; animeyi ve şarkının adını bul. Havuz her gün YouTube'dan büyür." },
   { id: "an-year", name: "Bu Anime Hangi Yıl Çıktı?", emoji: "🧙", kind: "trivia", genre: "Anime", cat: "Anime", anime: "year", desc: "Popüler animelerin çıkış yılını tahmin et." },
+  { id: "an-banner", name: "Sahneden Animeyi Bil", emoji: "🏙️", kind: "trivia", genre: "Anime", cat: "Anime", anime: "banner", desc: "Geniş bir sahne görseline bak, hangi animeden olduğunu bul." },
+  { id: "an-side", name: "Yan Karakterler: Hangi Animeden?", emoji: "🕵️", kind: "trivia", genre: "Anime", cat: "Anime", anime: "side", desc: "Başrolleri herkes bilir; peki yan karakterleri? Zor mod." },
+  { id: "an-romaji", name: "Japonca Adından Animeyi Bil", emoji: "📖", kind: "trivia", genre: "Anime", cat: "Anime", anime: "romaji", desc: "Japonca (romaji) adı verilen animenin bilinen adını seç." },
+  { id: "an-studio", name: "Bu Animeyi Hangi Stüdyo Yaptı?", emoji: "🎬", kind: "trivia", genre: "Anime", cat: "Anime", anime: "studio", desc: "MAPPA mı, ufotable mı, Bones mu? Animenin stüdyosunu bil." },
+  { id: "an-movie", name: "Anime Filmleri: Afişten Bil", emoji: "🎥", kind: "trivia", genre: "Anime", cat: "Anime", anime: "movie", desc: "Anime filmlerinin afişlerinden hangi film olduğunu bul." },
 ];
+// Kart üstündeki soru sayıları (havuzları indirmeden): tools/build_anime.mjs her hafta yazar
+let countsP = null;
+export function animeCounts() {
+  countsP ??= fetch(new URL("../data/anime-index.json", import.meta.url), { cache: "no-cache" })
+    .then((r) => (r.ok ? r.json() : null))
+    .then((j) => {
+      const c = j?.counts && typeof j.counts === "object" ? j.counts : {};
+      for (const q of ANIME_QUIZZES) if (q.anime && Number.isInteger(c[q.anime]) && c[q.anime] > 0) q.n = c[q.anime];
+      return true;
+    })
+    .catch(() => { countsP = null; return false; });
+  return countsP;
+}
 
 const memo = new Map();
 let opsP = null;

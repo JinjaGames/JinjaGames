@@ -1,14 +1,14 @@
 // JinjaQuiz: quiz oluşturma sayfası (/quiz/create/). Sanatçı ve şarkı araması ayrı sekmelerde;
 // sanatçının popüler şarkıları ve tüm albümleri tek tek ya da topluca eklenebilir.
-import { searchArtists, searchTracks, artistInfo, artistTop, artistAlbums, albumTracks, ownTracks, isAlternate, customLists, saveCustom, removeCustom, cleanTracks, fold, cdn } from "./music.js?v=6";
-import { fetchCommunity, loadFull, publishQuiz, removeQuiz, myPubkey, MIN_TRACKS, MAX_TRACKS } from "./community.js?v=13";
-import { TCATS, TART, EMOJIS, T_MIN, T_MAX, cleanItems, cleanCat, cleanEmoji, isTF, IMG } from "./trivia.js?v=5";
-import { cleanOps, RANK_PTS, OP_PTS } from "./engine.js?v=14";
+import { searchArtists, searchTracks, artistInfo, artistTop, artistAlbums, albumTracks, ownTracks, isAlternate, customLists, saveCustom, removeCustom, cleanTracks, fold, cdn } from "./music.js?v=7";
+import { fetchCommunity, loadFull, publishQuiz, removeQuiz, myPubkey, MIN_TRACKS, MAX_TRACKS } from "./community.js?v=14";
+import { TCATS, TART, EMOJIS, T_MIN, T_MAX, cleanItems, cleanCat, cleanEmoji, isTF, IMG } from "./trivia.js?v=6";
+import { cleanOps, RANK_PTS, OP_PTS } from "./engine.js?v=15";
 import { isBadName, isBadText } from "./badwords.js?v=2";
 import { quizSlug, slugify } from "./slug.js?v=1";
-import { initI18n } from "./i18n.js?v=12";
-import { rankItems } from "./rank.js?v=5";
-import { OP_MIN } from "./community.js?v=13";
+import { initI18n } from "./i18n.js?v=13";
+import { rankItems } from "./rank.js?v=6";
+import { OP_MIN } from "./community.js?v=14";
 
 const $ = (s, r = document) => r.querySelector(s);
 const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
@@ -66,10 +66,12 @@ function ytParse(u) {
 }
 const opItems = () => cleanOps(st.ops.map((o) => ({ ...(ytParse(o.url) || {}), anime: o.anime, song: o.song })));
 const hue = (name) => { let h = 0; for (const c of String(name || "?")) h = (h * 31 + c.charCodeAt(0)) >>> 0; return h % 360; };
-const blank = () => ({ q: "", type: "4", a: ["", "", "", ""], tf: true });
+// ok: doğru şıkkın yeri (0-3). Kaydederken doğru cevap başa alınır (oyun şıkları zaten karıştırır).
+const blank = () => ({ q: "", type: "4", a: ["", "", "", ""], tf: true, ok: 0 });
 const visOf = (it) => ({ ...(it.img ? { img: it.img, iw: it.iw === "q" ? "q" : "a" } : {}), ...(it.f ? { f: it.f } : {}), ...(it.e ? { e: it.e } : {}) });
-const toEditor = (it) => ({ ...(isTF(it.a) ? { q: it.q, type: "tf", a: ["", "", "", ""], tf: it.a[0] === "Doğru" } : { q: it.q, type: "4", a: [...it.a, "", "", ""].slice(0, 4), tf: true }), ...visOf(it) });
-const fromEditor = (e) => ({ ...(e.type === "tf" ? { q: e.q.trim(), a: e.tf ? ["Doğru", "Yanlış"] : ["Yanlış", "Doğru"] } : { q: e.q.trim(), a: [e.a[0].trim(), ...e.a.slice(1).map((x) => x.trim()).filter(Boolean)] }), ...visOf(e) });
+const toEditor = (it) => ({ ...(isTF(it.a) ? { q: it.q, type: "tf", a: ["", "", "", ""], tf: it.a[0] === "Doğru" } : { q: it.q, type: "4", a: [...it.a, "", "", ""].slice(0, 4), tf: true, ok: 0 }), ...visOf(it) });
+const fromEditor = (e) => ({ ...(e.type === "tf" ? { q: e.q.trim(), a: e.tf ? ["Doğru", "Yanlış"] : ["Yanlış", "Doğru"] } : { q: e.q.trim(), a: [e.a[okOf(e)].trim(), ...e.a.filter((_, k) => k !== okOf(e)).map((x) => x.trim()).filter(Boolean)] }), ...visOf(e) });
+const okOf = (e) => ([0, 1, 2, 3].includes(e.ok) ? e.ok : 0);
 // Yayınlanan quiz tek bir Nostr kaydına sığmalı (~60 KB); görseller küçük WebP olarak gömülür.
 const PUBLISH_LIMIT = 58000;
 const sizeOf = () => JSON.stringify(st.items.filter((e) => !isBlank(e)).map(fromEditor)).length;
@@ -411,7 +413,7 @@ function triviaMain() {
   return `<section class="crMain">
     <div class="tvHead"><h2>Sorular <small>${n}/${T_MAX}</small></h2><span><button class="btn soft sm" data-do="tvBulk">${ic("list-plus")}Toplu ekle</button><button class="btn primary sm" data-do="tvAdd">${ic("plus")}Soru ekle</button></span></div>
     ${st.bulk ? `<div class="tvBulk"><b>Toplu ekle</b><small class="muted">Her soruyu boş bir satırla ayır. İlk satır soru, altındakiler şıklar. Doğru şıkkın başına * koy (koymazsan ilk şık doğru sayılır). 2 ile 4 şık olabilir.</small><pre>${esc(BULK_EXAMPLE)}</pre><textarea id="tvBulkText" placeholder="Sorularını buraya yapıştır…"></textarea><span><button class="btn ghost sm" data-do="tvBulkClose">Vazgeç</button><button class="btn primary sm" data-do="tvBulkAdd">${ic("check")}Soruları ekle</button></span></div>` : ""}
-    <p class="tvHelp">Yeşil noktalı kutu doğru cevap, diğerleri yanlış şıklar. Oyunda şıklar karıştırılır. En az ${T_MIN} soru gerekir; boş bıraktığın kartlar kaydedilmez.</p>
+    <p class="tvHelp">${ic("check")}<span>Doğru cevabı seçmek için şıkkın solundaki <b>harfe</b> bas; yeşil olan doğru cevaptır. Oyunda şıklar her seferinde karıştırılır. En az ${T_MIN} soru gerekir; boş bıraktığın kartlar kaydedilmez.</span></p>
     <div class="tvList">${st.items.map((e, i) => tvCard(e, i)).join("")}</div>
     ${st.items.length < T_MAX ? `<button class="tvAddBig" data-do="tvAdd">${ic("plus")}Soru ekle</button>` : ""}
   </section>`;
@@ -427,7 +429,11 @@ function tvCard(e, i) {
     <textarea class="tvQ" id="tvq-${i}" data-tvq="${i}" maxlength="200" rows="2" placeholder=""${e.type === "tf" ? "Bir ifade yaz… (ör. Ay, Dünya'nın uydusudur.)" : "Soruyu yaz… (ör. Türkiye'nin başkenti neresidir?)"}">${esc(e.q)}</textarea>
     ${e.type === "tf"
       ? `<div class="tvTF">Bu ifade: <button data-tvtf="${i}:1" aria-pressed="${e.tf}">Doğru</button><button data-tvtf="${i}:0" aria-pressed="${!e.tf}">Yanlış</button></div>`
-      : `<div class="tvOpts">${[0, 1, 2, 3].map((j) => `<label class="tvOpt ${j ? "" : "ok"}"><i class="dot"></i><input id="tva-${i}-${j}" data-tva="${i}:${j}" maxlength="80" value="${esc(e.a[j])}" placeholder="${j === 0 ? "Doğru cevap" : `Yanlış şık${j > 1 ? " (isteğe bağlı)" : ""}`}" aria-label="${j === 0 ? "Doğru cevap" : "Yanlış şık " + j}"></label>`).join("")}</div>`}
+      : `<div class="tvOpts" role="radiogroup" aria-label="Doğru şık">${[0, 1, 2, 3].map((j) => {
+          const ok = okOf(e) === j;
+          const w = [0, 1, 2, 3].filter((k) => k !== okOf(e)).indexOf(j); // kaçıncı yanlış şık
+          return `<div class="tvOpt ${ok ? "ok" : ""}"><button type="button" class="tvMark" data-tvok="${i}:${j}" role="radio" aria-checked="${ok}" aria-label="${"ABCD"[j]} şıkkını doğru cevap yap" title="${ok ? "Doğru cevap" : "Doğru cevap yap"}">${ok ? ic("check") : "ABCD"[j]}</button><input id="tva-${i}-${j}" data-tva="${i}:${j}" maxlength="80" value="${esc(e.a[j])}" placeholder="${ok ? "Doğru cevap" : `Yanlış şık${w > 0 ? " (isteğe bağlı)" : ""}`}" aria-label="${"ABCD"[j]} şıkkı${ok ? " (doğru cevap)" : ""}">${ok ? `<span class="tvOkTag">Doğru</span>` : ""}</div>`;
+        }).join("")}</div>`}
   </div>`;
 }
 function parseBulk(text) {
@@ -444,7 +450,9 @@ function parseBulk(text) {
     }).filter(Boolean);
     if (opts.length < 2) continue;
     const a = [opts[correct] ?? opts[0], ...opts.filter((_, k) => k !== correct)];
-    out.push(toEditor({ q, a }));
+    const ed = toEditor({ q, a });
+    // çoktan seçmelide şıklar yazıldığı sırada kalır; doğru olan işaretli olur
+    out.push(ed.type === "4" ? { ...ed, a: [...opts, "", "", ""].slice(0, 4), ok: opts[correct] != null ? correct : 0 } : ed);
   }
   return out;
 }
@@ -585,7 +593,7 @@ async function checkPublishNow() {
   if (!taken) {
     try {
       const [{ PRESETS, MIXES }, { TRIVIA }, { RANK_QUIZZES }, { ANIME_QUIZZES }, comm] = await Promise.all([
-        import("./music.js?v=6"), import("./trivia.js?v=5"), import("./rank.js?v=5"), import("./anime.js?v=3"), fetchCommunity({ ms: 2500 }).catch(() => []),
+        import("./music.js?v=7"), import("./trivia.js?v=6"), import("./rank.js?v=6"), import("./anime.js?v=5"), fetchCommunity({ ms: 2500 }).catch(() => []),
       ]);
       const mineNow = (x) => st.d && x.d === st.d && x.pubkey === myPubkey(); // düzenlenen quizin kendisi
       taken = [...PRESETS, ...MIXES, ...TRIVIA, ...RANK_QUIZZES, ...ANIME_QUIZZES, ...comm].some((x) => !mineNow(x) && quizSlug(x) === slug);
@@ -686,6 +694,14 @@ document.addEventListener("click", async (e) => {
     if (d.tviw) { const [i, w] = d.tviw.split(":"); st.items[Number(i)].iw = w === "q" ? "q" : "a"; return drawLists(); }
     if (d.tvimgdel) { const e = st.items[Number(d.tvimgdel)]; delete e.img; delete e.iw; return drawLists(); }
     if (d.tvtf) { const [i, v] = pair(d.tvtf); st.items[i].tf = !!v; return drawLists(); }
+    if (d.tvok) {
+      const [i, j] = pair(d.tvok);
+      if (!st.items[i] || ![0, 1, 2, 3].includes(j)) return;
+      st.items[i].ok = j;
+      drawLists();
+      document.getElementById(`tva-${i}-${j}`)?.focus();
+      return;
+    }
     if (d.tvdel) { const i = Number(d.tvdel); if (!isBlank(st.items[i]) && !(await ask({ title: `${i + 1}. soru silinsin mi?`, ok: "Sil" }))) return; st.items.splice(i, 1); if (!st.items.length) st.items.push(blank()); return drawLists(); }
     if (d.tvmove) { const [i, dir] = pair(d.tvmove); const j = i + dir; if (j < 0 || j >= st.items.length) return; [st.items[i], st.items[j]] = [st.items[j], st.items[i]]; return drawLists(); }
     if (d.tab) { st.tab = d.tab; st.results = null; st.artist = null; st.busy = false; searchN++; st.q = ""; drawLists(); runSearch(); return $("#crq").focus(); }

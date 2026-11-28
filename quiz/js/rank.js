@@ -1,6 +1,6 @@
 // Sıralama quizi: bir sanatçının en çok dinlenen 5 şarkısını 20 şık arasından doğru sırayla diz.
 // Sıralama, Deezer'ın sanatçı "en popüler" listesinden (dinlenme sayısına göre) her açılışta güncel alınır.
-import { artistTop, isAlternate, fold } from "./music.js?v=6";
+import { artistTop, isAlternate, fold } from "./music.js?v=7";
 
 export const RANK_CATS = ["Türkçe Rap", "Türkçe Pop", "Türkçe Rock", "Yabancı"];
 export const RANK_QUIZZES = [

@@ -1,8 +1,9 @@
 // Oyun motoru. Kurucunun tarayıcısında çalışır ve tek doğruluk kaynağıdır.
 // Diğer oyuncular yalnızca kendilerine özel durum özetini (view) alır.
-import { fold, preview } from "./music.js?v=6";
-import { cleanItems, cleanEmoji } from "./trivia.js?v=5";
+import { fold, preview } from "./music.js?v=7";
+import { cleanItems, cleanEmoji } from "./trivia.js?v=6";
 import { AVATARS } from "./avatars.js?v=1";
+import { NUMCATS, numChain } from "./numdata.js?v=2";
 
 export const MAX_PLAYERS = 12;
 const PLAYS = 3;
@@ -18,6 +19,9 @@ const OP_SECS = 30; // anime opening sorusu için süre (en az)
 export const RANK_PTS = { exact: 100, near: 30, perfect: 300 };
 // Anime opening: animeyi bilmek 50, şarkıyı bilmek 50, ikisini birden bilmek +50 (hıza göre %60-100 arası)
 export const OP_PTS = { anime: 50, song: 50, both: 50 };
+// Sayı Quizi (lobide): her doğru 100 puan; yanlış bilen elenir. Bitişte sıralama bonusu: son kalan NUM_BONUS alır,
+// diğerleri ne kadar geç elendiyse ona göre (kendinden önce elenen kişi oranında) alır. İlk elenen 0.
+export const NUM_PTS = 100, NUM_BONUS = 300;
 // Sıralama puanı (puan tablosu): oyundaki puanla aynı mantık, ama süre ayarından bağımsız.
 // Hız her zaman 20 sn'lik (opening'de 30 sn) standart süreye göre ölçülür; şarkı quizlerinde zorluk
 // (yazarak cevap, kısa kesit, tersten) puanı orantılı artırır, kolaylık azaltır.
@@ -66,7 +70,7 @@ const uid = () => Math.random().toString(36).slice(2, 10);
 // Sorunun kimliği (daha önce sorulanları hatırlamak için kısa özet)
 const hash = (s) => { let h = 2166136261; for (const c of String(s)) h = Math.imul(h ^ c.codePointAt(0), 16777619) >>> 0; return h.toString(36); };
 // (bayrak / harita sorularında metin aynı, görsel farklıdır: görsel de anahtara girer)
-const qKey = (kind, x) => hash(kind === "trivia" ? x.q + (x.qf ? "|f" + x.qf : "") + (x.qs ? "|s" + x.qs : "") : kind === "rank" ? x.q : kind === "op" ? x.yt : x.id);
+const qKey = (kind, x) => hash(kind === "trivia" ? x.q + (x.qf ? "|f" + x.qf : "") + (x.qs ? "|s" + x.qs : "") : kind === "rank" ? x.q : kind === "op" ? x.yt : kind === "num" ? x.map((y) => y.n).join("|") : x.id);
 const USED_MAX = 400; // havuz başına hatırlanan soru
 const USED_POOLS = 80;
 
@@ -161,6 +165,8 @@ export class Game {
         this.dropVotes(off.pid);
       }
       p = { pid, score: 0, round: 0 };
+      // Sayı Quizi sürerken gelen oyuncu bu turu izler
+      if (this.queue[this.set]?.kind === "num" && !["lobby", "done", "ranking"].includes(this.phase)) p.out = 0;
       this.players.push(p);
     }
     Object.assign(p, clean(profile), { online: true });
@@ -246,11 +252,38 @@ export class Game {
 
   // ---- kuyruk ----
   // ranked: Puanlı mod. Soru sayısı sabit (10 ya da quizde daha azı varsa hepsi), şarkı seçimi yok; yalnızca bu oyunlar sıralamaya girer.
-  addSet({ list, tracks, ids, count, mode, clip, kind, items, survival, reverse, video, lid, ranked, qid }) {
+  addSet({ list, tracks, ids, count, mode, clip, kind, items, survival, reverse, video, lid, ranked, qid, numcat }) {
     lid = lbKeyOf(lid);
     qid = lbKeyOf(qid);
     const pk = qid || lid || "n-" + hash(list?.name || "");
     if (this.queue.length >= 12) throw Error("Kuyrukta en fazla 12 quiz olabilir.");
+    if (kind === "num") {
+      // Sayı Quizi: kategori kurucunun sayfasındaki sabit veriden gelir (ağdan öğe alınmaz)
+      const cat = NUMCATS.find((c) => c.id === numcat);
+      if (!cat) throw Error("Bu Sayı Quizi bulunamadı.");
+      const chain = numChain(cat);
+      if (chain.length < 3) throw Error("Bu Sayı Quizi hazırlanamadı.");
+      this.queue.push({
+        id: uid(),
+        kind: "num",
+        name: cat.name,
+        art: "",
+        picture: "",
+        emoji: cat.emoji,
+        numcat: cat.id,
+        ask: cat.ask,
+        fmt: cat.fmt,
+        tracks: [],
+        questions: chain.map(([a, b]) => [a, b].map(({ n, v, f, e }) => ({ n, v, ...(f ? { f } : {}), ...(e ? { e } : {}) }))),
+        mode: "choice",
+        clip: 0,
+        lid: "nq-" + cat.id,
+        qid: "num-" + cat.id,
+        pk: "num-" + cat.id,
+        ranked: false,
+      });
+      return;
+    }
     if (kind === "rank" || kind === "op") {
       const pool = kind === "rank" ? cleanRank(items) : cleanOps(items);
       if (!pool.length) throw Error(kind === "rank" ? "Bu sıralama quizi hazırlanamadı." : "Bu quizde oynanabilir opening yok.");
@@ -330,15 +363,28 @@ export class Game {
     this.rankAt = null;
     this.set++;
     this.index = -1;
-    for (const p of this.players) (p.round = 0), (p.lbr = 0), (p.hits = 0);
+    for (const p of this.players) (p.round = 0), (p.lbr = 0), (p.hits = 0), (p.out = this.queue[this.set]?.kind === "num" && !p.online ? 0 : null);
+    // Sayı Quizi: başlarken bağlı olanlar yarışır (sonradan gelen izler)
+    this.numN = this.players.filter((p) => p.out === null).length;
     this.advance();
+  }
+  // Sayı Quizi: hâlâ oyunda olanlar
+  alive() {
+    return this.players.filter((p) => p.out === null);
+  }
+  // Sayı Quizi bitiyor mu? (tek başınaysan ilk yanlışta, kalabalıksa tek kişi kalınca)
+  numOver() {
+    const n = this.alive().length;
+    return n === 0 || (this.numN > 1 && n <= 1);
   }
   advance() {
     clearTimeout(this.timer);
     const set = this.queue[this.set];
     // Hayatta kalma: son soru yanlışsa (ya da süre bittiyse) oyun burada biter.
     if (set.survival && this.index >= 0 && !this.question?.answers[this.hostId]?.correct) this.index = set.questions.length - 1;
+    if (set.kind === "num" && this.index >= 0 && this.numOver()) this.index = set.questions.length - 1;
     this.index++;
+    if (set.kind === "num" && this.index >= set.questions.length) this.numFinish();
     if (this.index >= set.questions.length) {
       this.phase = this.set + 1 >= this.queue.length ? "done" : "ranking";
       this.history.push({
@@ -350,7 +396,7 @@ export class Game {
         top: [...this.players].sort((a, b) => b.round - a.round).map((p) => ({ pid: p.pid, name: p.name, pts: p.round })),
         emoji: set.emoji || "",
         qid: set.qid || "",
-        set: { kind: set.kind, emoji: set.emoji, name: set.name, art: set.art, picture: set.picture, tracks: set.tracks, pool: set.questions.length, mode: set.mode, clip: set.clip, reverse: !!set.reverse, video: !!set.video, lid: set.lid || "", qid: set.qid || "", pk: set.pk || "", ranked: !!set.ranked },
+        set: { numcat: set.numcat || "", kind: set.kind, emoji: set.emoji, name: set.name, art: set.art, picture: set.picture, tracks: set.tracks, pool: set.questions.length, mode: set.mode, clip: set.clip, reverse: !!set.reverse, video: !!set.video, lid: set.lid || "", qid: set.qid || "", pk: set.pk || "", ranked: !!set.ranked },
       });
       if (this.history.length > 10) this.history.shift();
       this.rankAt = this.phase === "ranking" && !this.solo ? Date.now() + NEXT_QUIZ : null;
@@ -381,6 +427,15 @@ export class Game {
         start,
         end: start + Math.max(OP_SECS, this.seconds) * 1000,
       };
+      this.phase = "question";
+      this.schedule();
+      this.emit();
+      return;
+    }
+    if (set.kind === "num") {
+      const item = set.questions[this.index];
+      const start = Date.now() + this.lead();
+      this.question = { id: uid(), item, options: item.map((x) => x.n), answers: {}, start, end: start + Math.min(this.seconds, 20) * 1000 };
       this.phase = "question";
       this.schedule();
       this.emit();
@@ -503,6 +558,17 @@ export class Game {
       else if (!this.checkAllAnswered()) this.emit();
       return;
     }
+    if (set.kind === "num") {
+      const p = this.players.find((x) => x.pid === pid);
+      if (!p || p.out !== null) throw Error("Elendin; oyunu izliyorsun.");
+      const i = q.options.indexOf(String(text ?? ""));
+      if (i < 0) throw Error("Bir taraf seç.");
+      const correct = q.item[i].v >= q.item[1 - i].v;
+      q.answers[pid] = { answer: q.options[i], correct, points: correct ? NUM_PTS : 0, ms: now - q.start };
+      if (this.solo) this.reveal();
+      else if (!this.checkAllAnswered()) this.emit();
+      return;
+    }
     const answer = String(text ?? "").trim().slice(0, 120);
     if (!answer) throw Error("Bir cevap yaz.");
     if (set.mode === "choice" && !q.options.includes(answer)) throw Error("Geçerli bir şık seç.");
@@ -515,7 +581,8 @@ export class Game {
   }
   checkAllAnswered() {
     if (this.phase !== "question") return false;
-    const active = this.players.filter((p) => p.online);
+    const num = this.queue[this.set]?.kind === "num";
+    const active = this.players.filter((p) => p.online && (!num || p.out === null));
     if (active.length && active.every((p) => this.question.answers[p.pid])) {
       this.reveal();
       return true;
@@ -529,6 +596,7 @@ export class Game {
     q.autoAt = Date.now() + AUTO_NEXT;
     const cur = this.queue[this.set];
     if (cur?.survival && q.answers[this.hostId]?.correct) cur.streak++;
+    if (cur?.kind === "num") for (const p of this.alive()) if (!q.answers[p.pid]?.correct) p.out = this.index + 1; // elendi (kaçıncı soruda)
     for (const p of this.players) {
       const ans = q.answers[p.pid];
       const pts = ans?.points || 0;
@@ -539,6 +607,18 @@ export class Game {
     }
     this.schedule();
     this.emit();
+  }
+  // Sayı Quizi bitti: seri puanlarının üstüne sıralama bonusu (son kalan en çok; erken elenen az)
+  numFinish() {
+    const ps = this.players.filter((p) => p.out !== 0 && p.out !== undefined);
+    if (ps.length > 1)
+      for (const p of ps) {
+        const before = ps.filter((x) => x.hits < p.hits).length;
+        const bonus = Math.round((NUM_BONUS * before) / (ps.length - 1));
+        p.score += bonus;
+        p.round += bonus;
+        p.bonus = bonus;
+      }
   }
   next() {
     // Lobide sorudan soruya geçiş kendiliğinden olur; kurucu öne alamaz.
@@ -615,7 +695,7 @@ export class Game {
         this.question = null;
         for (const p of this.players) (p.score = 0), (p.round = 0), (p.lbr = 0), (p.hits = 0);
         // aynı quizler yeniden: sorulmamış sorular önce (havuz bittiyse yeni tur)
-        this.queue = this.queue.map((s) => ({ ...s, id: uid(), streak: 0, questions: s.survival ? shuffle(s.tracks) : s.kind === "rank" ? shuffle(s.questions) : this.fresh(s.pk || "n-" + hash(s.name), s.kind || "song", s.tracks.filter((t) => !s.ids || s.ids.includes(t.id)), s.questions.length) }));
+        this.queue = this.queue.map((s) => s.kind === "num" ? { ...s, id: uid(), questions: numChain(NUMCATS.find((c) => c.id === s.numcat)).map(([a, b]) => [a, b]) } : ({ ...s, id: uid(), streak: 0, questions: s.survival ? shuffle(s.tracks) : s.kind === "rank" ? shuffle(s.questions) : this.fresh(s.pk || "n-" + hash(s.name), s.kind || "song", s.tracks.filter((t) => !s.ids || s.ids.includes(t.id)), s.questions.length) }));
         break;
       case "lobby":
         // Çok oyunculu: herkes lobiye döner; genel puanlar ve geçmiş kalır, oynanan quizler sıradan çıkar.
@@ -634,6 +714,7 @@ export class Game {
         if (this.phase !== "lobby") throw Error("Oyun başladı.");
         const h = this.history.find((x) => x.id === a.id);
         if (!h) throw Error("Bu quiz artık yok.");
+        if (h.set.kind === "num") { this.addSet({ kind: "num", numcat: h.set.numcat }); break; }
         if (this.queue.length >= 12) throw Error("Kuyrukta en fazla 12 quiz olabilir.");
         const pool = h.set.tracks;
         this.queue.push({
@@ -683,7 +764,7 @@ export class Game {
       seconds: this.seconds,
       autoNext: this.autoNext,
       now: Date.now(),
-      players: this.players.map(({ pid, name, avatar, color, photo, score, round, lbr, hits, online }) => ({
+      players: this.players.map(({ pid, name, avatar, color, photo, score, round, lbr, hits, online, out, bonus }) => ({
         pid,
         name,
         avatar,
@@ -694,6 +775,8 @@ export class Game {
         lbr: lbr || 0,
         hits: hits || 0,
         online,
+        out: set?.kind === "num" && out != null ? out : null,
+        bonus: set?.kind === "num" ? bonus || 0 : 0,
       })),
       queue: this.queue.map((s) => ({
         id: s.id,
@@ -713,6 +796,7 @@ export class Game {
         qid: s.qid || "",
         ranked: !!s.ranked,
         pool: s.tracks?.length || 0,
+        numcat: s.numcat || "",
       })),
       set: this.set,
       index: this.index,
@@ -724,7 +808,9 @@ export class Game {
           ? {
               id: q.id,
               kind: set.kind || "song",
-              text: set.kind === "trivia" || set.kind === "rank" ? q.item.q : set.kind === "op" ? "Bu opening hangi animenin, şarkının adı ne?" : null,
+              text: set.kind === "trivia" || set.kind === "rank" ? q.item.q : set.kind === "op" ? "Bu opening hangi animenin, şarkının adı ne?" : set.kind === "num" ? set.ask : null,
+              pair: set.kind === "num" ? q.item.map(({ n, f, e, v }) => ({ n, f: f || "", e: e || "", ...(reveal ? { v } : {}) })) : null,
+              fmt: set.kind === "num" ? set.fmt : null,
               picture: set.kind === "rank" ? q.item.cover || set.picture : null,
               artist: set.kind === "rank" ? q.item.artist : null,
               slots: set.kind === "rank" ? RANK_N : null,
@@ -752,14 +838,14 @@ export class Game {
                   : {},
               reveal: reveal
                 ? {
-                    title: set.kind === "trivia" ? q.item.a[0] : set.kind === "rank" ? q.item.artist : set.kind === "op" ? q.item.anime : q.track.title,
+                    title: set.kind === "trivia" ? q.item.a[0] : set.kind === "rank" ? q.item.artist : set.kind === "op" ? q.item.anime : set.kind === "num" ? (q.item[0].v >= q.item[1].v ? q.item[0] : q.item[1]).n : q.track.title,
                     song: set.kind === "op" ? q.item.song : null,
                     order: set.kind === "rank" ? q.item.top : null,
                     plays: set.kind === "rank" ? q.item.n || null : null,
                     flag: set.kind === "trivia" ? q.item.f || null : null,
                     emo: set.kind === "trivia" ? q.item.e || null : null,
                     pic: set.kind === "trivia" && q.item.iw !== "q" ? q.item.img || null : null,
-                    artist: set.kind === "trivia" || set.kind === "rank" || set.kind === "op" ? "" : q.track.artist,
+                    artist: set.kind === "trivia" || set.kind === "rank" || set.kind === "op" || set.kind === "num" ? "" : q.track.artist,
                     cover: q.cover,
                     album: q.album,
                     results: Object.fromEntries(

@@ -157,7 +157,7 @@ function validScore(e) {
     if (!c || c.v !== 1 || "jqscore:" + c.q !== d || !Number.isInteger(c.s) || c.s < 0 || c.s > 2000) return false;
     // sitedeki mantık sınırı (quiz/js/board.js, plausible) ile aynı
     const cc = Math.max(0, Math.min(10, Number(c.c) | 0)), k = c.q;
-    const ok = /^(t-|daily-)/.test(k) || /^an-(?!op$)/.test(k) ? c.s <= Math.min(1000, cc * 100) : k === "an-op" ? c.s <= 1500 : k.startsWith("nq-") ? c.s <= 1625 : c.s <= Math.min(1625, cc * 163);
+    const ok = /^(t-|daily-)/.test(k) || /^an-(?!op$)/.test(k) ? c.s <= Math.min(1000, cc * 100) : k === "an-op" ? c.s <= 1500 : k.startsWith("nq-") ? c.s <= 300 : c.s <= Math.min(1625, cc * 163);
     if (!ok) return false;
     const id = bytesToHex(sha256(enc.encode(JSON.stringify([0, e.pubkey, e.created_at, e.kind, e.tags, e.content]))));
     if (id !== e.id) return false;
@@ -256,5 +256,54 @@ const sortedBy = Object.fromEntries(Object.keys(by).sort().map((k) => [k, Object
 console.log(`Oynanma kayıtları: ${nP} geçerli, ${Object.keys(sortedBy).length} quiz`);
 if (JSON.stringify(sortedBy) !== beforeP) {
   writeFileSync(PLAYS, JSON.stringify({ note: "JinjaQuiz oynanma sayıları (kişi başına en yüksek sayı; kişi = açık anahtarın ilk 12 hanesi). tools/archive_community.mjs üretir.", by: sortedBy }) + "\n");
+}
+
+// ---- Favoriler / kalp sayıları (quiz/js/favs.js) ----
+// Her oyuncunun tek kaydı (d = "jqfavs") favori quizlerinin listesidir; arşiv kişi başına EN YENİ listeyi tutar
+// (kalbi geri alan sayılmasın). Kişi = açık anahtarın ilk 12 hanesi.
+const FAVS = join(ROOT, "quiz/data/favs.json");
+const FAVS_TAG = "jinjaquiz-favs";
+const favId = (k) => /^[a-z0-9][a-z0-9-]{0,63}$/.test(k) && !/^(my|dz)/.test(k);
+function favOf(e) {
+  try {
+    if (!e || e.kind !== KIND || typeof e.content !== "string" || e.content.length > 30000) return null;
+    if (dTag(e) !== "jqfavs" || !e.tags.some((t) => t[0] === "t" && t[1] === FAVS_TAG)) return null;
+    const c = JSON.parse(e.content);
+    if (!c || c.v !== 1 || !Array.isArray(c.f)) return null;
+    const id = bytesToHex(sha256(enc.encode(JSON.stringify([0, e.pubkey, e.created_at, e.kind, e.tags, e.content]))));
+    if (id !== e.id || !schnorr.verify(hexToBytes(e.sig), hexToBytes(e.id), hexToBytes(e.pubkey))) return null;
+    return { pk: e.pubkey.slice(0, 12), at: e.created_at, f: [...new Set(c.f.map((x) => String(x).toLowerCase()).filter(favId))].slice(0, 300) };
+  } catch {
+    return null;
+  }
+}
+function fetchFavs(url) {
+  return new Promise((resolve) => {
+    const got = [];
+    let ws;
+    const done = () => { clearTimeout(t); try { ws.close(); } catch {} resolve(got); };
+    const t = setTimeout(done, 15000);
+    try { ws = new WebSocket(url); } catch { return done(); }
+    ws.onopen = () => ws.send(JSON.stringify(["REQ", "fv", { kinds: [KIND], "#t": [FAVS_TAG], limit: 5000 }]));
+    ws.onerror = done;
+    ws.onmessage = (m) => {
+      let x;
+      try { x = JSON.parse(m.data); } catch { return; }
+      if (x[0] === "EVENT" && x[1] === "fv") got.push(x[2]);
+      if ((x[0] === "EOSE" || x[0] === "CLOSED") && x[1] === "fv") done();
+    };
+  });
+}
+let favBy = {};
+try { favBy = JSON.parse(readFileSync(FAVS, "utf8")).by || {}; } catch {}
+const beforeF = JSON.stringify(favBy);
+for (const e of (await Promise.all(RELAYS.map(fetchFavs))).flat()) {
+  const f = favOf(e);
+  if (f && !(favBy[f.pk]?.at >= f.at)) favBy[f.pk] = { at: f.at, f: f.f };
+}
+const sortedF = Object.fromEntries(Object.keys(favBy).sort().map((k) => [k, favBy[k]]));
+console.log(`Favori listeleri: ${Object.keys(sortedF).length} kişi`);
+if (JSON.stringify(sortedF) !== beforeF || !Object.keys(sortedF).length) {
+  writeFileSync(FAVS, JSON.stringify({ note: "JinjaQuiz favori listeleri (kişi başına en yeni liste; kişi = açık anahtarın ilk 12 hanesi). tools/archive_community.mjs üretir.", by: sortedF }) + "\n");
 }
 process.exit(0);

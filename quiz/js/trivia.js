@@ -1,8 +1,12 @@
-import { MORE } from "./trivia-more.js?v=3";
-import { EXTRA, FLAG_QUIZZES, flagFor } from "./trivia-extra.js?v=2";
+import { MORE } from "./trivia-more.js?v=4";
+import { EXTRA, FLAG_QUIZZES, flagFor } from "./trivia-extra.js?v=3";
 import { NEW } from "./trivia-new.js?v=1";
 import { NEW2 } from "./trivia-new2.js?v=1";
-import { MAPS } from "./trivia-maps.js?v=1";
+import { MAPS } from "./trivia-maps.js?v=2";
+import { N3A } from "./trivia-n3a.js?v=1";
+import { N3B } from "./trivia-n3b.js?v=1";
+import { N3C } from "./trivia-n3c.js?v=1";
+import { N3D } from "./trivia-n3d.js?v=1";
 
 // Trivia quizleri: müzik dışı bilgi soruları. Her soru { q: soru, a: [doğru, yanlış, yanlış, yanlış] }
 // biçimindedir; ilk cevap her zaman doğrudur, oyunda şıklar karıştırılır. Doğru/Yanlış soruları iki şıklıdır.
@@ -11,7 +15,8 @@ export const T_MIN = 5;
 export const T_MAX = 100;
 export const TCATS = ["Genel Kültür", "Tarih", "Coğrafya", "Bilim", "Spor", "Film & Dizi", "Müzik", "Oyun", "Edebiyat & Sanat", "Yemek", "Teknoloji", "Eğlence"];
 export const EMOJIS = ["🧠", "🔥", "🌍", "🏛️", "🎖️", "📜", "🏅", "🚀", "🧪", "🦁", "⚽", "🏆", "🎬", "🍿", "📺", "🎸", "🎮", "📚", "🎨", "🍕", "💻", "⚡", "✅", "🔢", "🗺️", "🎯", "💡", "🌟", "❤️", "😂", "🐉",
-  "🚩", "🏰", "🌋", "🏙️", "🗿", "👑", "🦖", "🦈", "🧬", "🪐", "🐾", "🏀", "🏎️", "🎾", "🥇", "🦸", "🧸", "🎥", "🧙", "🎤", "🎹", "🎧", "👾", "🕹️", "📖", "📝", "💬", "🍰", "🍔", "📱", "🤖", "🕵️", "🧩", "🎲"];
+  "🚩", "🏰", "🌋", "🏙️", "🗿", "👑", "🦖", "🦈", "🧬", "🪐", "🐾", "🏀", "🏎️", "🎾", "🥇", "🦸", "🧸", "🎥", "🧙", "🎤", "🎹", "🎧", "👾", "🕹️", "📖", "📝", "💬", "🍰", "🍔", "📱", "🤖", "🕵️", "🧩", "🎲",
+  "🚆", "⚔️", "🗣️", "🌿", "🩺", "🌦️", "🤔", "🍎", "🔤"];
 
 // Kapak görselleri: kategori başına renk tonu ve süs simgeleri
 export const TART = {
@@ -547,7 +552,7 @@ export const TRIVIA = [
     Q("Logosunda sıçrayan bir kedi bulunan spor markası hangisidir?", "Puma", "Jack Wolfskin", "Under Armour", "Lotto"),
     Q("Kırmızı-beyaz logosu ve kıvrımlı yazısıyla bilinen içecek markası hangisidir?", "Coca-Cola", "Pepsi", "Fanta", "Sprite"),
     Q("Logosunda kırmızı bir 'play' düğmesi bulunan platform hangisidir?", "YouTube", "Netflix", "Twitch", "Vimeo"),
-  ]),  ...MORE, ...NEW, ...NEW2, ...MAPS,
+  ]),  ...MORE, ...NEW, ...NEW2, ...MAPS, ...N3A, ...N3B, ...N3C, ...N3D,
 ];
 // Ek soruları birleştir (aynı soru iki kez girmez) ve ülke cevaplarına bayrak ekle.
 for (const t of TRIVIA) {

@@ -57,6 +57,12 @@ export const MAPS = [
       M("ma", "Fas", "Cezayir", "Tunus", "Moritanya"),
       M("ng", "Nijerya", "Gana", "Kamerun", "Nijer"),
       M("iq", "Irak", "Suriye", "İran", "Ürdün"),
+      M("pl", "Polonya", "Almanya", "Çekya", "Belarus"),
+      M("ro", "Romanya", "Bulgaristan", "Macaristan", "Moldova"),
+      M("dz", "Cezayir", "Libya", "Fas", "Mali"),
+      M("ve", "Venezuela", "Kolombiya", "Ekvador", "Bolivya"),
+      M("my", "Malezya", "Endonezya", "Filipinler", "Tayland"),
+      M("et", "Etiyopya", "Somali", "Kenya", "Sudan"),
     ],
   },
 ];

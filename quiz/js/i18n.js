@@ -235,6 +235,25 @@ const D = {
   "Cevapları gör": "See answers", "Bugünün cevapları": "Today's answers", "cevap vermedin": "no answer", "Quizin yükleniyor…": "Loading your quiz…", "Quizi düzenle": "Edit quiz",
   "Topluluktaki son hali getiriliyor.": "Fetching the latest version from Community.", "Doğru cevaplar (bu oyundaki kendi cevapların kaydedilmemiş).": "Correct answers (your own answers from this game weren't saved).", "Bayrak": "Flag", "Ülkenin haritadaki şekli": "Country shape on the map",
 };
+// 2026-11-28: favoriler, sekmeler, Sayı Quizi lobisi, yeni anime quizleri
+Object.assign(D, {
+  "Favoriler": "Favorites", "Favorilerin": "Your favorites", "Kalplediğin quizler": "Quizzes you hearted", "Favorilere ekle": "Add to favorites",
+  "Favorilerinde": "In your favorites", "Favorilerden çıkar": "Remove from favorites",
+  "Henüz favorin yok. Beğendiğin quizin kartındaki kalbe bas; hepsi burada toplanır.": "No favorites yet. Tap the heart on a quiz card and it will show up here.",
+  "Başka bir sekmede lobidesin": "You're in a lobby in another tab", "Lobiyi bu sekmeye al": "Move the lobby to this tab", "Bu sekmeye al": "Move here",
+  "Lobi öbür sekmeye taşındı.": "The lobby moved to the other tab.", "Lobi bu sekmeye taşındı.": "The lobby moved to this tab.",
+  "Öbür sekme cevap vermedi. O sekmeyi kapatıp yeniden dene.": "The other tab didn't respond. Close it and try again.",
+  "Sayı Quizi": "Number Quiz", "En uzun seriler": "Longest streaks",
+  "Henüz kimse yok. Bir seri yap, ilk sen ol!": "Nobody yet. Make a streak and be first!",
+  "Seri: hiç yanlış yapmadan art arda bilinen soru sayısı. Solo ve arkadaşlarla oynanan oyunların hepsi sayılır; herkesin en uzun serisi görünür.": "Streak: questions answered in a row without a mistake. Solo and party games all count; everyone's longest streak is shown.",
+  "Hepsini bildin!": "You got them all!", "Elendin": "Out", "Süre doldu · elendin": "Time's up · you're out",
+  "Yanlış bilen elenir · son kalan kazanır": "Wrong answer knocks you out · last one standing wins", "İlk yanlışta oyun biter · seriyi uzat": "First mistake ends the game · extend your streak",
+  "Bu tura sonradan katıldın; bitince sen de oynarsın.": "You joined mid-round; you'll play when it ends.",
+  "Şu an açık lobi yok": "No open lobbies right now", "Bir lobi kur ve herkese aç; burada görünür, isteyen tek dokunuşla katılır.": "Create a lobby and make it public; it shows up here and anyone can join with one tap.",
+  "Sahneden Animeyi Bil": "Guess the Anime from the Scene", "Yan Karakterler: Hangi Animeden?": "Side Characters: Which Anime?", "Japonca Adından Animeyi Bil": "Guess the Anime from Its Japanese Title",
+  "Bu Animeyi Hangi Stüdyo Yaptı?": "Which Studio Made This Anime?", "Anime Filmleri: Afişten Bil": "Anime Movies: Guess from the Poster",
+  "Doğru cevap yap": "Make this the correct answer",
+});
 const EN = new Map(Object.entries(D));
 const DAYS = { Pazar: "Sunday", Pazartesi: "Monday", Salı: "Tuesday", Çarşamba: "Wednesday", Perşembe: "Thursday", Cuma: "Friday", Cumartesi: "Saturday" };
 const MONTHS = { Ocak: "January", Şubat: "February", Mart: "March", Nisan: "April", Mayıs: "May", Haziran: "June", Temmuz: "July", Ağustos: "August", Eylül: "September", Ekim: "October", Kasım: "November", Aralık: "December" };
@@ -292,6 +311,14 @@ const RX = [
   [/^(\d+) oy$/, (_, n) => pl(n, "vote", "votes")],
   [/^“(.+)” adında bir quiz zaten var \((.+)\)\. Lütfen farklı bir ad seç\.$/, "A quiz named “$1” already exists ($2). Please choose a different name."],
   [/^rekorun (.+)$/, "your record $1"],
+  [/^Sayı · ([\d.]+) öğe(?: · rekorun (\d+))?$/, (_, n, r) => `Number · ${pl(n, "item", "items")}${r ? ` · record ${r}` : ""}`],
+  [/^Anime · ([\d.]+) soru$/, (_, n) => `Anime · ${pl(n, "question", "questions")}`],
+  [/^Soru (\d+) · (\d+) kişi oyunda$/, "Question $1 · $2 still in"],
+  [/^Serin (\d+)$/, "Your streak $1"],
+  [/^Seri: (\d+)$/, "Streak: $1"],
+  [/^en çok (\d+)$/, "max $1"],
+  [/^Başka bir sekmede (\S+) lobisinde kurucusun\.$/, "You're hosting lobby $1 in another tab."],
+  [/^Başka bir sekmede (\S+) lobisindesin\.$/, "You're in lobby $1 in another tab."],
 ];
 function tr1(t) {
   if (EN.has(t)) return EN.get(t);

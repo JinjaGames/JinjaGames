@@ -39,7 +39,8 @@ export const dailyLabel = (date) => {
 export function dailyQuiz(TRIVIA, date = dailyDate()) {
   const r = rng("jinjaquiz-daily-" + date);
   const byCat = new Map();
-  for (const t of [...TRIVIA].filter((t) => !t.noDaily).sort((a, b) => (a.id < b.id ? -1 : 1))) {
+  // since: o tarihten önce eklenmemiş sayılır (sonradan eklenen sorular geçmiş günlerin sorularını değiştirmesin)
+  for (const t of [...TRIVIA].filter((t) => !t.noDaily && !(t.since > date)).sort((a, b) => (a.id < b.id ? -1 : 1))) {
     if (!byCat.has(t.cat)) byCat.set(t.cat, []);
     byCat.get(t.cat).push(t);
   }
@@ -48,7 +49,7 @@ export function dailyQuiz(TRIVIA, date = dailyDate()) {
   const used = new Set();
   for (const c of cats) {
     const quiz = shuffle(byCat.get(c), r)[0];
-    const pool = (quiz.dailyItems || quiz.items).filter((it) => it.a.length === 4 && !it.img && !it.qf && !it.qs && !used.has(it.q));
+    const pool = (quiz.dailyItems || quiz.items).filter((it) => it.a.length === 4 && !it.img && !it.qf && !it.qs && !(it.since > date) && !used.has(it.q));
     const it = shuffle(pool, r)[0];
     if (!it) continue;
     used.add(it.q);

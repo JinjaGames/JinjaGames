@@ -1,21 +1,23 @@
-import { PRESETS, MIXES, loadTracks, searchArtists, customLists, saveCustom, removeCustom, fold, cdn, realPic, loadPresetPictures } from "./music.js?v=6";
+import { PRESETS, MIXES, loadTracks, searchArtists, customLists, saveCustom, removeCustom, fold, cdn, realPic, loadPresetPictures } from "./music.js?v=7";
 import { sfx, sfxEnabled, setSfx, setSfxVolume } from "./sfx.js?v=5";
 import { randomName } from "./names.js";
-import { fetchCommunity, loadFull, removeQuiz, hideQuiz, unhideQuiz, hiddenList } from "./community.js?v=13";
-import { Game, MAX_PLAYERS, RANK_PTS, OP_PTS } from "./engine.js?v=14";
-import { lbKey, loadBoard, peekBoard, submitScore, myBest, isMine, syncMine, LB_TOP, LB_QUESTIONS } from "./board.js?v=9";
+import { fetchCommunity, loadFull, removeQuiz, hideQuiz, unhideQuiz, hiddenList } from "./community.js?v=14";
+import { Game, MAX_PLAYERS, RANK_PTS, OP_PTS, NUM_BONUS } from "./engine.js?v=15";
+import { lbKey, loadBoard, peekBoard, submitScore, myBest, isMine, syncMine, LB_TOP, LB_QUESTIONS } from "./board.js?v=10";
 import { quizSlug, slugTable } from "./slug.js?v=1";
 import { maskName, maskText, isBadName } from "./badwords.js?v=2";
 import { AVATARS, ICON_AVATARS, LETTER_AVATARS, isLetterAvatar } from "./avatars.js?v=1";
-import { RANK_QUIZZES, RANK_CATS, rankItems, fromYouTube } from "./rank.js?v=5";
-import { TRIVIA, TCATS, TART, EMOJIS, cleanItems, IMG, ANI_IMG, FLAG, flagUrl, cleanEmo, SHAPE, shapeUrl } from "./trivia.js?v=5";
-import { ANIME_QUIZZES, ERAS, animeItems, animeOps } from "./anime.js?v=3";
-import { NUMCATS, fmtNum, farEnough } from "./numdata.js";
+import { RANK_QUIZZES, RANK_CATS, rankItems, fromYouTube } from "./rank.js?v=6";
+import { TRIVIA, TCATS, TART, EMOJIS, cleanItems, IMG, ANI_IMG, FLAG, flagUrl, cleanEmo, SHAPE, shapeUrl } from "./trivia.js?v=6";
+import { ANIME_QUIZZES, ERAS, animeItems, animeOps, animeCounts } from "./anime.js?v=5";
+import { NUMCATS, fmtNum, farEnough, numChain } from "./numdata.js?v=2";
 import { hostRoom, guestRoom, newCode, validCode } from "./net.js?v=7";
-import { announceLobby, listLobbies } from "./lobbies.js?v=7";
-import { countPlay, loadPlays, plays, players, onPlays, playsLoaded } from "./plays.js?v=8";
-import { dailyQuiz, dailyDate, dailyLeft, dailyLabel, dailyResult, saveDaily, dailyStreak } from "./daily.js?v=2";
-import { initI18n, LANG, applyLang } from "./i18n.js?v=12";
+import { announceLobby, listLobbies } from "./lobbies.js?v=8";
+import { countPlay, loadPlays, plays, players, onPlays, playsLoaded } from "./plays.js?v=9";
+import { dailyQuiz, dailyDate, dailyLeft, dailyLabel, dailyResult, saveDaily, dailyStreak } from "./daily.js?v=3";
+import { initI18n, LANG, applyLang } from "./i18n.js?v=13";
+import { initTabs, tabsUpdate, lobbyElsewhere, pidTaken, takeLobby } from "./tabs.js?v=1";
+import { favList, isFav, favCount, toggleFav, loadFavs, onFavs, favKey } from "./favs.js?v=1";
 
 // ---------- yardımcılar ----------
 const $ = (s, r = document) => r.querySelector(s);
@@ -59,7 +61,7 @@ const num = (v) => (Number.isFinite(Number(v)) ? Number(v) : 0);
 
 // Kurucudan gelen oyun durumu (başka birinin tarayıcısı) tür tür süzülür: sayılar sayı, kimlikler
 // güvenli karakter, adresler yalnızca Deezer CDN'i, profil parçaları izin listesinden.
-const NUM = new Set(["ys", "slots", "rankAt", "pts", "count", "clip", "score", "round", "points", "ms", "index", "set", "seconds", "start", "end", "offset", "autoAt", "now", "streak", "lbr", "hits", "pool"]);
+const NUM = new Set(["ys", "slots", "rankAt", "pts", "count", "clip", "score", "round", "points", "ms", "index", "set", "seconds", "start", "end", "offset", "autoAt", "now", "streak", "lbr", "hits", "pool", "v", "out", "bonus"]);
 const IDK = new Set(["id", "pid", "host", "me", "code"]);
 function cleanView(x, k = "", depth = 0) {
   if (depth > 10) return null;
@@ -84,7 +86,9 @@ function cleanView(x, k = "", depth = 0) {
   if (k === "color") return COLORS.includes(x) ? x : "coral";
   if (k === "art") return x === "hero" ? "hero" : "";
   if (k === "emoji") return EMOJIS.includes(x) ? x : "";
-  if (k === "kind") return ["trivia", "rank", "op"].includes(x) ? x : "song";
+  if (k === "kind") return ["trivia", "rank", "op", "num"].includes(x) ? x : "song";
+  if (k === "f") return /^[a-z]{2}(-[a-z]{2,3})?$/.test(x || "") ? x : "";
+  if (k === "e") return cleanEmo(x) || "";
   if (k === "lid") return lbKey(x);
   if (k === "yt") return /^[\w-]{11}$/.test(x || "") ? x : null;
   if (typeof x === "string") return x.slice(0, 300);
@@ -97,7 +101,8 @@ const sheetBody = $("#sheetBody");
 initI18n();
 
 let profile = store.get("jqProfile", null);
-const pid = store.get("jqPid", null, sessionStorage) || uid();
+const hadPid = !!store.get("jqPid", null, sessionStorage);
+let pid = store.get("jqPid", null, sessionStorage) || uid();
 store.set("jqPid", pid, sessionStorage);
 
 const ui = { cat: "", genre: "Keşfet", query: "", results: null, searching: false, community: null, communityErr: false };
@@ -407,7 +412,13 @@ function unseal(str) {
   for (let i = 0; i < bytes.length; i++) bytes[i] ^= parseInt(k.substr((i % 16) * 2, 2), 16) ^ (i * 31) & 255;
   return JSON.parse(new TextDecoder().decode(bytes));
 }
+let tabSig = "";
+function tabsSync() {
+  const s = mode && mode.role !== "solo" ? mode.role + mode.code : "";
+  if (s !== tabSig) { tabSig = s; tabsUpdate(); }
+}
 function persist() {
+  tabsSync();
   if (!mode || mode.role === "solo") return;
   try {
     store.set("jqSession", { role: mode.role, code: mode.code, game: mode.role === "host" ? seal(mode.game) : null, vis: mode.vis || "private", pw: mode.pw || "", ad: !!mode.adopted }, sessionStorage);
@@ -425,8 +436,45 @@ function onGame(game) {
   lobbyAnnounce();
   render();
 }
+// ---------- sekmeler arası lobi devri ----------
+// Lobi öbür sekmeye verilirken bu sekme sessizce çıkar (oyunculara "lobi kapandı" denmez); yeni sekme aynı
+// kimlikle (pid) bağlanır: kurucuysa oyun kaldığı yerden sürer, oyuncuysa puanı ve sırası korunur.
+function giveLobby() {
+  if (!mode || mode.role === "solo") return null;
+  const d = mode.role === "host"
+    ? { role: "host", pid, game: JSON.parse(JSON.stringify(mode.game)), vis: mode.vis || "private", pw: mode.pw || "", ad: !!mode.adopted, chat: chat.list.slice(-CHAT_MAX) }
+    : { role: "guest", pid, code: mode.code, pw: mode.pw || "", chat: chat.list.slice(-CHAT_MAX) };
+  stopClip();
+  if (mode.game) clearTimeout(mode.game.timer);
+  if (mode.role === "host") { clearTimeout(lobby.t); lobby.said = false; mode.net?.close({ quiet: true }); }
+  else mode.net?.close();
+  mode = null;
+  view = null;
+  chatReset();
+  store.del("jqSession", sessionStorage);
+  tabsSync();
+  screen = "home";
+  render();
+  toast("Lobi öbür sekmeye taşındı.");
+  return d;
+}
+function adoptLobby(d) {
+  if (!d || !/^[a-z0-9]{4,16}$/i.test(String(d.pid || ""))) return;
+  if (mode) leaveRoom(true);
+  pid = String(d.pid);
+  store.set("jqPid", pid, sessionStorage);
+  const code = d.role === "host" ? d.game?.code : d.code;
+  if (!validCode(String(code || ""))) return;
+  store.set("jqChat", { code, list: Array.isArray(d.chat) ? d.chat.slice(-CHAT_MAX) : [] }, sessionStorage);
+  if (d.role === "host") {
+    try { startHost({ restore: d.game, vis: d.vis, pw: d.pw, adopted: d.ad }); } catch (e) { return fail(e); }
+  } else startGuest(code, { pw: d.pw || "", own: true });
+  toast("Lobi bu sekmeye taşındı.");
+}
 function startHost({ solo = false, restore = null, vis = "private", pw = "", adopted = false } = {}) {
   if (!profile) return openSheet("profile", { then: () => startHost({ solo }) });
+  // aynı tarayıcının başka bir sekmesinde lobi açıksa ikinci lobi kurulmaz
+  if (!solo && !restore && lobbyElsewhere()) return openSheet("elsewhere");
   const code = restore?.code || newCode();
   const game = restore
     ? Game.restore(restore, onGame)
@@ -515,8 +563,9 @@ document.addEventListener("visibilitychange", () => {
     }
   } catch {}
 });
-function startGuest(code, { fromList = false, pw = "", keepChat = false, moving = false } = {}) {
+function startGuest(code, { fromList = false, pw = "", keepChat = false, moving = false, own = false } = {}) {
   if (!profile) return openSheet("profile", { then: () => startGuest(code, { fromList, pw }) });
+  if (!own && !(mode?.role === "guest" && mode.code === code) && lobbyElsewhere()) return openSheet("elsewhere", { code, pw });
   pwAsk = null;
   const same = mode?.role === "guest" && mode.code === code;
   leaveRoom(true, same || keepChat);
@@ -832,7 +881,7 @@ function transferHost(to) {
   toast(`Kuruculuk ${maskName(p?.name || "oyuncuya")} devredildi. Lobide oyuncu olarak devam ediyorsun.`);
   setTimeout(() => {
     net.close({ quiet: true });
-    startGuest(code, { keepChat: true, moving: true, pw: pw || "" });
+    startGuest(code, { keepChat: true, moving: true, pw: pw || "", own: true });
   }, 700);
 }
 // Gelen oyun durumu düz veriye çevrilir (tür ve boyut sınırı; nesne prototipine dokunan anahtarlar atılır).
@@ -940,6 +989,7 @@ function leaveRoom(silent = false, keepChat = false) {
   mode = null;
   view = null;
   store.del("jqSession", sessionStorage);
+  tabsSync();
   history.replaceState(null, "", location.pathname);
   if (!silent || screen === "room") {
     screen = "home";
@@ -1039,7 +1089,9 @@ async function refreshLobbies(force = false) {
   drawLobbies();
 }
 // oynanma sayıları: ana sayfa açıkken en çok 10 dakikada bir yeniden toplanır (arada önbellekten)
-setInterval(() => { if (screen === "home" && !mode && !document.hidden) loadPlays({ fresh: true }); }, 60000);
+setInterval(() => { if (screen === "home" && !mode && !document.hidden) { loadPlays({ fresh: true }); loadFavs({ fresh: true }); } }, 60000);
+// kalp sayıları geldi ya da başka sekmede kalbe basıldı
+onFavs(() => { if (screen === "home" && !mode) bgRender(); else if (screen === "detail") for (const el of $$("[data-fav]")) favPaint(el.dataset.fav); });
 // ana sayfa açıkken yarım dakikada bir tazele
 setInterval(() => { if (screen === "home" && !mode && !document.hidden) refreshLobbies(); }, 30000);
 function drawLobbies() {
@@ -1061,10 +1113,12 @@ function lobbiesHtml() {
     : ls.length
     ? `<div class="lbyRow${ui.lobAll ? " all" : ""}">${(ui.lobAll ? ls : ls.slice(0, LOBBY_SHOW)).map(card).join("")}</div>
       ${ls.length > LOBBY_SHOW ? `<button class="btn soft wide lbyMore" data-do="lobAll">${ui.lobAll ? `${ic("chevron-down", "up")}Daha az göster` : `${ic("chevron-down")}Tüm lobileri gör (${ls.length})`}</button>` : ""}`
-    : `<div class="lbyEmpty"><span class="lbyRadar" aria-hidden="true">${ic("globe")}</span><div><b>Şu an açık lobi yok</b><p class="muted">İlk açık lobiyi sen kur; herkes buradan tek dokunuşla katılabilir.</p>
+    : `<div class="lbyEmpty"><span class="lbySeats" aria-hidden="true"><i class="seat you">${ic("plus")}</i><i class="seat">${ic("user")}</i><i class="seat">${ic("user")}</i><i class="seat">${ic("user")}</i></span><div class="lbyEmptyTxt"><b>Şu an açık lobi yok</b><p class="muted">Bir lobi kur ve herkese aç; burada görünür, isteyen tek dokunuşla katılır.</p>
         <div class="lbyBtns"><button class="btn primary sm" data-do="create">${ic("users")}Lobi kur</button><button class="btn soft sm" data-do="focusJoin">${ic("log-in")}Kodla katıl</button></div></div></div>`;
+  const o = !mode && lobbyElsewhere();
   return `<section class="hm-lobbies" id="lobbies" aria-label="Açık lobiler">
     <div class="lbyHead"><div><h2>Açık lobiler${ls?.length ? ` <em class="newTag">${ls.length}</em>` : ""}</h2></div><button class="btn ghost sm" data-do="lobRefresh" aria-label="Listeyi yenile">${ic("refresh-cw")}Yenile</button></div>
+    ${o ? `<div class="lbyElse">${ic("users")}<span>Başka bir sekmede <b class="code" data-noi18n>${esc(o.code)}</b> lobisinde${o.role === "host" ? " kurucusun" : "sin"}.</span><button class="btn soft sm" data-do="takeAsk">${ic("log-in")}Bu sekmeye al</button></div>` : ""}
     ${body}
   </section>`;
 }
@@ -1080,11 +1134,41 @@ function createCardHtml() {
 // ---------- sıralama: önerilen / en çok oynanan / en yeni ----------
 ui.sort = ["plays", "new"].includes(store.get("jqSort", "")) ? store.get("jqSort", "") : "";
 function sortLists(lists) {
+  // Favoriler: önerilen sırada en son kalplenen önde
+  if (ui.genre === "Favoriler" && !ui.sort) { const f = favList(); return [...lists].sort((a, b) => f.indexOf(favKey(a.id)) - f.indexOf(favKey(b.id))); }
   if (ui.sort === "plays") return lists.map((l, i) => [l, plays(l.id), i]).sort((a, b) => b[1] - a[1] || a[2] - b[2]).map((x) => x[0]);
   if (ui.sort === "new") return lists.map((l, i) => [l, num(l.at), i]).sort((a, b) => b[1] - a[1] || a[2] - b[2]).map((x) => x[0]);
   return lists;
 }
 const sortBar = () => `<div class="sortBar" role="group" aria-label="Sırala">${[["", "Önerilen"], ["plays", "En çok oynanan"], ["new", "En yeni"]].map(([v, t]) => `<button data-sort="${v}" aria-pressed="${ui.sort === v}">${t}</button>`).join("")}</div>`;
+// ---------- favoriler: kalp ----------
+function favBtn(l, cls = "") {
+  if (!l || l.daily || !favKey(l.id) || l.genre === "Senin") return "";
+  const on = isFav(l.id), n = favCount(l.id);
+  return `<button class="favBtn ${cls}${on ? " on" : ""}" data-fav="${esc(favKey(l.id))}" aria-pressed="${on}" aria-label="${on ? "Favorilerden çıkar" : "Favorilere ekle"}" title="${on ? "Favorilerden çıkar" : "Favorilere ekle"}">${ic(on ? "heart-fill" : "heart")}<b>${n ? playNum(n) : ""}</b></button>`;
+}
+// Kalbe basıldı: sayfa yeniden çizilmeden bütün kalpler (kart, detay) güncellenir
+function favPaint(id) {
+  for (const el of $$(`[data-fav="${CSS.escape(id)}"]`)) {
+    const on = isFav(id), n = favCount(id);
+    el.classList.toggle("on", on);
+    el.setAttribute("aria-pressed", on);
+    el.setAttribute("aria-label", on ? "Favorilerden çıkar" : "Favorilere ekle");
+    el.title = on ? "Favorilerden çıkar" : "Favorilere ekle";
+    const i = el.querySelector(".ic");
+    if (i) i.style.setProperty("--i", `url(assets/icons/${on ? "heart-fill" : "heart"}.svg?v=2)`);
+    const b = el.querySelector("b");
+    if (b) b.textContent = el.classList.contains("dtFav") ? (n ? playNum(n) : "") : n ? playNum(n) : "";
+    const t = el.querySelector(".favTxt");
+    if (t) t.textContent = on ? "Favorilerinde" : "Favorilere ekle";
+    if (on) { el.classList.remove("pop"); void el.offsetWidth; el.classList.add("pop"); }
+  }
+}
+function favRail() {
+  const f = favList();
+  const ls = allLists().filter((l) => !l.daily && isFav(l.id)).sort((a, b) => f.indexOf(favKey(a.id)) - f.indexOf(favKey(b.id))).slice(0, 16);
+  return ls.length ? rail("Favorilerin", "heart", ls.map((l, k) => card(l, k)).join(""), "Favoriler") : "";
+}
 function topPlayedRail() {
   const top = allLists().filter((l) => l.genre !== "Senin" && plays(l.id) > 0).sort((a, b) => plays(b.id) - plays(a.id)).slice(0, 16);
   return top.length >= 3 ? rail("En çok oynananlar", "flame", top.map((l, k) => card(l, k)).join(""), "") : "";
@@ -1147,8 +1231,11 @@ function dailyShareText() {
   if (!r) return "";
   return `JinjaQuiz · Günün Quizi (${dailyLabel(d.daily)})\n${(r.marks || []).map((m) => (m ? "🟩" : "🟥")).join("")}\n${r.hits}/${d.items.length} doğru · ${r.pts} puan · ${dailyStreak()} günlük seri\nhttps://jinjagames.com/quiz/`;
 }
+// Sayı Quizi kategorileri de birer quiz gibi açılır (detay sayfası: solo / arkadaşlarla, en uzun seriler tablosu)
+const NUM_LISTS = NUMCATS.map((c) => ({ id: "num-" + c.id, kind: "num", numcat: c.id, name: c.name, emoji: c.emoji, genre: "Sayı", n: c.items.length,
+  desc: `${c.ask} Doğru bildikçe serin uzar, ilk yanlışta oyun biter; aynı öğe iki kez gelmez. Arkadaşlarla oynarken yanlış bilen elenir, son kalan kazanır.` }));
 function allLists() {
-  return [daily(), ...PRESETS, ...MIXES, ...RANK_QUIZZES, ...ANIME_QUIZZES, ...TRIVIA, ...(ui.community || []), ...customLists().map((l) => ({ ...l, genre: "Senin" }))];
+  return [daily(), ...PRESETS, ...MIXES, ...RANK_QUIZZES, ...ANIME_QUIZZES, ...TRIVIA, ...NUM_LISTS, ...(ui.community || []), ...customLists().map((l) => ({ ...l, genre: "Senin" }))];
 }
 const hue = (name) => {
   let h = 0;
@@ -1156,6 +1243,11 @@ const hue = (name) => {
   return h % 360;
 };
 function cover(l, cls = "", big = false) {
+  if (l?.kind === "num") {
+    const c = NUMCATS.find((x) => x.id === l.numcat);
+    const fl = c ? c.items.filter((x) => x.f).slice(0, 3) : [];
+    return `<span class="${esc(cls)} noart numCov${big ? " big" : ""}" style="--h:${num(c?.hue)}">${fl.length ? fl.map((x, i) => `<img src="${esc(flagUrl(x.f))}" alt="" style="--j:${i}">`).join("") : `<i>${esc(l.emoji || "🔢")}</i>`}</span>`;
+  }
   if (EMOJIS.includes(l?.emoji)) {
     const [h, d1, d2] = TART[l.cat] || [hue(l.name), "✨", "❓"];
     const hh = TART[l.cat] ? (h + (hue(l.name) % 36) - 18 + 360) % 360 : h;
@@ -1267,8 +1359,10 @@ function drawHome() {
         : browsing
         ? `${lists.length ? `<div class="hm-grid">${lists.map((l, k) => card(l, k)).join("")}</div>` : ""}
           ${ui.genre === "Topluluk" ? communityState() : ""}
-          ${!lists.length && !ui.results && (ui.genre !== "Topluluk" || ui.community?.length) ? `<p class="hm-empty">${ic("search")}<span>Burada bir şey yok.${ui.genre === "Keşfet" || ui.genre === "Müzik" ? ' "Sanatçı bul" ile Deezer\'da ara; binlerce sanatçı var.' : ""}</span></p>` : ""}`
-        : `${topPlayedRail()}
+          ${!lists.length && !ui.results && ui.genre === "Favoriler" && !q ? `<p class="hm-empty fav">${ic("heart")}<span>Henüz favorin yok. Beğendiğin quizin kartındaki kalbe bas; hepsi burada toplanır.</span></p>` : ""}
+          ${!lists.length && !ui.results && ui.genre !== "Favoriler" && (ui.genre !== "Topluluk" || ui.community?.length) ? `<p class="hm-empty">${ic("search")}<span>Burada bir şey yok.${ui.genre === "Keşfet" || ui.genre === "Müzik" ? ' "Sanatçı bul" ile Deezer\'da ara; binlerce sanatçı var.' : ""}</span></p>` : ""}`
+        : `${favRail()}
+          ${topPlayedRail()}
           ${rail("Popüler sanatçılar", "mic-vocal", PRESETS.map((l, k) => acard(l, k)).join(""), "Müzik")}
           ${rail("Sıralama quizleri", "list-ordered", RANK_QUIZZES.slice(0, 24).map((l, k) => acard(l, k)).join(""), "Sıralama")}
           ${rail("Tersten şarkı quizi", "rewind", MIXES.map((l, k) => acard(l, k, true)).join(""), "Tersten")}
@@ -1387,6 +1481,7 @@ const TABS = [
   ["Trivia", "circle-help", "Ne kadar biliyorsun?", "Bilgi yarışması", "#3dc7ff"],
   ["Sayı", "hash", "Hangisi daha büyük?", "Hangisi büyük, seriyi bozma", "#2fd3a6"],
   ["Topluluk", "users", "Topluluğun quizleri", "Oyuncuların yaptıkları", "#8aa4ff"],
+  ["Favoriler", "heart", "Favorilerin", "Kalplediğin quizler", "#ff4f6d"],
   ["Senin", "bookmark", "Senin quizlerin", "Kaydettiklerin", "#b8b3c4"],
 ];
 const SUBS = { Müzik: ["Rap", "Pop", "Rock"], Sıralama: RANK_CATS, Tersten: ["Pop", "Rap", "Rock"], Trivia: TCATS, Topluluk: ["Müzik", "Trivia"] };
@@ -1397,9 +1492,11 @@ function inTab(l, g = ui.genre, c = ui.cat) {
     case "Sıralama": return l.kind === "rank" && (!c || l.rcat === c);
     case "Tersten": return (!!l.mix || !!l.rev) && (!c || l.genre === c || (l.rev && !l.mix));
     case "Anime": return !!l.anime || l.kind === "op";
+    case "Sayı": return l.kind === "num";
     case "Trivia": return trivia && !l.anime && (!c || l.cat === c);
     case "Topluluk": return l.genre === "Topluluk" && (!c || (c === "Trivia") === trivia);
     case "Senin": return l.genre === "Senin";
+    case "Favoriler": return isFav(l.id) && !l.daily;
     default: return true;
   }
 }
@@ -1411,6 +1508,7 @@ function tabCount(name, mine) {
   if (name === "Sıralama") return RANK_QUIZZES.length + (ui.community || []).filter((l) => l.kind === "rank").length;
   if (name === "Topluluk") return ui.community?.length || 0;
   if (name === "Senin") return mine.length;
+  if (name === "Favoriler") return allLists().filter((l) => !l.daily && isFav(l.id)).length;
   return 0;
 }
 // Rafta her kategoriden sırayla birer quiz göster (hepsi Genel Kültür'le başlamasın)
@@ -1457,6 +1555,7 @@ function qcard(l, k = 0) {
       <span class="qcardPlay">${ic("play")}</span>
     </button>
     ${cardTools(l)}
+    ${favBtn(l)}
   </div>`;
 }
 function acard(l, k = 0, rev = false) {
@@ -1472,10 +1571,11 @@ function acard(l, k = 0, rev = false) {
 // Şarkı quizleri (sanatçılar, karma listeler, topluluk ve kendi listelerin) her yerde yuvarlak, plak gibi dönen kartla;
 // trivia, sıralama ve anime quizleri kare kartla gösterilir.
 const isSong = (l) => !l.kind && !l.anime;
-const scard = (l, k = 0) => `<div class="acardW">${acard(l, k)}${cardTools(l)}</div>`;
+const scard = (l, k = 0) => `<div class="acardW">${acard(l, k)}${cardTools(l)}${favBtn(l)}</div>`;
 const card = (l, k = 0) => (isSong(l) ? scard(l, k) : qcard(l, k));
 function cardSub(l) {
-  if (l.anime) return l.items?.length ? `Anime · ${l.items.length} soru` : "Anime trivia";
+  if (l.anime) return l.items?.length || l.n ? `Anime · ${num(l.items?.length || l.n)} soru` : "Anime trivia";
+  if (l.kind === "num") return `Sayı · ${num(l.n)} öğe${numBest(l.numcat) ? ` · rekorun ${numBest(l.numcat)}` : ""}`;
   if (l.kind === "rank") return l.genre === "Topluluk" ? `${ic("user")}${esc(l.author)} · Sıralama` : `${esc(l.rcat || "Sıralama")} · ilk 5 şarkı`;
   if (l.kind === "op") return `${l.genre === "Topluluk" ? `${ic("user")}${esc(l.author)} · ` : ""}${l.items?.length || l.n ? `Anime opening · ${num(l.items?.length || l.n)}` : "Anime opening"}`;
   if (l.mix) return `${esc(l.genre)} · ${num(l.artists?.length)} sanatçı`;
@@ -1579,7 +1679,7 @@ function miniHtml(v) {
     .map((p) => `<span class="dotAv ${q?.answered?.includes(p.pid) ? "done" : ""}" title="${esc(p.name)}">${avatar(p, "xs")}</span>`)
     .join("") + (on.length > MAX ? `<span class="dotMore">+${on.length - MAX}</span>` : "");
 }
-const ansCountText = (v) => (v.solo ? "" : `${num(v.question?.answered?.length)}/${v.players.filter((p) => p.online).length} cevapladı`);
+const ansCountText = (v) => (v.solo ? "" : `${num(v.question?.answered?.length)}/${v.players.filter((p) => p.online && p.out == null).length} cevapladı`);
 
 function vchip(p, q, reveal, me) {
   const r = reveal ? q.reveal?.results?.[p.pid] : null;
@@ -1644,7 +1744,7 @@ function lobbyHtml(v) {
               .map(
                 (s, i) => `<li>
             ${cover(s, "qImg")}
-            <span class="qInfo"><b>${esc(s.name)}</b><small>${num(s.count)} soru · ${s.kind === "rank" || s.kind === "op" ? kindName(s.kind) : s.kind === "trivia" ? "Trivia" : `${s.reverse ? "Tersten · " : ""}${s.mode === "text" ? "Yazarak" : "Şıklı"} · ${lvl(s.clip, s.reverse)} (${num(s.clip)} sn)`}</small></span>
+            <span class="qInfo"><b>${esc(s.name)}</b><small>${s.kind === "num" ? `Sayı Quizi · en çok ${num(s.count)} soru · yanlış bilen elenir` : `${num(s.count)} soru · `}${s.kind === "num" ? "" : s.kind === "rank" || s.kind === "op" ? kindName(s.kind) : s.kind === "trivia" ? "Trivia" : `${s.reverse ? "Tersten · " : ""}${s.mode === "text" ? "Yazarak" : "Şıklı"} · ${lvl(s.clip, s.reverse)} (${num(s.clip)} sn)`}</small></span>
             ${
               host
                 ? `<span class="qBtns">
@@ -1773,7 +1873,7 @@ function gameHtml(v) {
   const myRes = reveal ? q?.reveal?.results?.[v.me] : null;
   const myPts = meP ? num(v.solo ? meP.score : meP.round) : 0;
   const head = `<div class="gameBar">
-      <span class="gq">${cover(set, "gImg")}<span><b>${esc(set.name)}</b><small>Soru ${num(v.index) + 1}/${num(set.count)} · ${set.kind === "rank" || set.kind === "op" ? kindName(set.kind) : set.kind === "trivia" ? "Trivia" : `${set.reverse ? "Tersten · " : ""}${lvl(set.clip, set.reverse)} ${num(set.clip)} sn`}</small></span></span>
+      <span class="gq">${cover(set, "gImg")}<span><b>${esc(set.name)}</b><small>${set.kind === "num" ? `Soru ${num(v.index) + 1} · ${v.players.filter((p) => p.out == null).length} kişi oyunda` : `Soru ${num(v.index) + 1}/${num(set.count)}`} · ${set.kind === "rank" || set.kind === "op" || set.kind === "num" ? kindName(set.kind) : set.kind === "trivia" ? "Trivia" : `${set.reverse ? "Tersten · " : ""}${lvl(set.clip, set.reverse)} ${num(set.clip)} sn`}</small></span></span>
       <span class="gEnd">
         <span class="myScore ${myRes?.correct ? "up" : ""}" title="Bu quizdeki puanın"><b>${myPts}</b><small>puan</small>${myRes ? `<i class="plus ${myRes.correct ? "" : "zero"}">+${num(myRes.points)}</i>` : ""}</span>
         <button class="icon sm sfxBtn" data-do="sfx" aria-pressed="${sfxEnabled()}" aria-label="Ses efektleri ${sfxEnabled() ? "açık" : "kapalı"}" title="Ses efektleri">${ic(sfxEnabled() ? "volume-2" : "volume-x")}</button>
@@ -1790,9 +1890,10 @@ function gameHtml(v) {
   // Geri sayım ilk çizimden itibaren açık olsun: şıklar bir an bile okunmasın.
   const pre0 = !reveal && q.start && hostNow() < q.start;
   const cdHtml = `<div class="countdown ${pre0 ? "on" : ""}" id="countdown" aria-hidden="true"><div class="cdRing"><svg viewBox="0 0 100 100"><circle cx="50" cy="50" r="46" pathLength="100"/><circle class="cdArc" id="cdArc" cx="50" cy="50" r="46" pathLength="100"/></svg><b id="cdNum"></b><small>Başlıyor</small></div></div>`;
-  const intro = num(v.index) === 0 && !reveal ? `<div class="introCard" aria-hidden="true"><div class="inArt">${cover(set, "inImg", true)}</div><span class="kicker">${kindName(set.kind)}${set.survival ? " · Hayatta Kalma" : ""}</span><h2>${esc(set.name)}</h2><p>${set.kind === "rank" ? "İlk 5'i doğru sırala · tam isabete +300" : `${num(set.count)} ${set.kind === "trivia" ? "soru" : set.kind === "op" ? "opening" : "şarkı"} · ${set.survival ? "ilk yanlışta oyun biter" : "hızlı olan kazanır"}`}</p><b class="inNum" id="inNum"></b></div>` : "";
+  const intro = num(v.index) === 0 && !reveal ? `<div class="introCard" aria-hidden="true"><div class="inArt">${cover(set, "inImg", true)}</div><span class="kicker">${kindName(set.kind)}${set.survival ? " · Hayatta Kalma" : ""}</span><h2>${esc(set.name)}</h2><p>${set.kind === "num" ? (v.players.filter((p) => p.out == null).length > 1 ? "Yanlış bilen elenir · son kalan kazanır" : "İlk yanlışta oyun biter · seriyi uzat") : set.kind === "rank" ? "İlk 5'i doğru sırala · tam isabete +300" : `${num(set.count)} ${set.kind === "trivia" ? "soru" : set.kind === "op" ? "opening" : "şarkı"} · ${set.survival ? "ilk yanlışta oyun biter" : "hızlı olan kazanır"}`}</p><b class="inNum" id="inNum"></b></div>` : "";
   let stage;
-  if (q.kind === "rank") stage = rankStage(v, q, reveal, cdHtml);
+  if (q.kind === "num") stage = numStage(v, q, reveal, cdHtml, set);
+  else if (q.kind === "rank") stage = rankStage(v, q, reveal, cdHtml);
   else if (q.kind === "op") stage = opStage(v, q, reveal, cdHtml);
   else if (trivia) {
     const r = reveal ? q.reveal.results[v.me] : null;
@@ -1800,7 +1901,7 @@ function gameHtml(v) {
     stage = `<div class="tq ${reveal ? "done" : ""}">
       <div class="countdown ${pre0 ? "on" : ""}" id="countdown" aria-hidden="true"><div class="cdRing"><svg viewBox="0 0 100 100"><circle cx="50" cy="50" r="46" pathLength="100"/><circle class="cdArc" id="cdArc" cx="50" cy="50" r="46" pathLength="100"/></svg><b id="cdNum"></b><small>Başlıyor</small></div></div>
       <span class="tqNo">${ic("circle-help")} Soru ${num(v.index) + 1}</span>
-      ${q.pic ? `<img class="tqPic${/^https:/.test(q.pic) ? " big" : ""}" src="${esc(q.pic)}" alt="" referrerpolicy="no-referrer">` : ""}
+      ${q.pic ? `<img class="tqPic${/^https:/.test(q.pic) ? " big" : ""}${/\/banner\//.test(q.pic) ? " wide" : ""}" src="${esc(q.pic)}" alt="" referrerpolicy="no-referrer">` : ""}
       ${q.qflag ? `<img class="tqPic qflag" src="${esc(flagUrl(q.qflag))}" alt="Bayrak" referrerpolicy="no-referrer">` : ""}
       ${q.qshape ? `<span class="tqShape"><img src="${esc(shapeUrl(q.qshape))}" alt="Ülkenin haritadaki şekli" referrerpolicy="no-referrer"></span>` : ""}
       <h2 class="tqText">${esc(q.text)}</h2>
@@ -1835,6 +1936,7 @@ function gameHtml(v) {
   let rkDock = "";
   if (q.kind === "rank") { const a = rankAnswers(v, q, reveal); if (!reveal && !q.mine) rkDock = a; else answers = a; }
   else if (q.kind === "op") answers = opAnswers(v, q, reveal);
+  else if (q.kind === "num") answers = "";
   else if (q.mode === "choice") {
     answers = `<div class="answers ${v.solo ? "" : "multi"}">${q.options
       .map((o, i) => {
@@ -1889,6 +1991,34 @@ function gameHtml(v) {
   return `${mode.lost ? `<div class="banner">${spinner()} Kurucunun bağlantısı koptu, bekleniyor…</div>` : ""}
     <section class="game ${reveal ? "isReveal" : ""}">${head}${stage}${answers}${foot}${intro}</section>
     <div class="dock split">${rkDock || dock}</div>`;
+}
+
+// ---------- Sayı Quizi sorusu (lobide): iki taraf, büyük olanı seç ----------
+function numStage(v, q, reveal, cdHtml, set) {
+  const pm = playerMap();
+  const meP = pm.get(v.me);
+  const out = meP?.out != null;
+  const pair = q.pair || [];
+  const win = reveal ? (num(pair[0]?.v) >= num(pair[1]?.v) ? 0 : 1) : -1;
+  const hue0 = num(NUMCATS.find((c) => c.id === set.numcat)?.hue);
+  const side = (x, i) => {
+    const voters = Object.entries(q.votes || {}).filter(([, a]) => a === x.n).map(([p]) => pm.get(p)).filter(Boolean);
+    const picked = q.mine?.answer === x.n;
+    return `<button class="nqSide s${i} ${reveal ? (i === win ? "win" : "lose") : ""} ${picked ? "picked" : ""}" data-ans="${i}" ${reveal || q.mine || out ? "disabled" : ""} style="--h:${(hue0 + i * 40) % 360}">
+      ${x.f ? `<img class="nqBg" src="${esc(flagUrl(x.f))}" alt="">` : `<span class="nqEmo">${esc(x.e || "❓")}</span>`}
+      <span class="nqName">${esc(x.n)}</span>
+      <span class="nqVal ${reveal ? "on" : ""}">${reveal ? esc(fmtNum(num(x.v), q.fmt)) : "?"}</span>
+      ${voters.length ? `<span class="voters">${voters.slice(0, 6).map((p) => vchip(p, q, reveal, v.me)).join("")}${voters.length > 6 ? `<span class="vmore">+${voters.length - 6}</span>` : ""}</span>` : ""}
+    </button>`;
+  };
+  const r = reveal ? q.reveal.results[v.me] : null;
+  const verdict = !reveal || out && !r ? "" : r?.correct ? `<span class="verdict good">${ic("check")} +${num(r.points)}</span>` : r ? `<span class="verdict bad">${ic("x")} Elendin</span>` : `<span class="verdict">${ic("timer")} Süre doldu · elendin</span>`;
+  return `<div class="tq nqm ${reveal ? "done" : ""}">${cdHtml}
+    <h2 class="tqText">${esc(q.text)}</h2>
+    ${out && !(reveal && r) ? `<p class="nqOutNote">${ic("eye")}${meP.out === 0 ? "Bu tura sonradan katıldın; bitince sen de oynarsın." : `Elendin · serin <b>${num(meP.hits)}</b>. Oyunu izliyorsun.`}</p>` : ""}
+    <div class="nqBoard">${pair[0] ? side(pair[0], 0) : ""}<span class="nqVs">VS</span>${pair[1] ? side(pair[1], 1) : ""}</div>
+    ${verdict ? `<div class="nqVerdict">${verdict}</div>` : ""}
+  </div>`;
 }
 
 // ---------- Sıralama sorusu ----------
@@ -2216,20 +2346,22 @@ function ytPaint() {
 // ---------- puan sıralaması: her quizde ilk 10 + (ilk 10'da değilse) kendi satırın ----------
 const TEN = "";
 // Sıralaması olan quizler: hazır ve topluluk quizleri (kişisel listeler ve sanatçı sıralama quizleri hariç)
-const lbOf = (l) => (l && l.kind !== "rank" && l.genre !== "Senin" ? lbKey(l.id) : "");
+const lbOf = (l) => (l?.kind === "num" ? lbKey("nq-" + l.numcat) : l && l.kind !== "rank" && l.genre !== "Senin" ? lbKey(l.id) : "");
+const isStreakKey = (key) => String(key).startsWith("nq-");
 // İlk 20 gösterilir. Oyuncu ilk 20'de değilse sırası "–" olarak, bu cihazdaki en iyi puanıyla en altta görünür.
 function boardRows(rows, key) {
   const meAt = rows.findIndex(isMine);
   const best = myBest(key);
   const mine = meAt >= LB_TOP ? rows[meAt] : meAt < 0 && best > 0 ? { s: best, n: profile?.name || "Sen", a: profile?.avatar, k: profile?.color, p: profile?.photo, me: 1 } : null;
-  if (!rows.length && !mine) return `<p class="lbEmpty">${ic("trophy")}<span>Henüz kimse yok. Puanlı modda bir oyun bitir, ilk sen ol!</span></p>`;
+  if (!rows.length && !mine) return `<p class="lbEmpty">${ic("trophy")}<span>${isStreakKey(key) ? "Henüz kimse yok. Bir seri yap, ilk sen ol!" : "Henüz kimse yok. Puanlı modda bir oyun bitir, ilk sen ol!"}</span></p>`;
   const row = (r, i) =>
-    `<li class="${r.me || isMine(r) ? "me" : ""}${i >= 0 && i < 3 ? ` t${i + 1}` : ""}"><span class="lbN">${i >= 0 ? i + 1 : "–"}</span>${avatar({ avatar: r.a, color: r.k, photo: r.p }, "xs")}<b data-noi18n>${esc(maskName(r.n))}</b>${r.me || isMine(r) ? `<em>Sen</em>` : ""}<span class="lbS">${num(r.s)}</span></li>`;
+    `<li class="${r.me || isMine(r) ? "me" : ""}${i >= 0 && i < 3 ? ` t${i + 1}` : ""}"><span class="lbN">${i >= 0 ? i + 1 : "–"}</span>${avatar({ avatar: r.a, color: r.k, photo: r.p }, "xs")}<b data-noi18n>${esc(maskName(r.n))}</b>${r.me || isMine(r) ? `<em>Sen</em>` : ""}<span class="lbS">${num(r.s)}${isStreakKey(key) ? "<small> seri</small>" : ""}</span></li>`;
   return `<ol class="lbList">${rows.slice(0, LB_TOP).map(row).join("")}${mine ? `<li class="lbGap" aria-hidden="true"><i></i><i></i><i></i></li>${row(mine, -1)}` : ""}</ol>`;
 }
 // note: güvenli HTML olmalı (yalnızca sayılar ve sabit metin)
 function boardHtml(key, { title = "Puan sıralaması", note = "" } = {}) {
   if (!key) return "";
+  if (isStreakKey(key) && title === "Puan sıralaması") title = "En uzun seriler";
   const rows = peekBoard(key);
   loadBoard(key).then(() => {
     fillBoards(key);
@@ -2240,7 +2372,7 @@ function boardHtml(key, { title = "Puan sıralaması", note = "" } = {}) {
     <header class="lbHead"><h3>${ic("trophy")}<span>${esc(title)}</span></h3><small>İlk ${LB_TOP}</small></header>
     ${note ? `<p class="lbNote">${note}</p>` : ""}
     <div class="lbBody" aria-live="polite">${rows ? boardRows(rows, key) : skRows(5)}</div>
-    <p class="lbRule">Yalnızca <b>Puanlı</b> modda oynanan oyunlar sıralamaya girer: 10 soru (quizde daha azı varsa hepsi), şarkı seçimi yok. Puan, cevap süresi ayarından bağımsız hesaplanır.</p>
+    <p class="lbRule">${isStreakKey(key) ? "Seri: hiç yanlış yapmadan art arda bilinen soru sayısı. Solo ve arkadaşlarla oynanan oyunların hepsi sayılır; herkesin en uzun serisi görünür." : "Yalnızca <b>Puanlı</b> modda oynanan oyunlar sıralamaya girer: 10 soru (quizde daha azı varsa hepsi), şarkı seçimi yok. Puan, cevap süresi ayarından bağımsız hesaplanır."}</p>
   </section>`;
 }
 function fillBoards(key, failed = false) {
@@ -2258,6 +2390,14 @@ function lbResult(v, set) {
   const key = lbKey(set?.lid);
   if (!key || set.kind === "rank" || set.survival) return "";
   const me = v.players.find((p) => p.pid === v.me);
+  if (set.kind === "num") {
+    if (!me) return boardHtml(key);
+    const sc = num(me.hits);
+    const sig = v.code + ":" + set.id + ":" + me.pid;
+    if (lbDone.sig !== sig) { lbDone = { sig, prev: Math.max(myBest(key), numBest(set.numcat)) }; numRecord(set.numcat, sc, me); }
+    const prev = lbDone.prev;
+    return boardHtml(key, { note: sc > prev ? `${ic("sparkles")}<span>${prev ? `Yeni rekor! Serin <b>${sc}</b> (önceki ${prev})` : `Serin <b>${sc}</b>`}</span>` : `<span>Serin <b>${sc}</b>${prev ? ` · rekorun <b>${prev}</b>` : ""}</span>` });
+  }
   let note = "";
   const need = Math.min(LB_QUESTIONS, num(set.pool) || LB_QUESTIONS);
   if (!set.ranked) note = `<span>Serbest oyunlar sıralamaya girmez. Puan için quiz sayfasında <b>Puanlı</b> modu seç.</span>`;
@@ -2338,7 +2478,7 @@ function rankingHtml(v) {
         : ""
     }
     ${lbResult(v, set)}
-    ${next ? `<div class="nextCard">${cover(next, "qImg")}<span class="qInfo"><small>Sıradaki quiz</small><b>${esc(next.name)}</b><small>${num(next.count)} soru · ${next.kind === "trivia" ? "Trivia" : "Şarkı"}</small></span><span class="rankLeft" id="rankLeft2"></span></div>` : ""}
+    ${next ? `<div class="nextCard">${cover(next, "qImg")}<span class="qInfo"><small>Sıradaki quiz</small><b>${esc(next.name)}</b><small>${next.kind === "num" ? "Sayı Quizi" : `${num(next.count)} soru · ${next.kind === "trivia" ? "Trivia" : next.kind === "rank" || next.kind === "op" ? kindName(next.kind) : "Şarkı"}`}</small></span><span class="rankLeft" id="rankLeft2"></span></div>` : ""}
   </section>
   <div class="dock split">
     ${
@@ -2477,7 +2617,8 @@ function paint() {
           ? 100 - Math.min(100, ((performance.now() - player.startedAt) / player.clip) * 100)
           : 100;
     }
-    $$("[data-ans], #guessForm button, #guess").forEach((b) => (b.disabled = !!q.mine || pre || left <= 0));
+    const outNow = q.kind === "num" && view.players.find((p) => p.pid === view.me)?.out != null;
+    $$("[data-ans], #guessForm button, #guess").forEach((b) => (b.disabled = !!q.mine || pre || left <= 0 || outNow));
     // Soru açılır açılmaz ilk dinlemeyi otomatik başlat (tarayıcı izin verirse).
     if (!pre && autoPlayedFor !== q.id && !q.mine && store.get("jqAutoplay", true)) {
       autoPlayedFor = q.id;
@@ -2586,6 +2727,15 @@ function openSheet(kind, ctx = {}) {
     sheetBody.innerHTML = `<div class="sheetHead"><h2>Puanlar sıfırlansın mı?</h2><button class="icon" data-close aria-label="Kapat">${ic("x")}</button></div>
       <p class="muted">Herkesin genel puanı ve oynanan quizler listesi temizlenir. Bu işlem geri alınamaz.</p>
       <div class="sheetFoot"><button class="btn ghost" data-close autofocus>Vazgeç</button><button class="btn danger" data-do="resetGo">${ic("shuffle")}Sıfırla</button></div>`;
+  }
+  if (kind === "elsewhere") {
+    // Aynı tarayıcının başka bir sekmesinde lobi açık: ikinci lobi yok; istenirse lobi bu sekmeye taşınır
+    const o = lobbyElsewhere();
+    if (!o) { closeSheet(); return sheetCtx.code ? startGuest(sheetCtx.code, { pw: sheetCtx.pw || "" }) : startHost(); }
+    const same = sheetCtx.code && sheetCtx.code === o.code;
+    sheetBody.innerHTML = `<div class="sheetHead"><h2>Başka bir sekmede lobidesin</h2><button class="icon" data-close aria-label="Kapat">${ic("x")}</button></div>
+      <p class="muted">Bu tarayıcıda açık başka bir sekmede <b class="code" data-noi18n>${esc(o.code)}</b> lobisinde ${o.role === "host" ? "kurucusun" : "oyuncusun"}. ${same ? "Aynı lobiye ikinci kez katılamazsın;" : "Aynı anda iki lobide olamazsın;"} lobiyi bu sekmeye taşıyabilirsin. Öbür sekme lobiden çıkar, puanın ve sıran korunur.</p>
+      <div class="sheetFoot"><button class="btn ghost" data-close autofocus>Vazgeç</button><button class="btn primary" data-do="takeTab">${ic("log-in")}Lobiyi bu sekmeye al</button></div>`;
   }
   if (kind === "numLeave") {
     const n = num(nq?.streak);
@@ -2789,7 +2939,7 @@ async function loadCommunity() {
 const pick = { tab: "Hepsi", cat: "", q: "" };
 // "Hepsi": bütün türler alt alta (her türün ilk birkaç quizi; arama hepsinde). Oyuncular kendi kayıtlı listelerini
 // öneremez (kurucuda yoklar), o yüzden "Senin" yalnızca kurucuya görünür.
-const pickTabs = () => [["Hepsi", "layers"], ...TABS.filter((t) => t[0] !== "Keşfet" && t[0] !== "Sayı" && (t[0] !== "Senin" || (mode?.role !== "guest" && customLists().length)))];
+const pickTabs = () => [["Hepsi", "layers"], ...TABS.filter((t) => t[0] !== "Keşfet" && (t[0] !== "Senin" || (mode?.role !== "guest" && customLists().length)))];
 const CREATE_TUR = { Müzik: ["sarki", "şarkı"], Sıralama: ["siralama", "sıralama"], Tersten: ["tersten", "tersten şarkı"], Anime: ["opening", "anime opening"], Trivia: ["trivia", "trivia"] };
 function pickLists(tab = pick.tab, cat = pick.cat, q = fold(pick.q)) {
   const tabs = tab === "Hepsi" ? pickTabs().slice(1).map((t) => t[0]) : [tab];
@@ -2874,6 +3024,12 @@ addEventListener("message", (e) => {
   if (m.jq === "saved" && m.q) { closeCreator(); lobbyNew({ at: Date.now(), q: m.q }); }
 });
 addEventListener("storage", (e) => {
+  // profil başka sekmede değişti: bu sekmede de aynı ad ve simge görünsün
+  if (e.key === "jqProfile") {
+    const p = store.get("jqProfile", null);
+    if (p?.name) { profile = p; topbar(); if (sheet.open && sheetCtx?.kind === "profile") closeSheet(); }
+    return;
+  }
   if (e.key !== "jqLobbyNew" || !e.newValue) return;
   try { lobbyNew(JSON.parse(e.newValue)); } catch {}
   try { localStorage.removeItem("jqLobbyNew"); } catch {}
@@ -2900,9 +3056,15 @@ function setupFoot(enqueue, disabled = "") {
     : `<button class="btn ghost" data-do="soloGo" ${disabled}>${ic("play")}Solo oyna</button><button class="btn primary" data-do="hostGo" ${disabled}>${ic("users")}Arkadaşlarla oyna</button>`;
 }
 // Quiz ayarları (soru sayısı, cevap türü, kesit, şarkı seçimi): hem lobideki pencerede hem detay sayfasında
-const ITEM_KINDS = ["trivia", "rank", "op"];
-const kindName = (k) => ({ trivia: "Trivia", rank: "Sıralama quizi", op: "Anime opening quizi" })[k] || "Şarkı quizi";
+const ITEM_KINDS = ["trivia", "rank", "op", "num"];
+const kindName = (k) => ({ trivia: "Trivia", rank: "Sıralama quizi", op: "Anime opening quizi", num: "Sayı Quizi" })[k] || "Şarkı quizi";
 function optsHtml(l) {
+  if (l.kind === "num")
+    return `<div class="opts"><div class="rkRules">
+      <span>${ic("flame")}<b>Seri</b> her doğru seriyi 1 uzatır, aynı öğe iki kez gelmez</span>
+      <span>${ic("trophy")}<b>En uzun seri</b> sıralamaya girer (${num(l.n)} öğe)</span>
+      <span>${ic("users")}<b>Arkadaşlarla</b> yanlış bilen elenir · son kalan +${NUM_BONUS}</span>
+    </div></div>`;
   if ((l.anime || l.opsrc || l.kind === "rank") && !l.items) return `<div class="opts"><p class="muted skNote">${l.kind === "rank" ? "En çok dinlenen şarkılar getiriliyor…" : "Sorular hazırlanıyor…"}</p>${skRows(3)}</div>`;
   if (l.kind === "rank") {
     if (l.rkWait) return `<div class="opts"><p class="muted">${ic("timer")} ${esc(l.artist || "Bu sanatçı")} için YouTube'daki gerçek en çok izlenen şarkılar hazırlanıyor. Liste her gün güncellenir; en geç 1–2 gün içinde oynanabilir.</p></div>`;
@@ -2992,6 +3154,7 @@ function lbNeed(l) {
   return n ? Math.min(LB_QUESTIONS, n) : LB_QUESTIONS;
 }
 function modeChoice(l, inSheet = false) {
+  if (l.kind === "num") return "";
   const trivia = l.kind === "trivia";
   const ranked = !!lbOf(l) && !(l.daily && dailyResult(l.daily));
   if (!ranked && !(trivia && !inSheet && !l.daily)) return "";
@@ -3016,7 +3179,8 @@ function renderDetail() {
   const trivia = l.kind === "trivia";
   const ik = ITEM_KINDS.includes(l.kind);
   const b = bests()[l.id] || {};
-  const n = ik ? num(l.items?.length) : num(l.tracks?.length);
+  const n = l.kind === "num" ? num(l.n) : ik ? num(l.items?.length) : num(l.tracks?.length);
+  if (l.kind === "num") b.streak = numBest(l.numcat);
   app.innerHTML = `<section class="dt${lbOf(l) ? " hasLb" : ""}" data-g="${esc(sheetCtx.gmode)}" data-play="${esc(sheetCtx.play)}">
     <button class="dtBack" data-go="home">${ic("arrow-left")}Tüm quizler</button>
     <div class="dtGrid">
@@ -3026,8 +3190,8 @@ function renderDetail() {
         <div class="dtCardInfo">
           <h1>${esc(l.name)}</h1>
           <div class="dtStats">
-            <span>${ic(l.kind === "rank" ? "list-ordered" : l.kind === "op" ? "tv" : trivia ? "circle-help" : "list-music")}<b id="trackCount">${l.kind === "rank" ? "İlk 5 · 20 şık" : l.kind === "op" ? `${n} opening` : trivia ? `${n} soru` : n ? `${n} şarkı` : `${spinner()} şarkılar`}</b></span>
-            <span>${ic("layers")}${esc(l.kind === "rank" ? l.rcat || "Sıralama" : l.kind === "op" ? "Anime" : trivia ? l.cat || "Trivia" : l.genre || "Müzik")}</span>
+            <span>${ic(l.kind === "rank" ? "list-ordered" : l.kind === "op" ? "tv" : l.kind === "num" ? "hash" : trivia ? "circle-help" : "list-music")}<b id="trackCount">${l.kind === "rank" ? "İlk 5 · 20 şık" : l.kind === "op" ? `${n} opening` : l.kind === "num" ? `${n} öğe` : trivia ? `${n} soru` : n ? `${n} şarkı` : `${spinner()} şarkılar`}</b></span>
+            <span>${ic("layers")}${esc(l.kind === "rank" ? l.rcat || "Sıralama" : l.kind === "op" ? "Anime" : l.kind === "num" ? "Sayı" : trivia ? l.cat || "Trivia" : l.genre || "Müzik")}</span>
             ${dtPlaysHtml(l)}
             ${b.score ? `<span>${ic("trophy")}${num(b.score)}</span>` : ""}
           </div>
@@ -3045,10 +3209,11 @@ function renderDetail() {
         </div>
         ${modeChoice(l)}
         <div class="dtOpts">${optsHtml(l)}</div>
+        ${favKey(l.id) && !l.daily && l.genre !== "Senin" ? `<button class="btn ghost wide dtFav favBtn${isFav(l.id) ? " on" : ""}" data-fav="${esc(favKey(l.id))}" aria-pressed="${isFav(l.id)}" aria-label="${isFav(l.id) ? "Favorilerden çıkar" : "Favorilere ekle"}">${ic(isFav(l.id) ? "heart-fill" : "heart")}<span class="favTxt">${isFav(l.id) ? "Favorilerinde" : "Favorilere ekle"}</span><b>${favCount(l.id) ? playNum(favCount(l.id)) : ""}</b></button>` : ""}
         <button class="btn primary xl wide dtStart" data-do="detailGo" ${ik ? "" : "disabled data-needtracks=1"}>${ic("sparkles")}Başla</button>
         ${slugOf(l) ? `<button class="btn ghost wide dtShare" data-do="shareQuiz">${ic("copy")}Quizin bağlantısını kopyala <small data-noi18n>${esc(location.host + BASE + slugOf(l))}</small></button>` : ""}
         ${(l.genre === "Topluluk" && l.mine) || (l.genre === "Senin" && (l.tracks?.length || l.items?.length) && !String(l.id).startsWith("dz")) ? `<button class="btn ghost wide dtEdit" data-do="editQuiz">${ic("sliders-horizontal")}Quizi düzenle <small>ad, yazar, sorular, tür</small></button>` : ""}
-        ${b.score || b.streak ? `<div class="dtRec">${ic("trophy")}<span>Rekorların: ${b.score ? `<b>${num(b.score)}</b> puan` : ""}${b.score && b.streak ? " · " : ""}${b.streak ? `<b>${num(b.streak)}</b> soruluk seri` : ""}</span></div>` : ""}
+        ${b.score || b.streak ? `<div class="dtRec">${ic("trophy")}<span>Rekorların: ${b.score ? `<b>${num(b.score)}</b> puan` : ""}${b.score && b.streak ? " · " : ""}${b.streak ? `<b>${num(b.streak)}</b> ${l.kind === "num" ? "seri" : "soruluk seri"}` : ""}</span></div>` : ""}
       </div>
       ${lbOf(l) ? `<div class="dtBoard">${boardHtml(lbOf(l))}</div>` : ""}
     </div>
@@ -3065,6 +3230,7 @@ function drawTracks() {
 }
 function setupPayload() {
   const { list, tracks, ids, count, mode: m, clip, rev } = sheetCtx;
+  if (list.kind === "num") return { type: "add", kind: "num", numcat: list.numcat, list: { name: list.name, emoji: list.emoji } };
   if (list.kind === "rank" || list.kind === "op") {
     if (!list.items?.length) throw Error(list.items ? "Bu quiz için soru bulunamadı." : "Sorular hazırlanıyor, birazdan tekrar dene.");
     const ranked = list.kind === "op" && isRanked(list);
@@ -3211,44 +3377,18 @@ function openListNow(id, fromHistory = false, revHint = false) {
 }
 
 // ---------- Sayı Quizi: "hangisi daha büyük?" (solo, seri) ----------
+// Bütün eşleşmeler oyun başında kurulur (numdata.js, numChain): aynı öğe iki kez gelmez, kazanan kalır. Öğeler
+// bitince oyun kazanılır; zincirin uzunluğu o oyunun en uzun serisidir.
 let nq = null;
-// Eşleştirme kuralı: rakip, sıralamada yakın (değeri yakın) öğelerden seçilir; seri uzadıkça pencere daralır,
-// sorular zorlaşır. Kazanan yalnızca yakınında hem büyük hem küçük rakip varsa kalır ve rakibin büyük ya da
-// küçük çıkması yarı yarıyadır; böylece "balina"dan sonra hep küçük gelen anlamsız sorular olmaz.
-function pickPair(cat, keep) {
-  const sorted = cat.items.slice().sort((x, y) => x.v - y.v);
-  const rank = new Map(sorted.map((x, i) => [x, i]));
-  const n = sorted.length, streak = nq?.streak || 0;
-  const win = Math.max(2, Math.round(n * 0.3 * Math.pow(0.88, streak))); // sıralama farkı en çok bu kadar
-  const recent = nq?.recent || [];
-  const near = (a, dir) => sorted.filter((b) => {
-    const d = rank.get(b) - rank.get(a);
-    return b !== a && (dir > 0 ? d > 0 : d < 0) && Math.abs(d) <= win && farEnough(cat, a, b) && closeEnough(a, b);
-  });
-  // iki değer arasındaki fark da sınırlı: seri uzadıkça daha yakın değerler gelir
-  function closeEnough(a, b) {
-    if (cat.abs) return Math.abs(a.v - b.v) <= Math.max(cat.gap * 2, 120 * Math.pow(0.9, streak));
-    const r = Math.max(a.v, b.v) / Math.max(1e-9, Math.min(a.v, b.v));
-    return r <= Math.max(cat.gap * 1.4, 6 * Math.pow(0.88, streak));
-  }
-  const fresh = (l) => { const f = l.filter((b) => !recent.includes(b.n)); return f.length ? f : l; };
-  const any = (l) => l[Math.floor(Math.random() * l.length)];
-  if (keep) {
-    const up = fresh(near(keep, 1)), down = fresh(near(keep, -1));
-    if (up.length && down.length) {
-      const b = any(Math.random() < 0.5 ? up : down);
-      return Math.random() < 0.5 ? [keep, b] : [b, keep];
-    }
-  }
-  for (let t = 0; t < 200; t++) {
-    const a = any(sorted);
-    if (recent.includes(a.n) && t < 150) continue;
-    const opts = fresh([...near(a, 1), ...near(a, -1)]);
-    if (!opts.length) continue;
-    const b = any(opts);
-    return Math.random() < 0.5 ? [a, b] : [b, a];
-  }
-  return [sorted[0], sorted[n - 1]];
+// Rekor: bu tarayıcıda saklanır ve "En uzun seriler" sıralamasına (board.js, nq-<kategori>) gönderilir.
+function numRecord(id, streak, who = profile) {
+  const all = store.get("jqNumBest", {});
+  const prev = num(all[id]);
+  if (streak > prev) (all[id] = streak), store.set("jqNumBest", all);
+  const key = "nq-" + id;
+  if (streak > 0 && streak > myBest(key) && who)
+    submitScore({ key, score: streak, correct: 0, name: who.name, avatar: who.avatar, color: who.color, photo: profile?.photo || who.photo || "" }).then(() => fillBoards(key)).catch(() => {});
+  return streak > prev;
 }
 function startNumber(id, ok = false) {
   const cat = NUMCATS.find((c) => c.id === id);
@@ -3256,8 +3396,8 @@ function startNumber(id, ok = false) {
   if (inParty() && !ok) return guardLeave(() => startNumber(id, true));
   if (mode) leaveRoom(true);
   countPlay("num-" + cat.id);
-  nq = { cat, streak: 0, phase: "pick", recent: [], pair: null, pick: -1 };
-  nq.pair = pickPair(cat);
+  const chain = numChain(cat);
+  nq = { cat, chain, at: 0, streak: 0, phase: "pick", pair: chain[0], pick: -1 };
   if (screen !== "number") pushScreen({ jqScreen: "number" });
   screen = "number";
   render();
@@ -3265,7 +3405,7 @@ function startNumber(id, ok = false) {
 }
 function numSide(x, i) {
   const shown = nq.phase !== "pick" && (nq.phase !== "half" || i === nq.pick);
-  const win = nq.phase === "done" || nq.phase === "over" ? (nq.pair[i].v >= nq.pair[1 - i].v ? "win" : "lose") : "";
+  const win = nq.phase === "done" || nq.phase === "over" || nq.phase === "won" ? (nq.pair[i].v >= nq.pair[1 - i].v ? "win" : "lose") : "";
   return `<button class="nqSide s${i} ${win} ${nq.pick === i ? "picked" : ""}" data-npick="${i}" ${nq.phase === "pick" ? "" : "disabled"} style="--h:${(nq.cat.hue + i * 40) % 360}">
     ${x.f ? `<img class="nqBg" src="${esc(flagUrl(x.f))}" alt="">` : `<span class="nqEmo">${x.e || nq.cat.emoji}</span>`}
     <span class="nqName">${esc(x.n)}</span>
@@ -3276,11 +3416,12 @@ function numSide(x, i) {
 function renderNumber() {
   if (!nq) return (screen = "home"), render();
   const best = numBest(nq.cat.id);
-  const mid = nq.phase === "done" ? `<span class="nqVs ok">${nq.streak}</span>` : nq.phase === "over" ? `<span class="nqVs bad">${ic("x")}</span>` : `<span class="nqVs">VS</span>`;
+  const mid = nq.phase === "done" || nq.phase === "won" ? `<span class="nqVs ok">${nq.streak}</span>` : nq.phase === "over" ? `<span class="nqVs bad">${ic("x")}</span>` : `<span class="nqVs">VS</span>`;
+  const end = nq.phase === "over" || nq.phase === "won";
   app.innerHTML = `<section class="nq">
-    <div class="nqTop"><button class="icon" data-do="numExit" aria-label="Çık">${ic("x")}</button><span class="nqAsk"><small>${nq.cat.emoji} ${esc(nq.cat.name)}</small><b>${esc(nq.cat.ask)}</b></span><span class="nqStreak">Seri <b>${nq.streak}</b>${best ? `<small>Rekor ${best}</small>` : ""}</span></div>
+    <div class="nqTop"><button class="icon" data-do="numExit" aria-label="Çık">${ic("x")}</button><span class="nqAsk"><small>${nq.cat.emoji} ${esc(nq.cat.name)}</small><b>${esc(nq.cat.ask)}</b></span><span class="nqStreak">Seri <b>${nq.streak}</b><small>${best ? `Rekor ${best} · ` : ""}en çok ${nq.chain.length}</small></span></div>
     <div class="nqBoard">${numSide(nq.pair[0], 0)}${mid}${numSide(nq.pair[1], 1)}</div>
-    ${nq.phase === "over" ? `<div class="nqOver"><div><span class="kicker">Oyun bitti</span><h2>Seri: ${nq.streak}</h2><p>${nq.newBest ? "Yeni rekor!" : best ? `Rekorun ${best}` : ""}</p><div class="nqBtns"><button class="btn primary lg" data-do="numAgain">${ic("rotate-ccw")}Tekrar oyna</button><button class="btn ghost lg" data-do="numExit">Kategoriler</button></div></div></div>` : ""}
+    ${end ? `<div class="nqOver ${nq.phase}"><div><span class="kicker">${nq.phase === "won" ? "Hepsini bildin!" : "Oyun bitti"}</span><h2>Seri: ${nq.streak}</h2><p>${nq.phase === "won" ? "Bu kategoride çıkabilecek bütün öğeleri bitirdin; daha uzun seri yok. " : ""}${nq.newBest ? "Yeni rekor!" : best ? `Rekorun ${best}` : ""}</p><div class="nqBtns"><button class="btn primary lg" data-do="numAgain">${ic("rotate-ccw")}Tekrar oyna</button><button class="btn soft lg" data-do="numBoard">${ic("trophy")}Sıralama</button><button class="btn ghost lg" data-do="numExit">Kategoriler</button></div></div></div>` : ""}
   </section>`;
   animateCounts();
   $$(".nqVal.on").forEach((el) => countUp(el));
@@ -3308,20 +3449,15 @@ function numPick(i) {
     if (!nq || nq.phase !== "half") return;
     const ok = nq.pair[i].v >= nq.pair[1 - i].v;
     if (ok) nq.streak++;
-    nq.phase = ok ? "done" : "over";
-    if (!ok) {
-      const all = store.get("jqNumBest", {});
-      nq.newBest = nq.streak > num(all[nq.cat.id]);
-      if (nq.newBest) (all[nq.cat.id] = nq.streak), store.set("jqNumBest", all);
-    }
+    const last = ok && nq.at + 1 >= nq.chain.length;
+    nq.phase = !ok ? "over" : last ? "won" : "done";
+    if (nq.phase !== "done") { nq.newBest = numRecord(nq.cat.id, nq.streak); if (last) { sfx("perfect"); confetti(); } }
     renderNumber();
-    if (ok)
+    if (nq.phase === "done")
       setTimeout(() => {
         if (!nq || nq.phase !== "done") return;
-        // Kazanan tarafta kalır; yanına yeni bir rakip gelir
-        const keep = nq.pair[0].v >= nq.pair[1].v ? nq.pair[0] : nq.pair[1];
-        nq.recent = [...nq.recent, ...nq.pair.map((x) => x.n)].slice(-8);
-        nq.pair = pickPair(nq.cat, keep);
+        // kazanan tarafta kalır; yanına daha önce çıkmamış bir rakip gelir (zincirde hazır)
+        nq.pair = nq.chain[++nq.at];
         nq.pick = -1;
         nq.phase = "pick";
         renderNumber();
@@ -3365,11 +3501,22 @@ async function doAction(a, el) {
       else ytPlay();
       return ytState(yt.state === 1 && yt.paused ? 2 : yt.state);
     case "detailGo":
+      if (sheetCtx.list?.kind === "num" && sheetCtx.play !== "party") return startNumber(sheetCtx.list.numcat);
       if (sheetCtx.list?.kind === "trivia") sheetCtx.survival = sheetCtx.gmode === "survival";
       return doAction(sheetCtx.play === "party" ? "hostGo" : "soloGo");
     case "randomQuiz": {
       const pool = [...PRESETS, ...TRIVIA];
       return openList(pool[Math.floor(Math.random() * pool.length)].id);
+    }
+    case "takeAsk":
+      return openSheet("elsewhere");
+    case "takeTab": {
+      const o = lobbyElsewhere();
+      closeSheet();
+      if (!o) return;
+      const d = await takeLobby(o.tab);
+      if (!d) return toast("Öbür sekme cevap vermedi. O sekmeyi kapatıp yeniden dene.", "bad");
+      return adoptLobby(d);
     }
     case "numHome":
       ui.genre = "Sayı";
@@ -3377,6 +3524,8 @@ async function doAction(a, el) {
       return backHome(() => document.getElementById("catalog")?.scrollIntoView({ behavior: "smooth", block: "start" }));
     case "numAgain":
       return startNumber(nq.cat.id);
+    case "numBoard":
+      return openList("num-" + nq.cat.id);
     case "numExit":
       if (inGame()) return openSheet("numLeave");
       // fall through
@@ -3491,7 +3640,7 @@ async function doAction(a, el) {
     case "soloGo":
     case "hostGo": {
       const payload = setupPayload();
-      if (payload.kind !== "trivia") store.set("jqSetup", { count: payload.count, mode: payload.mode, clip: payload.clip });
+      if (payload.kind !== "trivia" && payload.kind !== "num") store.set("jqSetup", { count: payload.count, mode: payload.mode, clip: payload.clip });
       closeSheet();
       if (a === "enqueue") {
         lobSel = false;
@@ -3556,6 +3705,14 @@ document.addEventListener("click", async (e) => {
   const d = b.dataset;
   try {
     if ("close" in d) return closeSheet();
+    if (d.fav) {
+      const on = toggleFav(d.fav);
+      sfx(on ? "pick" : "unpick");
+      favPaint(d.fav);
+      if (!on && screen === "home" && ui.genre === "Favoriler") renderHome();
+      else if (screen === "home" && ui.genre === "Keşfet") bgRender(); // "Favorilerin" rafı
+      return;
+    }
     if (d.go) {
       // Ana sayfaya dönmek oyunu ya da lobiyi bitirecekse önce onay paneli
       if (d.go === "home" && screen === "number" && inGame()) return openSheet("numLeave");
@@ -3631,7 +3788,7 @@ document.addEventListener("click", async (e) => {
       return renderHome();
     }
     if (d.list) return openList(d.list, false, d.rev === "1");
-    if (d.numcat) return startNumber(d.numcat);
+    if (d.numcat) return openList("num-" + d.numcat);
     if (d.npick !== undefined) return numPick(Number(d.npick));
     if (d.ptab) {
       // arama kutusundaki yazı sekme değişince de geçerli kalır (yeni sekmede de o aranır)
@@ -3882,7 +4039,14 @@ window.addEventListener("pagehide", () => mode?.net?.close({ quiet: true }));
 
 // ---------- açılış ----------
 let communityP = null;
-function boot() {
+async function boot() {
+  // "Sekmeyi çoğalt" ile açılan kopya, öbür sekmenin oyuncu kimliğini ve lobisini taşır: kendine yeni kimlik alır
+  if (hadPid && (await pidTaken(pid))) {
+    pid = uid();
+    store.set("jqPid", pid, sessionStorage);
+    store.del("jqSession", sessionStorage);
+    store.del("jqChat", sessionStorage);
+  }
   const tab = new URLSearchParams(location.search).get("tab");
   if (tab === "topluluk") ui.genre = "Topluluk";
   if (tab === "muzik") ui.genre = "Müzik";
@@ -3893,6 +4057,10 @@ function boot() {
   const qNew = new URLSearchParams(location.search).has("yeni");
   if (qSlug) history.replaceState(null, "", BASE);
   communityP = loadCommunity();
+  animeCounts().then((ok) => { if (ok && screen === "home" && !mode) bgRender(); });
+  // opening quizinin kartında da sayı görünsün (küçük dosya)
+  animeOps().then((items) => { const l = ANIME_QUIZZES.find((x) => x.opsrc); if (l && items.length && !l.items?.length) { l.items = items; if (screen === "home" && !mode) bgRender(); } });
+  loadFavs();
   loadPlays();
   refreshLobbies();
   loadPresetPictures().then((changed) => {
@@ -3912,7 +4080,7 @@ function boot() {
       store.del("jqSession", sessionStorage);
     }
   }
-  if (saved?.role === "guest" && validCode(saved.code) && profile) return startGuest(saved.code, { pw: saved.pw || "" });
+  if (saved?.role === "guest" && validCode(saved.code) && profile) return startGuest(saved.code, { pw: saved.pw || "", own: true });
   render();
   if (qSlug && !validCode(invite)) openSlug(qSlug, qNew);
   if (validCode(invite)) {
@@ -3923,4 +4091,8 @@ function boot() {
     else openSheet("profile", { then: () => startGuest(invite, { pw: ipw }) });
   } else if (!profile) openSheet("profile");
 }
+initTabs(() => ({ pid, role: mode && mode.role !== "solo" ? mode.role : "", code: mode && mode.role !== "solo" ? mode.code : "" }), {
+  change() { if (screen === "home" && !mode) drawLobbies(); },
+  give: giveLobby,
+});
 boot();

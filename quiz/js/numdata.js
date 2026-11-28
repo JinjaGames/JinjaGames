@@ -102,3 +102,57 @@ export function fmtNum(v, fmt) {
 // İki öğe yeterince farklı mı?
 export const farEnough = (cat, a, b) =>
   cat.abs ? Math.abs(a.v - b.v) >= cat.gap : Math.max(a.v, b.v) / Math.max(1e-9, Math.min(a.v, b.v)) >= cat.gap;
+
+/**
+ * Bir Sayı Quizi oyununun bütün eşleşmeleri (tekrar yok): her turda kazanan kalır, yanına daha önce çıkmamış
+ * bir rakip gelir. Rakip, sıralamada yakın öğelerden seçilir; seri uzadıkça değerler birbirine yaklaşır.
+ * Kazananın yakınında hem büyük hem küçük kullanılmamış rakip yoksa (cevap hep aynı taraf olurdu) yeni bir çiftle
+ * sürer. Kullanılmamış öğeler bitince zincir biter: o zincirin uzunluğu oyunun en uzun serisidir.
+ * Dönüş: [[a, b], ...] (a ve b karışık sırada).
+ */
+export function numChain(cat, rnd = Math.random) {
+  const sorted = cat.items.slice().sort((x, y) => x.v - y.v);
+  const rank = new Map(sorted.map((x, i) => [x, i]));
+  const n = sorted.length;
+  const used = new Set();
+  const out = [];
+  const any = (l) => l[Math.floor(rnd() * l.length)];
+  const flip = (a, b) => (rnd() < 0.5 ? [a, b] : [b, a]);
+  const close = (a, b, s) => {
+    if (cat.abs) return Math.abs(a.v - b.v) <= Math.max(cat.gap * 2, 120 * Math.pow(0.9, s));
+    const r = Math.max(a.v, b.v) / Math.max(1e-9, Math.min(a.v, b.v));
+    return r <= Math.max(cat.gap * 1.4, 6 * Math.pow(0.88, s));
+  };
+  // a'nın kullanılmamış rakipleri; önce zorluk penceresindekiler, yoksa (seri uzunken) her uygun olan
+  const near = (a, dir, s) => {
+    const win = Math.max(2, Math.round(n * 0.3 * Math.pow(0.88, s)));
+    const ok = sorted.filter((b) => { const d = rank.get(b) - rank.get(a); return b !== a && !used.has(b) && (dir > 0 ? d > 0 : d < 0) && farEnough(cat, a, b); });
+    const best = ok.filter((b) => Math.abs(rank.get(b) - rank.get(a)) <= win && close(a, b, s));
+    return best.length ? best : ok.sort((x, y) => Math.abs(rank.get(x) - rank.get(a)) - Math.abs(rank.get(y) - rank.get(a))).slice(0, 3);
+  };
+  let keep = null;
+  for (let guard = 0; guard < 500; guard++) {
+    const s = out.length;
+    if (keep) {
+      const up = near(keep, 1, s), down = near(keep, -1, s);
+      if (up.length && down.length) {
+        const b = any(rnd() < 0.5 ? up : down);
+        used.add(b);
+        out.push(flip(keep, b));
+        keep = keep.v >= b.v ? keep : b;
+        continue;
+      }
+    }
+    // yeni çift: kullanılmamış öğelerden, ikisinin de yakınında rakip olanlar
+    const free = sorted.filter((x) => !used.has(x));
+    const starts = free.filter((a) => near(a, 1, s).length || near(a, -1, s).length);
+    if (!starts.length) break;
+    const a = any(starts);
+    const b = any([...near(a, 1, s), ...near(a, -1, s)]);
+    used.add(a);
+    used.add(b);
+    out.push(flip(a, b));
+    keep = a.v >= b.v ? a : b;
+  }
+  return out;
+}
