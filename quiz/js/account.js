@@ -68,6 +68,7 @@ function gis() {
   return gisP;
 }
 let onError = () => {};
+const fedcmOk = () => "IdentityCredential" in window && !!navigator.userAgentData?.brands?.some((x) => /Google Chrome|Microsoft Edge|Opera/.test(x.brand)) && !/Electron|Claude\//.test(navigator.userAgent);
 /** Google ile giriş düğmesini el içine çizer. Basınca tarayıcının hesap seçicisi açılır, seçilince giriş yapılır. */
 export async function googleButton(el, { light = false, fail } = {}) {
   if (!el) return;
@@ -76,8 +77,11 @@ export async function googleButton(el, { light = false, fail } = {}) {
   id.initialize({
     client_id: GOOGLE_CLIENT,
     callback: (r) => credential(r?.credential).catch((e) => onError(e)),
-    use_fedcm_for_prompt: true,
-    use_fedcm_for_button: true,
+    // Tarayıcının kendi hesap seçicisi (FedCM) yalnızca bunu gerçekten gösteren tarayıcılarda (Chrome, Edge, Opera);
+    // gömülü tarayıcılarda (uygulama içi pencereler) Google'ın küçük hesap seçici penceresi açılır.
+    use_fedcm_for_prompt: fedcmOk(),
+    use_fedcm_for_button: fedcmOk(),
+    ux_mode: "popup",
     button_auto_select: false,
     auto_select: false,
     itp_support: true,
