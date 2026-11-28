@@ -18,6 +18,7 @@ import { dailyQuiz, dailyDate, dailyLeft, dailyLabel, dailyResult, saveDaily, da
 import { initI18n, LANG, applyLang } from "./i18n.js?v=14";
 import { initTabs, tabsUpdate, lobbyElsewhere, pidTaken, takeLobby } from "./tabs.js?v=1";
 import { favList, isFav, favCount, toggleFav, loadFavs, onFavs, favKey } from "./favs.js?v=2";
+import { initAccount, googleButton, signOut, account, onAccount, accountReady, push as pushAccount } from "./account.js?v=2";
 
 // ---------- yardımcılar ----------
 const $ = (s, r = document) => r.querySelector(s);
@@ -1354,11 +1355,11 @@ function drawHome() {
         .join("")}
     </nav>
     ${subsFor(ui.genre) ? `<div class="seg chips subChips">${["", ...subsFor(ui.genre)].map((c) => `<button data-sub="${esc(c)}" aria-pressed="${ui.cat === c}">${esc(c || "Hepsi")}</button>`).join("")}</div>` : ""}
-    ${browsing && ui.genre !== "Sayı" ? sortBar() : ""}
+    ${browsing ? sortBar() : ""}
     <div id="results">${resultsHtml()}</div>
     ${
       ui.genre === "Sayı"
-        ? `<div class="numGrid">${NUMCATS.map((c, k) => numCard(c, k)).join("")}</div>`
+        ? `<div class="hm-grid">${sortLists(NUM_LISTS.slice()).map((l, k) => qcard(l, k)).join("")}</div>`
         : browsing
         ? `${lists.length ? `<div class="hm-grid">${lists.map((l, k) => card(l, k)).join("")}</div>` : ""}
           ${ui.genre === "Topluluk" ? communityState() : ""}
@@ -1450,19 +1451,10 @@ function initVinyl() {
 
 // ---------- Sayı Quizi kartları ----------
 const numBest = (id) => num(store.get("jqNumBest", {})[id]);
-function numCard(c, k = 0) {
-  const sample = c.items.filter((x) => x.f).slice(0, 3);
-  return `<button class="numCard" data-numcat="${esc(c.id)}" style="--h:${c.hue};--i:${k}">
-    <span class="numArt">${sample.length ? sample.map((x, i) => `<img src="${esc(flagUrl(x.f))}" alt="" style="--j:${i}">`).join("") : `<i>${c.emoji}</i>`}</span>
-    <span class="numInfo"><b>${c.emoji} ${esc(c.name)}</b></span>
-    <span class="numPlay">${ic("play")}</span>
-    ${playsTag({ id: "num-" + c.id }, "plays numPlays")}
-  </button>`;
-}
 function numRail() {
   return `<div class="hm-rail num">
     <div class="hm-railHead"><h3>Sayı Quizi</h3><button class="hm-more" data-tab="Sayı">Tümünü gör ${ic("chevron-right")}</button></div>
-    <div class="hm-track">${NUMCATS.map((c, k) => numCard(c, k)).join("")}</div>
+    <div class="hm-track">${NUM_LISTS.map((l, k) => qcard(l, k)).join("")}</div>
   </div>`;
 }
 // Seçili sekme/alt kategori yatay kaydırmalı şeritte görünür kalsın
@@ -1560,13 +1552,13 @@ function communityState() {
   return "";
 }
 function qcard(l, k = 0) {
+  // Bütün kartlar aynı düzende (müzik kartları gibi): kalp sol üstte, düzenle/gizle sağ üstte, oynanma kapağın altında,
+  // ad kapağın altında. Trivia, anime, sıralama ve Sayı kartlarında kapak köşeli, şarkı kartlarında yuvarlaktır.
   const song = !l.kind && !l.anime && realPic(l.picture);
   return `<div class="qcard${l.genre === "Topluluk" ? " community" : ""}${song ? " song" : ""}${l.genre === "Topluluk" || l.genre === "Senin" ? " tools" : ""}" style="--i:${Math.min(k, 20)}">
     <button class="qcardBtn" data-list="${esc(l.id)}" aria-label="${esc(l.name)} quizini aç">
       <span class="qcardArt">${cover(l, "qcardImg", true)}${playsTag(l, "plays qcardPlays")}</span>
-      <span class="qcardTag">${esc(l.genre)}</span>
       <span class="qcardInfo"><b>${esc(l.name)}</b>${cardBy(l)}</span>
-      <span class="qcardPlay">${ic("play")}</span>
     </button>
     ${cardTools(l)}
     ${favBtn(l)}
@@ -1601,7 +1593,7 @@ function cardSub(l) {
 function cardTools(l) {
   const btn = (attr, icon, label) => `<button class="icon sm" ${attr}="${esc(l.id)}" aria-label="${esc(label)}" title="${esc(label)}">${ic(icon)}</button>`;
   if (l.genre === "Topluluk")
-    return `<span class="cardTools">${l.mine ? btn("data-edit", "sliders-horizontal", "Düzenle") + btn("data-unpublish", "trash-2", "Yayından kaldır") : btn("data-hidequiz", "x", "Bu quizi gizle")}</span>`;
+    return `<span class="cardTools">${l.mine ? btn("data-edit", "sliders-horizontal", "Düzenle (yayından kaldırma da orada)") : btn("data-hidequiz", "x", "Bu quizi gizle")}</span>`;
   if (l.genre === "Senin")
     return `<span class="cardTools">${l.tracks?.length || l.items?.length ? btn("data-edit", "sliders-horizontal", "Düzenle") : ""}${btn("data-unsave", "x", "Listeden kaldır")}</span>`;
   return "";
@@ -2935,17 +2927,39 @@ sheet.addEventListener("click", (e) => {
 });
 
 function profileSheet() {
-  const ed = (sheetCtx.ed ??= { name: "", avatar: "headphones", color: "coral", photo: "", ...(profile || {}) });
-  sheetBody.innerHTML = `<div class="sheetHead"><h2>${profile ? "Profilin" : "Adını seç"}</h2>${profile ? `<button class="icon" data-close aria-label="Kapat">${ic("x")}</button>` : `<button class="icon" data-do="skipProfile" aria-label="Geç, rastgele bir ad ver" title="Geç (rastgele ad)">${ic("x")}</button>`}</div>
-    <div class="profPreview">${avatar(ed, "xl")}</div>
-    <label class="field"><span>Oyuncu adı</span><span class="nameRow"><input id="pName" maxlength="20" value="${esc(ed.name)}" placeholder="${esc(ed.suggest ??= randomName())}" autocomplete="nickname"><button type="button" class="icon soft" data-do="rollName" aria-label="Rastgele ad" title="Rastgele ad">${ic("dices")}</button></span></label>
+  const ed = (sheetCtx.ed ??= { name: "", avatar: "headphones", color: "coral", photo: "", tab: "", ...(profile || {}) });
+  ed.tab ||= LETTER_AVATARS.includes(ed.avatar) ? "letters" : "icons";
+  const choice = (a, size = "") => `<button data-pav="${a}" aria-pressed="${!ed.photo && ed.avatar === a}" aria-label="${LETTER_AVATARS.includes(a) ? a + " harfi" : "Simge"}">${avatar({ ...ed, avatar: a, photo: "" }, size)}</button>`;
+  sheetBody.innerHTML = `<div class="prof">
+    <div class="sheetHead"><h2>${profile ? "Profilin" : "Adını seç"}</h2>${profile ? `<button class="icon" data-close aria-label="Kapat">${ic("x")}</button>` : `<button class="icon" data-do="skipProfile" aria-label="Geç, rastgele bir ad ver" title="Geç (rastgele ad)">${ic("x")}</button>`}</div>
+    ${acctHtml()}
+    <div class="profTop">
+      <div class="profAv">${avatar(ed, "xl")}<label class="profCam" title="Fotoğraf yükle" aria-label="Fotoğraf yükle">${ic("image")}<input type="file" id="pPhoto" accept="image/*" hidden></label></div>
+      <div class="profMain">
+        <label class="profLbl" for="pName">Oyuncu adı</label>
+        <span class="nameRow"><input id="pName" maxlength="20" value="${esc(ed.name)}" placeholder="${esc(ed.suggest ??= randomName())}" autocomplete="nickname"><button type="button" class="icon soft" data-do="rollName" aria-label="Rastgele ad" title="Rastgele ad">${ic("dices")}</button></span>
+        <div class="pick colors" aria-label="Renk">${COLORS.map((c) => `<button data-pcol="${c}" class="sw ${c}" aria-pressed="${ed.color === c}" aria-label="${c}"></button>`).join("")}</div>
+      </div>
+    </div>
     ${profile ? "" : `<p class="muted small">Boş bırakırsan ya da geçersen sana rastgele bir ad verilir; sonra istediğin zaman değiştirebilirsin.</p>`}
-    <div class="field"><span>Simge</span><div class="pick">${ICON_AVATARS.map((a) => `<button data-pav="${a}" aria-pressed="${!ed.photo && ed.avatar === a}">${avatar({ ...ed, avatar: a, photo: "" })}</button>`).join("")}
-      <label class="upload" title="Fotoğraf yükle">${ed.photo ? avatar(ed) : ic("plus")}<input type="file" id="pPhoto" accept="image/*" hidden></label></div>
-      <div class="pick letters" aria-label="Harf simgeleri">${LETTER_AVATARS.map((a) => `<button data-pav="${a}" aria-pressed="${!ed.photo && ed.avatar === a}" aria-label="${a} harfi">${avatar({ ...ed, avatar: a, photo: "" }, "sm")}</button>`).join("")}</div></div>
-    <div class="field"><span>Renk</span><div class="pick colors">${COLORS.map((c) => `<button data-pcol="${c}" class="sw ${c}" aria-pressed="${ed.color === c}" aria-label="${c}"></button>`).join("")}</div></div>
-    <div class="sheetFoot"><button class="btn primary wide" data-do="saveProfile">${ic("check")}Kaydet</button></div>`;
+    <div class="profTabs seg" role="tablist" aria-label="Simge türü"><button role="tab" data-ptabp="icons" aria-pressed="${ed.tab === "icons"}">${ic("headphones")}Simgeler</button><button role="tab" data-ptabp="letters" aria-pressed="${ed.tab === "letters"}"><b class="profA">A</b>Harfler</button>${ed.photo ? `<button data-do="rmPhoto" class="profRm">${ic("x")}Fotoğrafı kaldır</button>` : ""}</div>
+    <div class="profGrid ${ed.tab}">${(ed.tab === "letters" ? LETTER_AVATARS : ICON_AVATARS).map((a) => choice(a)).join("")}</div>
+    <div class="sheetFoot"><button class="btn primary wide" data-do="saveProfile">${ic("check")}Kaydet</button></div>
+  </div>`;
+  const gb = $("#gBtn");
+  if (gb) googleButton(gb, { light: isLight(), fail: () => toast("Google ile giriş yapılamadı. Biraz sonra yeniden dene.", "bad") }).catch(() => { gb.innerHTML = `<p class="muted small">Google girişi şu an yüklenemedi.</p>`; });
   setTimeout(() => !profile && $("#pName")?.focus(), 50);
+}
+// Google hesabı: profil, listeler, favoriler ve rekorlar bütün cihazlarda aynı olsun
+function acctHtml() {
+  if (!accountReady()) return "";
+  const u = account();
+  if (u) {
+    const pic = /^https:\/\/lh\d\.googleusercontent\.com\//.test(u.photo) ? `<img src="${esc(u.photo)}" alt="" referrerpolicy="no-referrer">` : `<span>${esc((u.name || u.email || "?").slice(0, 1).toUpperCase())}</span>`;
+    return `<div class="acct on"><span class="acctPic">${pic}</span><span class="acctTxt"><b data-noi18n>${esc(u.name || "Google hesabı")}</b><small data-noi18n>${esc(u.email)}</small></span><button class="acctOut" data-do="signOut">Çıkış</button>
+      <span class="acctSync">${ic("refresh-cw")}Profilin, listelerin, favorilerin ve rekorların bütün cihazlarında eşit</span></div>`;
+  }
+  return `<div class="acct"><div id="gBtn" class="gBtnHost"><span class="spin" aria-hidden="true"></span></div><small class="muted">İsteğe bağlı · Giriş yaparsan ilerlemen hesabına kaydedilir; başka cihazda aynı hesapla devam edersin.</small></div>`;
 }
 async function resizePhoto(file) {
   const img = new Image();
@@ -3568,6 +3582,14 @@ async function doAction(a, el) {
       const pool = [...PRESETS, ...TRIVIA];
       return openList(pool[Math.floor(Math.random() * pool.length)].id);
     }
+    case "rmPhoto":
+      Object.assign(sheetCtx.ed, { photo: "", name: $("#pName")?.value ?? sheetCtx.ed.name });
+      return profileSheet();
+    case "signOut":
+      await signOut().catch(() => {});
+      toast("Çıkış yapıldı. Verilerin bu cihazda duruyor.");
+      if (sheet.open && sheetCtx?.kind === "profile") profileSheet();
+      return;
     case "takeAsk":
       return openSheet("elsewhere");
     case "takeTab": {
@@ -3689,6 +3711,7 @@ async function doAction(a, el) {
       ed.name = $("#pName").value.trim() || ed.suggest || randomName();
       profile = { name: ed.name, avatar: ed.avatar, color: ed.color, photo: ed.photo };
       store.set("jqProfile", profile);
+      if (account()) pushAccount().catch(() => {});
       const then = sheetCtx.then;
       closeSheet();
       topbar();
@@ -3949,6 +3972,10 @@ document.addEventListener("click", async (e) => {
     if (d.remove) return act({ type: "remove", id: d.remove });
     if (d.move) return act({ type: "move", id: d.move, dir: Number(d.dir) });
     if (d.kick) return openSheet("rmConfirm", { act: "kick", id: d.kick });
+    if (d.ptabp) {
+      Object.assign(sheetCtx.ed, { tab: d.ptabp, name: $("#pName")?.value ?? sheetCtx.ed.name });
+      return profileSheet();
+    }
     if (d.pav) {
       Object.assign(sheetCtx.ed, { avatar: d.pav, photo: "", name: $("#pName").value });
       return profileSheet();
@@ -4116,6 +4143,7 @@ async function boot() {
   const qSlug = new URLSearchParams(location.search).get("q");
   const qNew = new URLSearchParams(location.search).has("yeni");
   if (qSlug) history.replaceState(null, "", BASE);
+  initAccount();
   communityP = loadCommunity();
   animeCounts().then((ok) => { if (ok && screen === "home" && !mode) bgRender(); });
   // opening quizinin kartında da sayı görünsün (küçük dosya)
@@ -4151,6 +4179,16 @@ async function boot() {
     else openSheet("profile", { then: () => startGuest(invite, { pw: ipw }) });
   } else if (!profile) openSheet("profile");
 }
+// hesap durumu değişti: profil penceresi açıksa yenile, üst çubuktaki profil hesabınkiyle güncellensin
+let wasSignedIn = null;
+onAccount((u) => {
+  if (wasSignedIn === false && u) toast("Giriş yapıldı. Hesabınla eşitleniyor…");
+  wasSignedIn = !!u;
+  const p = store.get("jqProfile", null);
+  if (p?.name) profile = p;
+  topbar();
+  if (sheet.open && sheetCtx?.kind === "profile") { sheetCtx.ed = null; profileSheet(); }
+});
 initTabs(() => ({ pid, role: mode && mode.role !== "solo" ? mode.role : "", code: mode && mode.role !== "solo" ? mode.code : "" }), {
   change() { if (screen === "home" && !mode) drawLobbies(); },
   give: giveLobby,

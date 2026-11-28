@@ -1,0 +1,17 @@
+rules_version = '2';
+
+// JinjaQuiz: her oyuncunun tek belgesi (users/<uid>). Yalnızca giriş yapmış sahibi okuyup yazabilir.
+// Belgede yalnızca eşitleme alanları bulunur; boyut sınırı kötüye kullanımı önler.
+// (Firebase konsolunda yayında olan kuralların kopyası: proje "jinjaquiz", veritabanı (default), europe-west3.)
+service cloud.firestore {
+  match /databases/{database}/documents {
+    match /users/{uid} {
+      allow read, delete: if request.auth != null && request.auth.uid == uid;
+      allow create, update: if request.auth != null && request.auth.uid == uid
+        && request.resource.data.keys().hasOnly(['data', 'at', 'updated'])
+        && request.resource.data.data is string && request.resource.data.data.size() < 800000
+        && request.resource.data.at is string && request.resource.data.at.size() < 4000
+        && request.resource.data.updated is timestamp;
+    }
+  }
+}
